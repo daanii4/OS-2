@@ -1,0 +1,655 @@
+---
+description: Mobile and responsive design rules for Operation Scholars OS. Governs breakpoint behavior, touch targets, and mobile session logging workflow.
+globs: ["app/**/*.tsx", "components/**/*.tsx"]
+---
+
+# Operation Scholars OS — Mobile & Responsive Design Rules
+
+## Primary Mobile User Context
+
+The primary mobile user is a school counselor who has just finished a session with a student.
+They are standing in a school hallway. They have 2–3 minutes before their next interaction.
+They are unlocking their phone with one hand, opening the app, and logging what just happened.
+
+Every mobile design decision must serve this moment:
+- One-thumb reachability for primary actions
+- Minimum input — pre-populated fields mean they write one thing: the session summary
+- No zoom on input focus (iOS Safari constraint)
+- No fragile custom components that break on a school district's managed device
+
+---
+
+## 1. BREAKPOINT STRATEGY
+
+```ts
+// tailwind.config.ts — breakpoints (matches frontend.mdc config)
+screens: {
+  'sm':  '640px',   // large phone landscape / small tablet
+  'md':  '768px',   // tablet portrait — layout pivot point
+  'lg':  '1024px',  // tablet landscape / small desktop
+  'xl':  '1280px',  // standard desktop
+  '2xl': '1536px',  // wide desktop
+}
+```
+
+| Breakpoint | Layout Mode | Notes |
+|---|---|---|
+| `< 640px` | Single-column mobile | Bottom nav, stacked cards, full-width forms |
+| `640–767px` | Single-column wide phone | Same as mobile, slightly more padding |
+| `768–1023px` | Tablet — sidebar hidden, top nav | Dashboard table → card list |
+| `≥ 1024px` | Full desktop — sidebar visible | Two-panel layouts unlock |
+
+### What Changes at Each Breakpoint
+
+**Below 768px (mobile-first default):**
+- Sidebar is hidden entirely. Navigation moves to a fixed bottom tab bar.
+- Dashboard student table collapses to a vertical card list (`StudentCardMobile`).
+- Student profile: sessions, incidents, charts stack in a single column.
+- Session log form: full-width, single column, all inputs stacked.
+- Charts render at 220–260px height, full width, no legends (legend above instead).
+- All top-level page padding: `px-4 py-4` (16px horizontal).
+
+**768px–1023px (tablet):**
+- Sidebar hidden. Top navigation bar visible.
+- Dashboard table renders but with 3–4 columns (not all 6).
+- Student profile: optional 2-column layout for metrics vs. session list.
+- Session log form: still single column (do not widen the form — counselors type on glass).
+- Charts render at 260px height.
+
+**1024px+ (desktop):**
+- Sidebar visible (`w-60`, fixed).
+- Dashboard table renders full.
+- Student profile: sidebar-style panels unlock.
+- Session log form: `max-w-2xl`, centered in the content area.
+- Charts: standard 240px height per frontend.mdc.
+
+---
+
+## 2. MOBILE NAVIGATION — BOTTOM TAB BAR
+
+Desktop sidebar collapses entirely below 768px. Replace with a fixed bottom tab bar.
+
+```tsx
+// components/nav/MobileBottomNav.tsx
+// Renders only on < md screens via: className="md:hidden"
+// Fixed to bottom, sits above iOS home indicator
+
+<nav
+  className="
+    md:hidden fixed bottom-0 left-0 right-0 z-50
+    bg-olive-800
+    flex items-center justify-around
+    border-t border-olive-700
+    pb-safe  /* safe-area-inset-bottom via Tailwind plugin or manual */
+  "
+  aria-label="Mobile navigation"
+  style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+>
+  {mobileTabs.map((tab) => (
+    <Link
+      key={tab.href}
+      href={tab.href}
+      className="
+        flex flex-col items-center justify-center gap-1
+        min-w-[60px] py-3
+        /* Tap target: full height ensures 44px+ */
+        text-olive-400
+        aria-[current=page]:text-white
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500
+        transition-colors duration-100
+      "
+      aria-label={tab.label}
+    >
+      {/* Active: filled icon. Inactive: outline icon. */}
+      <tab.icon size={22} aria-hidden="true" />
+      <span className="font-sans text-caption font-medium">{tab.label}</span>
+    </Link>
+  ))}
+</nav>
+```
+
+**Mobile tabs — 4 maximum:**
+1. Dashboard (Home icon)
+2. Students (Users icon)
+3. Log Session (Plus icon — this is the primary action)
+4. Profile (User icon)
+
+The "Log Session" tab (index 2) uses a slightly larger icon and the `gold-500` color when active to indicate it is the primary action. Never put more than 4 tabs in the bottom bar for this application.
+
+**Body padding for bottom nav:** All page content on mobile must have `pb-20` (80px) to clear the fixed bottom nav.
+
+---
+
+## 3. TOUCH TARGET MINIMUMS
+
+Every interactive element on mobile must meet these minimums. Do not compromise on this — counselors use this on school devices, sometimes while walking.
+
+| Element | Minimum Height | Minimum Width | Implementation |
+|---|---|---|---|
+| Bottom nav tabs | 60px (with padding) | 60px | `min-h-[60px]` per tab |
+| Primary buttons | 48px | full-width on mobile | `min-h-[48px] w-full` |
+| Secondary buttons | 44px | auto | `min-h-[44px]` |
+| Form inputs | 48px | full-width | `min-h-[48px] w-full` |
+| List items (student cards) | 72px | full-width | `min-h-[72px]` |
+| Attendance status options | 48px each | full-width option row | `min-h-[48px]` |
+| Goal met/not-met toggle | 44×44px minimum | — | Use `min-h-[44px] min-w-[44px]` |
+| Incident type selectors | 48px per option | full-width | `min-h-[48px] w-full` |
+| Session type dropdown | 48px | full-width | Native `<select>` at `min-h-[48px]` |
+| Icon-only actions (edit, delete) | 44×44px | 44×44px | `p-3` around icon ensures tap area |
+
+---
+
+## 4. SESSION LOGGING FORM — MOBILE (CRITICAL PATH)
+
+This is the most important mobile workflow. A counselor logs a session immediately after meeting a student. Every friction point costs real time. Follow these rules exactly.
+
+### 4.1 Form Layout on Mobile
+
+```tsx
+// app/(dashboard)/students/[id]/sessions/new/page.tsx — mobile rendering
+// All auto-populated fields are read-only display, not editable inputs, on mobile
+// Counselor only writes: session_summary, attendance_status, duration, goals
+
+<div className="px-4 pt-4 pb-24">  {/* pb-24 clears bottom nav + submit bar */}
+
+  {/* Auto-populated context block — read-only, compact */}
+  <div className="bg-surface-subtle rounded-lg px-4 py-3 mb-5 border border-olive-200">
+    <p className="font-serif text-heading text-olive-900">{student.first_name} {student.last_name}</p>
+    <p className="font-sans text-body-sm text-olive-600 mt-0.5">
+      {student.school} · Grade {student.grade}
+    </p>
+    <div className="flex items-center gap-3 mt-2">
+      <span className="font-mono text-data-sm text-olive-600">{formatDate(today)}</span>
+      <span className="font-sans text-caption text-olive-400">·</span>
+      <span className="font-sans text-caption text-olive-500">{currentUser.name}</span>
+    </div>
+  </div>
+
+  {/* Attendance — segmented control, NOT a dropdown on mobile */}
+  <fieldset className="mb-5">
+    <legend className="font-sans text-label font-medium text-olive-800 uppercase tracking-wide mb-2">
+      Attendance <span className="text-error">*</span>
+    </legend>
+    <div className="grid grid-cols-2 gap-2">
+      {['attended', 'no_show', 'rescheduled', 'cancelled'].map((status) => (
+        <label
+          key={status}
+          className={`
+            flex items-center justify-center
+            min-h-[48px] rounded border
+            font-sans text-body font-medium cursor-pointer
+            transition-colors duration-100
+            ${attendance === status
+              ? 'bg-olive-600 border-olive-600 text-white'
+              : 'bg-surface border-olive-300 text-olive-700 hover:border-olive-400'
+            }
+          `}
+        >
+          <input
+            type="radio"
+            name="attendance_status"
+            value={status}
+            className="sr-only"
+            onChange={() => setAttendance(status)}
+          />
+          {attendanceLabel[status]}
+        </label>
+      ))}
+    </div>
+  </fieldset>
+
+  {/* Duration — number input, large tap area */}
+  <div className="mb-5">
+    <label className="font-sans text-label font-medium text-olive-800 uppercase tracking-wide mb-2 block">
+      Duration (minutes)
+    </label>
+    <input
+      type="number"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      defaultValue={30}
+      min={5}
+      max={120}
+      className="
+        w-full min-h-[48px] px-4
+        bg-surface-subtle border border-olive-300 rounded
+        font-mono text-data text-olive-900 text-center
+        text-[16px]  /* CRITICAL: 16px minimum prevents iOS zoom */
+        focus:outline-none focus:ring-2 focus:ring-olive-600 focus:border-transparent
+        transition-colors duration-100
+      "
+    />
+  </div>
+
+  {/* Session Summary — primary input */}
+  <div className="mb-5">
+    <label className="font-sans text-label font-medium text-olive-800 uppercase tracking-wide mb-2 block">
+      Session Summary <span className="text-error">*</span>
+    </label>
+    <textarea
+      className="
+        w-full
+        min-h-[160px]   /* Enough to write without constant scroll */
+        px-4 py-3
+        bg-surface-subtle border border-olive-300 rounded
+        font-sans text-body text-olive-900
+        text-[16px]  /* CRITICAL: 16px minimum prevents iOS zoom on focus */
+        leading-relaxed
+        placeholder:text-olive-400
+        resize-none     /* No resize handle on mobile — wastes space */
+        focus:outline-none focus:ring-2 focus:ring-olive-600 focus:border-transparent
+        transition-colors duration-100
+      "
+      placeholder="Write what happened in this session..."
+    />
+    <p className="font-sans text-caption text-olive-400 mt-1">
+      This is the primary input for AI analysis.
+    </p>
+  </div>
+
+  {/* Session Goals — optional, progressive disclosure */}
+  <GoalEntrySection />
+
+</div>
+
+{/* Fixed submit bar — always visible above keyboard */}
+<div className="
+  fixed bottom-0 left-0 right-0 z-40
+  bg-surface border-t border-olive-200
+  px-4 py-3 flex gap-3
+  pb-safe
+"
+  style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+>
+  <button
+    type="button"
+    onClick={onCancel}
+    className="
+      flex-1 min-h-[48px] rounded border border-olive-300
+      font-sans text-body font-medium text-olive-700
+      hover:bg-olive-50 active:bg-olive-100
+      transition-colors duration-100
+    "
+  >
+    Cancel
+  </button>
+  <button
+    type="submit"
+    className="
+      flex-2 min-h-[48px] rounded
+      bg-olive-600 text-white font-sans text-body font-semibold
+      hover:bg-olive-700 active:bg-olive-800
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2
+      disabled:opacity-60 disabled:cursor-not-allowed
+      transition-all duration-100
+    "
+    style={{ flex: 2 }}
+  >
+    {isSubmitting ? 'Saving...' : 'Log Session'}
+  </button>
+</div>
+```
+
+### 4.2 Textarea Behavior on Keyboard Open
+
+When the iOS or Android keyboard opens, the textarea must remain visible. Do not use `position: fixed` for the textarea itself. The fixed submit bar is separate from the scrollable form body.
+
+```tsx
+// In the page component, detect viewport height change (keyboard open indicator)
+// Apply this to the page wrapper:
+<div
+  className="min-h-screen flex flex-col"
+  style={{ minHeight: '100dvh' }}  // dvh = dynamic viewport height — shrinks when keyboard opens
+>
+```
+
+The textarea's `min-h-[160px]` gives adequate starting height. When the keyboard opens and shrinks the viewport, the user can scroll the form to reach the textarea. The fixed submit bar remains pinned above the keyboard on iOS via `position: fixed` + `bottom: env(safe-area-inset-bottom)`.
+
+---
+
+## 5. MOBILE FORM INPUT RULES
+
+### 5.1 Font Size — iOS Zoom Prevention
+
+**Every form input and textarea must have a minimum `font-size: 16px` (or `text-[16px]` in Tailwind).**
+
+iOS Safari automatically zooms the viewport when a focused input has a font size below 16px. This is jarring and breaks the layout. There is no workaround other than using 16px minimum.
+
+```tsx
+// CORRECT — 16px on all mobile inputs
+<input className="text-[16px] ..." />
+<textarea className="text-[16px] ..." />
+<select className="text-[16px] ..." />
+
+// WRONG — will trigger iOS zoom
+<input className="text-sm ..." />   // 14px — DO NOT USE ON MOBILE INPUTS
+<input className="text-xs ..." />   // 12px — DO NOT USE ON MOBILE INPUTS
+```
+
+### 5.2 Dropdowns / Select Elements on Mobile
+
+Use native `<select>` elements on mobile. Do not use custom-styled dropdowns (Radix Select, custom popovers) for session type, session format, or grade selectors on mobile — they break on iOS Safari's WebKit rendering engine and on school district-managed Chrome on Android.
+
+```tsx
+// CORRECT — native select, full width, 16px, 48px height
+<select
+  className="
+    w-full min-h-[48px] px-4
+    bg-surface-subtle border border-olive-300 rounded
+    font-sans text-body text-olive-900
+    text-[16px]
+    appearance-auto  /* preserve native arrow — do not remove */
+    focus:outline-none focus:ring-2 focus:ring-olive-600 focus:border-transparent
+    transition-colors duration-100
+  "
+>
+
+// WRONG — custom select wrapper with hidden native element
+// Do not use this pattern on mobile inputs
+```
+
+**Exception:** Custom styled dropdowns (Radix, Headless UI) are acceptable on `≥ md` breakpoints where desktop rendering is predictable.
+
+### 5.3 Date Inputs on Mobile
+
+Use native `<input type="date">` on mobile. Do not use a custom date picker component below `md` breakpoint.
+
+```tsx
+<input
+  type="date"
+  defaultValue={todayISO}
+  className="
+    w-full min-h-[48px] px-4
+    bg-surface-subtle border border-olive-300 rounded
+    font-mono text-data text-olive-900
+    text-[16px]
+    focus:outline-none focus:ring-2 focus:ring-olive-600 focus:border-transparent
+  "
+/>
+```
+
+### 5.4 Attendance Status — Segmented Control vs. Dropdown
+
+On mobile, attendance status (`attended` / `no_show` / `rescheduled` / `cancelled`) renders as a 2×2 segmented button grid (see Section 4.1), not a `<select>`. The options are large tap targets, visually clear, and require no fine motor precision.
+
+On `≥ md`, a standard `<select>` or custom dropdown is acceptable.
+
+### 5.5 Session Goals — Progressive Disclosure on Mobile
+
+The goal entry section is optional and visually collapsed behind a disclosure button on mobile to keep the form short.
+
+```tsx
+// components/sessions/GoalEntrySection.tsx
+const [goalsExpanded, setGoalsExpanded] = useState(false)
+
+<div className="mb-5">
+  <button
+    type="button"
+    onClick={() => setGoalsExpanded(!goalsExpanded)}
+    className="
+      w-full min-h-[48px] flex items-center justify-between
+      px-4 py-3 rounded border border-olive-300
+      font-sans text-body font-medium text-olive-700
+      hover:bg-olive-50 active:bg-olive-100
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-1
+      transition-colors duration-100
+    "
+    aria-expanded={goalsExpanded}
+  >
+    <span>Add Session Goals (optional)</span>
+    <ChevronDown
+      size={16}
+      className={`text-olive-500 transition-transform duration-150 ${goalsExpanded ? 'rotate-180' : ''}`}
+      aria-hidden="true"
+    />
+  </button>
+
+  {goalsExpanded && (
+    <div className="mt-3 space-y-3">
+      {goals.map((goal, index) => (
+        <GoalRow key={index} goal={goal} index={index} />
+      ))}
+      <button
+        type="button"
+        onClick={addGoal}
+        className="
+          w-full min-h-[44px] rounded border border-dashed border-olive-300
+          font-sans text-body-sm text-olive-500
+          hover:border-olive-400 hover:text-olive-600
+          transition-colors duration-100
+        "
+      >
+        + Add Goal
+      </button>
+    </div>
+  )}
+</div>
+```
+
+Each goal row has:
+- Text input for the goal description: `text-[16px]`, `min-h-[44px]`
+- Met / Not Met toggle: two buttons, each `min-h-[44px]`, full width split 50/50
+
+---
+
+## 6. DASHBOARD — MOBILE CARD LIST
+
+The dashboard student table does not render below `md`. It is replaced by a vertical card list.
+
+```tsx
+// components/students/StudentListMobile.tsx
+// Renders only below md: className="md:hidden"
+
+<ul className="space-y-3 px-4 py-4 pb-24" role="list" aria-label="Your students">
+  {students.map((student) => (
+    <li key={student.id}>
+      <Link
+        href={`/students/${student.id}`}
+        className="
+          block bg-surface border border-olive-200 rounded-lg shadow-card
+          px-4 py-4
+          hover:border-olive-300 hover:shadow-elevated
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-1
+          active:bg-surface-muted
+          transition-all duration-100
+          min-h-[72px]
+        "
+      >
+        {/* Row 1: Name + status */}
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <h2 className="font-serif text-heading text-olive-900 truncate">
+            {student.first_name} {student.last_name}
+          </h2>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {student.hasEscalation && <EscalationChip />}
+            <StudentStatusBadge status={student.status} />
+          </div>
+        </div>
+
+        {/* Row 2: School + counselor */}
+        <p className="font-sans text-body-sm text-olive-600 mb-2 truncate">
+          {student.school} · Grade {student.grade}
+        </p>
+
+        {/* Row 3: Key metrics — always mono */}
+        <div className="flex items-center gap-4">
+          <div>
+            <span className="font-sans text-caption text-olive-400">30d incidents: </span>
+            <span className="font-mono text-data-sm font-medium text-olive-900">
+              {student.metrics.recent_count}
+            </span>
+          </div>
+          <div>
+            <span className="font-sans text-caption text-olive-400">vs baseline: </span>
+            <span className={`font-mono text-data-sm font-medium ${
+              student.metrics.delta_pct < 0 ? 'text-success' :
+              student.metrics.delta_pct >= 25 ? 'text-status-regression' :
+              'text-olive-500'
+            }`}>
+              {student.metrics.delta_pct > 0 ? '+' : ''}{student.metrics.delta_pct}%
+            </span>
+          </div>
+          <div className="ml-auto">
+            <span className="font-mono text-data-sm text-olive-400">
+              {formatDate(student.last_session_date)}
+            </span>
+          </div>
+        </div>
+      </Link>
+    </li>
+  ))}
+</ul>
+```
+
+---
+
+## 7. CHARTS ON MOBILE
+
+Charts on mobile are **view-only**. No interactive toggles, no period selectors, no drill-down. The counselor can see the chart; all interactions happen on desktop.
+
+```tsx
+// Chart container on mobile
+<div className="px-4">
+  <ChartCard title="Incident Frequency — Last 6 Months">
+    {/* Height reduced for mobile viewport */}
+    <ResponsiveContainer width="100%" height={220}>
+      {/* Same Recharts component as desktop — ResponsiveContainer handles the rest */}
+    </ResponsiveContainer>
+  </ChartCard>
+</div>
+```
+
+**Chart rules on mobile:**
+- Height: `220px` (not 240px — preserves scroll space)
+- Width: `100%` always — never fixed pixel width
+- Legends: moved above the chart (`<Legend verticalAlign="top" />`) on mobile — never overlap the bars
+- Y-axis labels: suppress below 400px viewport width (`tick={false}` on YAxis below sm)
+- Tooltip: enabled on mobile (touch-activated)
+- Period toggles (week/month/year): hidden on mobile — show only the default monthly view
+- The `ResponsiveContainer` handles all of this correctly when width is `100%`
+
+---
+
+## 8. iOS SAFARI & ANDROID CHROME GOTCHAS
+
+### 8.1 Safe Area Insets (iPhone Notch / Dynamic Island / Home Bar)
+
+Always account for iOS safe area insets on fixed bottom elements.
+
+```tsx
+// Fixed bottom elements — session submit bar, bottom nav
+style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+
+// OR with Tailwind (requires plugin or manual config):
+className="pb-safe"
+
+// Never use a fixed bottom padding that doesn't account for this.
+// On iPhone 14 Pro, the home indicator requires ~34px of clearance.
+```
+
+### 8.2 iOS Bounce Scroll
+
+The entire page should not bounce-scroll on iOS. Apply `overscroll-behavior-none` to the body, but allow scroll inside the main content container.
+
+```tsx
+// In globals.css or root layout:
+// body { overscroll-behavior: none; }
+// Main scroll container: overscroll-contain
+```
+
+### 8.3 iOS Input Zoom — Restatement
+
+Minimum 16px on ALL inputs. This is non-negotiable and appears in this file because it is the most common iOS regression introduced during development. If an engineer reduces a textarea font size below 16px for aesthetic reasons, it must be rejected.
+
+### 8.4 Android Chrome: Select Element
+
+Android Chrome renders `<select>` elements with the native Material Design picker by default. This is acceptable — do not override it with a custom component on mobile. The native picker is familiar to Android users.
+
+### 8.5 Active State on iOS
+
+iOS Safari does not fire `:hover` events on touch. To get visual feedback on tap, always use an `active:` Tailwind class (which maps to `:active` pseudo-class):
+
+```tsx
+// Required on all tappable elements on mobile
+className="... active:bg-olive-100 active:scale-[0.99]"
+```
+
+Without `active:` states, buttons appear unresponsive on iOS. This is especially jarring for the session log submit button.
+
+### 8.6 100vh on Mobile Browsers
+
+Chrome on Android and Safari on iOS include the browser UI chrome in `100vh`, causing content to be cut off. Use `100dvh` (dynamic viewport height) for full-height containers.
+
+```tsx
+// WRONG
+<div className="min-h-screen">   // 100vh — clips on mobile browsers
+
+// CORRECT
+<div style={{ minHeight: '100dvh' }}>   // shrinks when keyboard opens — correct behavior
+// OR in tailwind.config: extend screens with 'dvh' variant
+```
+
+### 8.7 Position: Fixed + Keyboard Open (iOS)
+
+On iOS, when the soft keyboard opens, `position: fixed` elements can jump to unexpected positions or disappear. This affects the session submit bar.
+
+Mitigation: wrap the fixed submit bar in a container with `z-index: 40`, and ensure the form content has `padding-bottom` large enough that the last input is always scrollable above the keyboard height.
+
+```tsx
+// Rule: The session summary textarea must have at least 280px of padding-bottom
+// beneath it (the combined height of the keyboard + submit bar).
+// In the form wrapper:
+<div className="... pb-[280px] md:pb-6">
+```
+
+---
+
+## 9. WHAT DEGRADES GRACEFULLY vs. WHAT MUST WORK ON MOBILE
+
+| Feature | Mobile Status | Rule |
+|---|---|---|
+| Session log form | **MUST WORK — critical path** | Full functionality, all inputs, submit. Zero compromise. |
+| Incident logging | **MUST WORK** | Full form — type, date, severity, description |
+| Dashboard student list | **MUST WORK** | Card list replaces table |
+| Student profile view | **MUST WORK** | Stacked single-column layout |
+| Charts | **View only** | No period toggles, no interactive controls |
+| PDF progress report generation | **Degrades** | Hide button on mobile — "Available on desktop" |
+| Organization analytics | **Degrades** | Link to "View full analytics on desktop" |
+| Cohort comparison chart | **Degrades** | Hidden below md |
+| Success plan builder | **Degrades** | Redirect to desktop — complex multi-step form |
+| AI Ask feature | **MUST WORK** | Single textarea + submit — simple enough for mobile |
+| AI briefing view (read only) | **MUST WORK** | Scrollable text panel |
+| Escalation banner | **MUST WORK** | Full-width alert, always visible, acknowledgment button meets 48px target |
+| User account management | **Degrades** | Owner-only, owner is on desktop |
+
+---
+
+## 10. EMPTY STATES ON MOBILE
+
+Empty state components must be vertically centered and fit within a single viewport without scrolling.
+
+```tsx
+// Mobile empty state — student list (counselor with no assigned students yet)
+<div className="flex flex-col items-center justify-center px-8 text-center min-h-[60vh]">
+  <div className="w-14 h-14 rounded-full bg-olive-100 flex items-center justify-center mb-4">
+    <Users size={24} className="text-olive-400" aria-hidden="true" />
+  </div>
+  <h2 className="font-serif text-heading text-olive-900 mb-2">No students assigned yet</h2>
+  <p className="font-sans text-body-sm text-olive-500">
+    Your administrator will assign students to your caseload.
+  </p>
+</div>
+```
+
+---
+
+## 11. ACCESSIBILITY ON MOBILE
+
+- All tap targets meet 44×44px minimum — specified in Section 3
+- Focus rings are visible: `focus-visible:ring-2 focus-visible:ring-olive-600` — never suppress focus rings
+- All form inputs have visible `<label>` elements above them — never placeholder-only
+- All radio/checkbox inputs have visible labels that are also part of the tap target
+- Escalation banner uses `role="alert"` and `aria-live="assertive"` — screen readers announce it immediately
+- Bottom nav uses `aria-label="Mobile navigation"` and `aria-label` on each tab link
+- The session submit button has `aria-busy="true"` during submission
+- Color is never the sole differentiator — attendance segmented control uses text labels, not just color fills

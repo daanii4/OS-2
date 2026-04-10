@@ -1,0 +1,313 @@
+---
+description: Authentication, session management, and middleware rules for Operation Scholars OS. Apply to lib/supabase/**, middleware.ts, login, and any route or server code that reads the current user.
+globs: ["lib/supabase/**/*.ts", "middleware.ts", "app/**/login/**", "app/api/**/*.ts"]
+alwaysApply: true
+---
+
+# Operation Scholars OS — Auth & Middleware Rules
+
+---
+
+## Architectural split
+
+- **Supabase Auth** — identity only: sign-in, sign-out, session cookies, `auth.users`.
+- **Prisma** — all application data: `profiles`, students, sessions, incidents, plans, etc.
+- **Never** use the Supabase client for data fetching or mutations. **Prisma only** for data.
+- **Supabase RLS** may exist as a secondary safety net; **primary** enforcement remains Prisma query-layer checks (`canAccessStudent`, role guards, explicit `where` clauses).
+
+---
+
+## Removed from the project (do not reintroduce)
+
+- `next-auth`, `next-auth/providers/credentials`
+- `@auth/prisma-adapter`
+- `lib/auth.ts`
+- `types/next-auth.d.ts`
+- `password_hash` on any Prisma model (passwords live in Supabase Auth, not in `profiles`)
+- `getServerSession(authOptions)` anywhere
+
+---
+
+## Dependencies
+
+```bash
+npm install @supabase/supabase-js @supabase/ssr
+```
+
+---
+
+## Environment variables
+
+Set in `.env` locally and in Vercel (production, preview, development):
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://lgclshewixkovkshfxbl.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase dashboard → Project Settings → API → anon/public key
+SUPABASE_SERVICE_ROLE_KEY=       # Project Settings → API → service_role — server only, never expose to client
+```
+
+- `SUPABASE_SERVICE_ROLE_KEY` — **never** `NEXT_PUBLIC_*`. **Never** import `lib/supabase/admin.ts` (or any code that uses it) from Client Components.
+
+---
+
+## Supabase client modules
+
+### `lib/supabase/client.ts` — browser only
+
+```typescript
+// Browser client — Client Components only
+import { createBrowserClient } from '@supabase/ssr'
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+```
+
+### `lib/supabase/server.ts` — Server Components, Route Handlers, Server Actions
+
+```typescript
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+export async function createClient() {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // setAll may throw in Server Components where cookies are read-only; safe to ignore for refresh
+          }
+        },
+      },
+    }
+  )
+}
+```
+
+### `lib/supabase/admin.ts` — service role, server only
+
+```typescript
+// Seeding, admin user management, operations that bypass RLS — never import in client components
+import { createClient } from '@supabase/supabase-js'
+
+export const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+```
+
+---
+
+## Data model — `profiles` (Prisma), not `users`
+
+`auth.users` is owned by Supabase. **Do not** define it in `schema.prisma`.
+
+```prisma
+model Profile {
+  id                String   @id // same UUID as auth.users.id
+  name              String
+  email             String   @unique
+  role              UserRole @default(counselor)
+  active            Boolean  @default(true)
+  created_at        DateTime @default(now())
+
+  assigned_students Student[]           @relation("AssignedCounselor")
+  sessions          Session[]
+  logged_incidents  BehavioralIncident[]
+  created_plans     SuccessPlan[]
+
+  @@map("profiles")
+}
+```
+
+Foreign keys from `Student`, `Session`, etc. reference `profiles.id` (same as Supabase user id).
+
+### Auto-create profile on new Auth user (Supabase SQL)
+
+Run in Supabase SQL editor:
+
+```sql
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, name, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'name', new.email),
+    coalesce(new.raw_user_meta_data->>'role', 'counselor')
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+```
+
+---
+
+## Session retrieval in route handlers (replaces `getServerSession`)
+
+Use **`supabase.auth.getUser()`** then **`prisma.profile.findUnique`**. Never trust `role` or `id` from the request body.
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(req: NextRequest) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized', code: 'UNAUTHORIZED' },
+      { status: 401 }
+    )
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { id: true, role: true, active: true, name: true },
+  })
+
+  if (!profile || !profile.active) {
+    return NextResponse.json(
+      { error: 'Forbidden', code: 'FORBIDDEN' },
+      { status: 403 }
+    )
+  }
+
+  const { id: userId, role } = profile
+  // Continue: canAccessStudent(userId, role, studentId), queries, etc.
+}
+```
+
+- Do not skip this sequence in API routes because middleware ran — **handlers must verify** the session and profile.
+- Client-side: use the browser `createClient()` for `signInWithPassword` / `signOut`; **do not** use it for privileged data access.
+
+---
+
+## Proxy (Middleware) — session refresh + unauthenticated redirect
+
+Next.js 16 renamed `middleware.ts` to `proxy.ts` with a `proxy` export (not `middleware`).
+Replace `withAuth` from NextAuth. Refresh the session on every matched request; redirect anonymous users to `/login` (except static assets and login itself).
+
+```typescript
+// proxy.ts  (Next.js 16 — replaces middleware.ts)
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  return supabaseResponse
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|login).*)'],
+}
+```
+
+Tune `matcher` as needed for public routes (e.g. auth callbacks) without exposing student data.
+
+---
+
+## Login page
+
+```typescript
+// Client Component — browser Supabase client
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+const { error } = await supabase.auth.signInWithPassword({ email, password })
+// On success, Supabase sets session cookies; redirect to /dashboard
+```
+
+---
+
+## Role hierarchy (unchanged)
+
+| Role | Access |
+|------|--------|
+| `owner` | Full access. All students, all data, all admin functions. |
+| `assistant` | Same as owner except limited user management. |
+| `counselor` | Assigned students only. Cannot create students; cannot access org analytics. |
+
+`canAccessStudent(userId, role, studentId)` in `lib/permissions.ts` — **same logic**; `userId` is **`profile.id`** (Supabase user id). DB-layer filtering unchanged.
+
+---
+
+## Rate limiting
+
+Rate-limit the **login** route / auth attempts (middleware edge or Upstash / Vercel). **~10 requests per minute per IP**; on limit, **429**, no account enumeration.
+
+---
+
+## Sensitive data & logging (unchanged)
+
+- Never log student PII, session summaries, or auth secrets.
+- Never return sensitive fields without verified access (see `api-routes.mdc`).
+
+---
+
+## Build & types
+
+- `typescript.ignoreBuildErrors` stays **false**. Fix type errors; do not suppress.
+
+---
+
+## What never happens
+
+- Never trust `userId` or `role` from the request body — always from **`profile`** after `getUser()` + Prisma.
+- Never use the **anon** Supabase client on the server to read/write FERPA tables instead of Prisma.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` or import admin client in Client Components.
+- Never skip **`getUser()` + `profile`** in an API route that mutates or returns student data.
+- Never create a route that varies data by client-supplied user id without matching it to the authenticated **`profile.id`**.

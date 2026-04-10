@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  owner
+  assistant
+  counselor
+}
+
+enum StudentStatus {
+  active
+  graduated
+  transferred
+  inactive
+}
+
+enum SessionFormat {
+  individual
+  group
+}
+
+enum Grade {
+  K
+  G1
+  G2
+  G3
+  G4
+  G5
+  G6
+  G7
+  G8
+  G9
+  G10
+  G11
+  G12
+}
+
+enum SessionType {
+  initial_assessment
+  follow_up
+  check_in
+  crisis
+  group
+}
+
+enum AttendanceStatus {
+  attended
+  no_show
+  rescheduled
+  cancelled
+}
+
+enum IncidentType {
+  office_referral
+  suspension_iss
+  suspension_oss
+  teacher_referral
+  behavioral_incident
+  other
+}
+
+enum Severity {
+  low
+  medium
+  high
+}
+
+enum PlanStatus {
+  active
+  completed
+  paused
+  archived
+}
+
+enum SessionFrequency {
+  daily
+  weekly
+  biweekly
+  as_needed
+}
+
+enum AITrigger {
+  new_session
+  new_incident
+  plan_creation
+  milestone_missed
+  counselor_request
+  regression_alert
+}
+
+enum CounselorAction {
+  reviewed
+  followed
+  modified
+  ignored
+  pending
+}
+
+// ─────────────────────────────────────────────
+// PROFILES
+// Extends Supabase auth.users — id matches auth.users.id exactly
+// ─────────────────────────────────────────────
+
+model Profile {
+  id         String   @id // UUID from Supabase Auth — do not generate here
+  name       String
+  email      String   @unique
+  role       UserRole @default(counselor)
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  // Relations
+  assigned_students    Student[]            @relation("AssignedCounselor")
+  sessions             Session[]
+  logged_incidents     BehavioralIncident[]
+  created_plans        SuccessPlan[]
+  ai_analyses_reviewed AiAnalysis[]
+
+  @@map("profiles")
+}
+
+// ─────────────────────────────────────────────
+// STUDENTS
+// ─────────────────────────────────────────────
+
+model Student {
+  id                      String        @id @default(uuid())
+  first_name              String
+  last_name               String
+  grade                   Grade
+  school                  String
+  district                String
+  assigned_counselor_id   String?
+  referral_source         String
+  presenting_problem      String        @db.Text // SENSITIVE — never in list endpoints
+  intake_date             DateTime
+  status                  StudentStatus @default(active)
+  session_format          SessionFormat @default(individual)
+  baseline_incident_count Int?
+  baseline_window_start   DateTime?
+  baseline_window_end     DateTime?
+  general_notes           String?       @db.Text // NOT AI-analyzed per spec
+  escalation_active       Boolean       @default(false)
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+
+  // Relations
+  assigned_counselor Profile?             @relation("AssignedCounselor", fields: [assigned_counselor_id], references: [id])
+  incidents          BehavioralIncident[]
+  sessions           Session[]
+  success_plans      SuccessPlan[]
+  ai_analyses        AiAnalysis[]
+
+  @@map("students")
+}
+
+// ─────────────────────────────────────────────
+// BEHAVIORAL INCIDENTS
+// Primary progress measurement unit
+// ─────────────────────────────────────────────
+
+model BehavioralIncident {
+  id                String       @id @default(uuid())
+  student_id        String
+  incident_date     DateTime
+  incident_type     IncidentType
+  suspension_days   Float?       // Only for suspension types. 0.5 = half day.
+  severity          Severity
+  description       String       @db.Text
+  reported_by       String       // Teacher name, admin, or other — original reporter
+  logged_by         String       // FK → profiles — who entered it into the system
+  linked_session_id String?      // Optional — if discussed in a session
+  created_at        DateTime     @default(now())
+
+  // Relations
+  student           Student  @relation(fields: [student_id], references: [id])
+  logged_by_profile Profile  @relation(fields: [logged_by], references: [id])
+  linked_session    Session? @relation(fields: [linked_session_id], references: [id])
+
+  @@map("behavioral_incidents")
+}
+
+// ─────────────────────────────────────────────
+// SESSIONS
+// Primary AI input — session_summary is the richest data in the system
+// ─────────────────────────────────────────────
+
+model Session {
+  id                   String           @id @default(uuid())
+  student_id           String
+  counselor_id         String           // Always set from auth — never from request body
+  session_date         DateTime
+  session_type         SessionType      @default(follow_up)
+  session_format       SessionFormat    @default(individual)
+  duration_minutes     Int              @default(30)
+  attendance_status    AttendanceStatus
+  session_summary      String?          @db.Text // SENSITIVE — PRIMARY AI INPUT. Never in list endpoints.
+  session_goals        Json?            // [{ goal: string, met: boolean }]
+  goals_attempted      Int?             // COMPUTED server-side — never written from client
+  goals_met            Int?             // COMPUTED server-side — never written from client
+  goal_completion_rate Float?           // COMPUTED server-side — (goals_met / goals_attempted) * 100
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
+
+  // Relations
+  student          Student              @relation(fields: [student_id], references: [id])
+  counselor        Profile              @relation(fields: [counselor_id], references: [id])
+  linked_incidents BehavioralIncident[]
+  ai_analyses      AiAnalysis[]
+
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────
+// SUCCESS PLANS
+// ─────────────────────────────────────────────
+
+model SuccessPlan {
+  id                   String           @id @default(uuid())
+  student_id           String
+  created_by           String           // FK → profiles — always set from auth
+  status               PlanStatus       @default(active)
+  goal_statement       String           @db.Text
+  target_reduction_pct Float            // Target % reduction from baseline. e.g. 75 = 75% reduction.
+  plan_duration_weeks  Int
+  focus_behaviors      String[]         // e.g. ['reduce office referrals', 'improve classroom staying']
+  session_frequency    SessionFrequency
+  milestones           Json?            // Array of milestone objects — see spec section 4.6
+  ai_counselor_guide   String?          @db.Text // AI-generated. Updated after each session.
+  plan_notes           String?          @db.Text
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
+
+  // Relations
+  student            Student @relation(fields: [student_id], references: [id])
+  created_by_profile Profile @relation(fields: [created_by], references: [id])
+
+  @@map("success_plans")
+}
+
+// ─────────────────────────────────────────────
+// AI ANALYSES
+// ─────────────────────────────────────────────
+
+model AiAnalysis {
+  id                        String          @id @default(uuid())
+  student_id                String
+  triggered_by              AITrigger
+  problem_analysis          String          @db.Text
+  next_session_guide        String          @db.Text
+  recommended_interventions Json            // [{ intervention, rationale, source: { name, url } }]
+  escalation_flag           Boolean         @default(false)
+  escalation_reason         String?         @db.Text
+  counselor_action          CounselorAction @default(pending)
+  counselor_notes           String?         @db.Text
+  reviewed_by               String?         // FK → profiles
+  linked_session_id         String?
+  created_at                DateTime        @default(now())
+
+  // Relations
+  student               Student  @relation(fields: [student_id], references: [id])
+  reviewed_by_profile   Profile? @relation(fields: [reviewed_by], references: [id])
+  linked_session        Session? @relation(fields: [linked_session_id], references: [id])
+
+  @@map("ai_analyses")
+}

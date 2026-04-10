@@ -1,0 +1,439 @@
+---
+description: AI integration rules for Operation Scholars OS. Apply to all files in lib/ai/, app/api/ai/**, and any route that imports the Anthropic SDK or calls triggerAIAnalysis().
+globs: ["lib/ai/**/*.ts", "app/api/ai/**/*.ts", "app/api/students/**/ai/**/*.ts"]
+alwaysApply: true
+---
+
+# Operation Scholars OS — AI Integration Rules
+
+---
+
+## Core Principle
+
+The AI layer is a **background intelligence system**, not a user-facing synchronous service.
+Session saves, incident logs, and plan operations must return to the user immediately.
+AI analysis always runs asynchronously in the background.
+
+The counselor never waits for Claude. If the AI fails, the session still saves.
+
+---
+
+## Model
+
+Always use: `claude-sonnet-4-20250514`
+
+Do not use `claude-opus-*` or older Sonnet versions. Do not use model aliases like `claude-sonnet-latest`.
+
+**Optional tooling (tech stack):** If the implementation uses Anthropic **web search** (or similar),
+restrict retrieval and citations to the same **trusted domains** as `TRUSTED_DOMAINS` in
+`lib/ai/validation.ts`. Saved analyses still must pass `validateAIResponse()` before persisting.
+
+---
+
+## Async Pattern — Non-Negotiable
+
+```typescript
+// lib/ai/analyze.ts
+import Anthropic from '@anthropic-ai/sdk'
+import { prisma } from '@/lib/prisma'
+import { getStudentContext } from './context'
+import { validateAIResponse, TRUSTED_DOMAINS } from './validation'
+import { ANALYSIS_SYSTEM_PROMPT } from './prompts'
+
+const anthropic = new Anthropic()  // API key from ANTHROPIC_API_KEY env var
+
+// Must match `ai_analyses.triggered_by` / Engineering Action Plan §4.7 (no extra values without migration)
+export type AITrigger =
+  | 'new_session'
+  | 'new_incident'
+  | 'plan_creation'
+  | 'milestone_missed'
+  | 'counselor_request'
+  | 'regression_alert'
+
+/**
+ * Trigger an AI analysis for a student. Always called fire-and-forget.
+ * The caller does NOT await this function.
+ *
+ * Usage:
+ *   triggerAIAnalysis(studentId, 'new_session', sessionId).catch(err => {
+ *     console.error('[ai/analyze] Background analysis failed:', err)
+ *   })
+ */
+export async function triggerAIAnalysis(
+  studentId: string,
+  triggeredBy: AITrigger,
+  linkedSessionId?: string
+): Promise<void> {
+  const context = await getStudentContext(studentId)
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    system: ANALYSIS_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: JSON.stringify(context)
+      }
+    ]
+  })
+
+  const raw = response.content[0]
+  if (raw.type !== 'text') {
+    throw new Error('[ai/analyze] Unexpected response type from Claude')
+  }
+
+  let parsed: AIAnalysisResponse
+  try {
+    parsed = JSON.parse(raw.text)
+  } catch {
+    throw new Error('[ai/analyze] Failed to parse Claude response as JSON')
+  }
+
+  // Source validation — reject entire response if any intervention lacks a trusted URL
+  if (!validateAIResponse(parsed)) {
+    throw new Error('[ai/analyze] Response rejected: intervention missing trusted source URL')
+  }
+
+  await prisma.aiAnalysis.create({
+    data: {
+      student_id: studentId,
+      triggered_by: triggeredBy,
+      problem_analysis: parsed.problem_analysis,
+      next_session_guide: parsed.next_session_guide,
+      recommended_interventions: parsed.recommended_interventions,
+      escalation_flag: parsed.escalation_flag,
+      escalation_reason: parsed.escalation_reason ?? null,
+      counselor_action: 'pending',
+      ...(linkedSessionId ? { sessions: { connect: { id: linkedSessionId } } } : {})
+    }
+  })
+
+  // If escalation flagged — mark student record immediately
+  if (parsed.escalation_flag) {
+    await prisma.student.update({
+      where: { id: studentId },
+      data: { escalation_active: true }
+    })
+  }
+}
+```
+
+---
+
+## Route-Level Async Fire Pattern
+
+```typescript
+// In any route that triggers AI analysis:
+
+// CORRECT
+const session = await prisma.session.create({ data: sessionData })
+
+triggerAIAnalysis(session.student_id, 'new_session', session.id).catch(err => {
+  // Log the failure server-side. Never surfaces to client.
+  console.error('[sessions/POST] Background AI analysis failed:', {
+    studentId: session.student_id,
+    sessionId: session.id,
+    error: err instanceof Error ? err.message : 'Unknown error'
+  })
+})
+
+return NextResponse.json({ data: session }, { status: 201 })  // Returns immediately
+
+// WRONG — never await AI in a route handler
+const analysis = await triggerAIAnalysis(...)  // user waits for Claude
+return NextResponse.json({ data: session, analysis })
+```
+
+---
+
+## Student Context Builder
+
+The context payload is the input to every AI analysis. It must be complete and current.
+
+```typescript
+// lib/ai/context.ts
+export async function getStudentContext(studentId: string): Promise<StudentAIContext> {
+  const student = await prisma.student.findUniqueOrThrow({
+    where: { id: studentId },
+    select: {
+      first_name: true,
+      last_name: true,
+      grade: true,
+      school: true,
+      district: true,
+      presenting_problem: true,
+      intake_date: true,
+      session_format: true,
+      referral_source: true,
+      baseline_incident_count: true,
+      baseline_window_start: true,
+      baseline_window_end: true,
+      // general_notes intentionally excluded — marked as not AI-analyzed in spec
+    }
+  })
+
+  const incidents = await prisma.behavioralIncident.findMany({
+    where: { student_id: studentId },
+    select: {
+      incident_date: true,
+      incident_type: true,
+      severity: true,
+      description: true,
+      reported_by: true,
+      suspension_days: true,
+    },
+    orderBy: { incident_date: 'asc' }
+  })
+
+  const sessions = await prisma.session.findMany({
+    where: { student_id: studentId },
+    select: {
+      session_date: true,
+      session_type: true,
+      attendance_status: true,
+      session_summary: true,   // Only field included in AI context — access verified upstream
+      session_goals: true,
+      goal_completion_rate: true,
+    },
+    orderBy: { session_date: 'asc' }  // Chronological — AI reads history in order
+  })
+
+  const activePlan = await prisma.successPlan.findFirst({
+    where: { student_id: studentId, status: 'active' },
+    select: {
+      goal_statement: true,
+      target_reduction_pct: true,
+      focus_behaviors: true,
+      session_frequency: true,
+      milestones: true,
+      plan_duration_weeks: true,
+    }
+  })
+
+  const priorAnalyses = await prisma.aiAnalysis.findMany({
+    where: { student_id: studentId },
+    select: {
+      triggered_by: true,
+      problem_analysis: true,
+      next_session_guide: true,
+      created_at: true,
+    },
+    orderBy: { created_at: 'desc' },
+    take: 3  // Last 3 analyses for context window efficiency
+  })
+
+  return {
+    student,
+    incidents,
+    sessions,
+    activePlan,
+    priorAnalyses,
+  }
+}
+```
+
+---
+
+## System Prompt
+
+```typescript
+// lib/ai/prompts.ts
+export const ANALYSIS_SYSTEM_PROMPT = `
+You are a behavioral support intelligence system for Operation Scholars, a counseling contractor
+serving middle and high school students in California's Central Valley (209 area).
+You assist school counselors with evidence-based intervention recommendations.
+
+You will receive a student context payload as JSON containing:
+- Student profile (grade, school, presenting problem, intake date, session format, referral source)
+- Full behavioral incident history (type, date, severity, description — chronological)
+- Baseline incident rate and current trend data
+- All counseling session summaries in chronological order
+- Active success plan status and milestone progress
+- Summaries of prior AI analyses
+
+Your job is to synthesize this history and produce a structured analysis.
+
+FRAMEWORK REQUIREMENT:
+All recommendations must be grounded in evidence-based frameworks:
+- PBIS (pbis.org)
+- CASEL SEL framework (casel.org)
+- MTSS (Multi-Tiered System of Supports)
+- CBT for adolescents
+- SAMHSA evidence-based practices (samhsa.gov)
+- NASP resources (nasponline.org)
+- IES What Works Clearinghouse (ies.ed.gov)
+
+Every recommended_intervention must include a source object with name and url.
+Source URLs must link to one of the trusted domains above.
+Do not recommend interventions without a citable source. If you cannot cite a source, do not include the intervention.
+
+TONE:
+Write to a counselor, not a student. Professional, specific, actionable.
+Plain language — not clinical jargon. Assume the counselor has a counseling degree but is not a licensed clinician.
+Sentence-level readability. Do not use em dashes (Unicode U+2014) in any output; use commas, periods, or parentheses instead.
+
+SCOPE:
+- Behavioral and social-emotional interventions only
+- Do not diagnose
+- Do not recommend medication
+- Do not replace a licensed clinician
+- If session summaries or incident records contain safety concerns, self-harm signals, abuse indicators,
+  or situations requiring a licensed clinician — set escalation_flag: true and escalation_reason to a
+  specific description. This is the ONLY recommendation in that case. Do not provide other guidance
+  when escalation is warranted.
+
+OUTPUT FORMAT:
+Respond with valid JSON only. No markdown. No preamble. No explanation outside the JSON object.
+
+{
+  "problem_analysis": "string — synthesized understanding of what this student is going through. Root causes behind behavioral patterns. What is actually driving the incidents. 2-4 paragraphs.",
+  "next_session_guide": "string — step-by-step guidance for the upcoming session. What topic to open with. What technique to use. What to watch for. How to respond if student shuts down or escalates. Specific and grounded in this student's history. Not generic.",
+  "recommended_interventions": [
+    {
+      "intervention": "string — specific intervention name and description",
+      "rationale": "string — why this intervention applies to this specific student's behavioral patterns",
+      "source": {
+        "name": "string — framework or resource name",
+        "url": "string — direct URL to the source"
+      }
+    }
+  ],
+  "escalation_flag": boolean,
+  "escalation_reason": "string | null — specific reason if escalation_flag is true, null otherwise"
+}
+`.trim()
+```
+
+---
+
+## Source Validation
+
+Every AI response is validated before saving. No partial records.
+
+```typescript
+// lib/ai/validation.ts
+export const TRUSTED_DOMAINS = [
+  'pbis.org',
+  'casel.org',
+  'samhsa.gov',
+  'nasponline.org',
+  'schoolmentalhealth.org',
+  'ies.ed.gov',
+  'cdc.gov',
+] as const
+
+export type AIAnalysisResponse = {
+  problem_analysis: string
+  next_session_guide: string
+  recommended_interventions: Array<{
+    intervention: string
+    rationale: string
+    source: { name: string; url: string }
+  }>
+  escalation_flag: boolean
+  escalation_reason: string | null
+}
+
+/**
+ * Validates that every recommended intervention has a source URL
+ * from a trusted behavioral framework domain.
+ *
+ * Returns false if:
+ * - No interventions in the response
+ * - Any intervention has no source.url
+ * - Any source.url is not from a trusted domain
+ */
+export function validateAIResponse(response: AIAnalysisResponse): boolean {
+  if (!response.recommended_interventions?.length) return false
+
+  return response.recommended_interventions.every(item => {
+    const url = item.source?.url
+    if (!url) return false
+
+    try {
+      const parsed = new URL(url)
+      return TRUSTED_DOMAINS.some(domain =>
+        parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
+      )
+    } catch {
+      return false
+    }
+  })
+}
+```
+
+---
+
+## Ask AI — Counselor Free-Form Questions
+
+```typescript
+// app/api/students/[id]/ai/ask/route.ts
+// Counselor asks a specific question about their student.
+// Response includes contextual answer + sources.
+// Saved as triggered_by: 'counselor_request'
+
+const AskSchema = z.object({
+  question: z.string().min(10).max(1000)
+})
+
+// The question is appended to the full student context.
+// AI response is saved to ai_analyses.
+// Response to counselor includes { response: string, sources: [{name, url}] }
+// Must reference this specific student's history — not generic advice.
+```
+
+---
+
+## Escalation Handling
+
+When `escalation_flag: true` in any AI analysis:
+
+1. Set `students.escalation_active = true` immediately (in same DB write or transaction)
+2. On the student profile UI — a blocking banner renders until the counselor acknowledges
+3. `POST /api/students/[id]/escalation-acknowledge` — counselor submits acknowledgment note
+4. Route sets `students.escalation_active = false`, saves note to `ai_analyses.counselor_notes`
+
+The escalation acknowledgment is not optional. The UI cannot be dismissed without it.
+
+---
+
+## Context Window Efficiency
+
+The full student context is sent to Claude on every analysis. Keep it efficient:
+
+- Session summaries: include all, in chronological order
+- Incidents: include all, in chronological order
+- Prior analyses: include last 3 only (most recent first)
+- `general_notes`: excluded — marked as not AI-analyzed in spec
+- Never include: passwords, auth tokens, internal IDs in human-readable positions
+
+---
+
+## Logging Rules for AI Operations
+
+```typescript
+// CORRECT — log operation metadata, not content
+console.error('[ai/analyze] Source validation failed', {
+  studentId,
+  triggeredBy,
+  interventionCount: parsed.recommended_interventions?.length ?? 0
+})
+
+// WRONG — never log AI output that contains student data
+console.log('[ai/analyze] Response:', raw.text)  // May contain student history
+console.log('[ai/analyze] Analysis:', parsed.problem_analysis)  // Student PII
+```
+
+---
+
+## What Never Happens
+
+- Never `await triggerAIAnalysis()` in a route handler
+- Never return AI response content directly from a session/incident save route
+- Never save an AI analysis with an intervention missing a trusted source URL
+- Never send student names or identifying data as part of error logs
+- Never use a model other than `claude-sonnet-4-20250514`
+- Never stream AI responses directly to the client (use polling or webhook pattern via DB)
+- Never let a Claude API failure cause a session save to fail — they are independent operations

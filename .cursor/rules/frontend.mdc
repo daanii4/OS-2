@@ -1,0 +1,975 @@
+---
+description: Frontend design system rules for Operation Scholars OS. Apply to all component and page files.
+globs: ["app/**/*.tsx", "components/**/*.tsx"]
+---
+
+# Operation Scholars OS — Frontend Design System
+
+This is a FERPA-regulated student behavioral intelligence platform for school counselors.
+Every component must communicate institutional trust, clinical clarity, and zero cognitive friction.
+This is not a consumer app. Do not produce consumer-app aesthetics.
+
+**Product naming (Action Plan §12):** Full name **Operation Scholars OS**; short name in UI **Scholars OS**.
+Deploy URL pattern **scholars.quasarnova.net**. Primary **#5C6B46** (olive), accent **#D6A033** (goldenrod),
+crisp white **#FFFFFF** for high-contrast type and structure.
+
+---
+
+## 1. BRAND TOKEN IMPLEMENTATION
+
+### tailwind.config.ts — Exact Custom Values
+
+```ts
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // ── Structural Palette ─────────────────────────────────────────
+        olive: {
+          50:  '#F2F4EE',
+          100: '#E3E8D8',
+          200: '#C6D0B1',
+          300: '#A8B88A',
+          400: '#8A9F65',
+          500: '#6E8A4C',  // mid tone for hover states
+          600: '#5C6B46',  // PRIMARY — nav, structural elements, primary actions
+          700: '#4A5538',  // active/pressed state
+          800: '#38422B',  // deep: sidebar backgrounds
+          900: '#262D1D',  // darkest: text on light surfaces
+        },
+        gold: {
+          50:  '#FDF8EC',
+          100: '#FAF0D0',
+          200: '#F5E0A1',
+          300: '#EFD072',
+          400: '#E8BD47',
+          500: '#D6A033',  // ACCENT — highlights, success states, active indicators
+          600: '#B8861A',  // hover on gold elements
+          700: '#94680F',  // pressed/active on gold
+          800: '#6E4D0A',  // text on gold backgrounds
+          900: '#4A3307',  // deep contrast text
+        },
+        // ── Semantic Aliases (USE THESE IN COMPONENTS — never raw hex) ──
+        surface: {
+          DEFAULT: '#FFFFFF',       // page background
+          muted:   '#F7F8F5',       // card backgrounds, table rows alt
+          subtle:  '#EFF1EA',       // input backgrounds, secondary panels
+          inverse: '#5C6B46',       // dark surface (nav, sidebar)
+        },
+        // ── Status Colors ──────────────────────────────────────────────
+        status: {
+          // student status
+          active:      '#5C6B46',   // olive-600 — active students
+          graduated:   '#D6A033',   // gold-500  — graduated students
+          transferred: '#6B7280',   // gray-500  — transferred
+          inactive:    '#9CA3AF',   // gray-400  — inactive
+          // alert states
+          regression:  '#B45309',   // amber-700 — regression alert (25%+ spike)
+          escalation:  '#991B1B',   // red-800   — escalation flag (safety)
+          plateau:     '#1D4ED8',   // blue-700  — plateau detection
+          // incident severity
+          severity_high:   '#991B1B',  // red-800
+          severity_medium: '#B45309',  // amber-700
+          severity_low:    '#374151',  // gray-700
+        },
+        // ── Standard Semantic ──────────────────────────────────────────
+        error:   '#DC2626',  // red-600
+        success: '#16A34A',  // green-600
+        warning: '#D97706',  // amber-600
+        info:    '#2563EB',  // blue-600
+      },
+
+      fontFamily: {
+        // Instrument Serif — student names, page titles, section headers, report headings (Action Plan §12)
+        serif:  ['Instrument Serif', 'Georgia', 'serif'],
+        // IBM Plex Mono — ALL numeric data: counts, percentages, dates in tables
+        mono:   ['IBM Plex Mono', 'Courier New', 'monospace'],
+        // Geist Sans — UI body: labels, nav, form elements, descriptions, status text
+        sans:   ['Geist', 'system-ui', 'sans-serif'],
+      },
+
+      fontSize: {
+        // Typography scale — all values in px / Tailwind class
+        'display':  ['32px', { lineHeight: '1.2', fontWeight: '400', letterSpacing: '-0.01em' }],
+        'title':    ['24px', { lineHeight: '1.25', fontWeight: '400', letterSpacing: '-0.01em' }],
+        'heading':  ['20px', { lineHeight: '1.3',  fontWeight: '400' }],
+        'subhead':  ['16px', { lineHeight: '1.4',  fontWeight: '600' }],
+        'body':     ['14px', { lineHeight: '1.5',  fontWeight: '400' }],
+        'body-sm':  ['13px', { lineHeight: '1.5',  fontWeight: '400' }],
+        'label':    ['12px', { lineHeight: '1.4',  fontWeight: '500', letterSpacing: '0.02em' }],
+        'caption':  ['11px', { lineHeight: '1.4',  fontWeight: '400', letterSpacing: '0.02em' }],
+        // Mono scale — used exclusively for numeric data
+        'data-lg':  ['18px', { lineHeight: '1.2',  fontWeight: '500' }],
+        'data':     ['14px', { lineHeight: '1.4',  fontWeight: '400' }],
+        'data-sm':  ['12px', { lineHeight: '1.4',  fontWeight: '400' }],
+      },
+
+      borderRadius: {
+        'none':   '0px',
+        'sm':     '4px',   // badges, chips, status indicators
+        'DEFAULT':'6px',   // inputs, small cards
+        'md':     '8px',   // standard cards, dropdowns
+        'lg':     '12px',  // large cards, panels
+        'xl':     '16px',  // modals, sheet panels
+        'full':   '9999px', // pills only
+      },
+
+      boxShadow: {
+        'none':     'none',
+        'subtle':   '0 1px 2px 0 rgba(0,0,0,0.05)',
+        'card':     '0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.04)',
+        'elevated': '0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.04)',
+        'modal':    '0 20px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.06)',
+      },
+
+      spacing: {
+        // 4px base grid
+        '0.5': '2px',
+        '1':   '4px',
+        '1.5': '6px',
+        '2':   '8px',
+        '3':   '12px',
+        '4':   '16px',
+        '5':   '20px',
+        '6':   '24px',
+        '8':   '32px',
+        '10':  '40px',
+        '12':  '48px',
+        '16':  '64px',
+        '20':  '80px',
+      },
+    },
+  },
+  plugins: [],
+}
+
+export default config
+```
+
+---
+
+## 2. FONT LOADING — next/font Setup
+
+In `app/layout.tsx` — load all three faces here. Never import fonts in component files.
+
+```tsx
+// app/layout.tsx
+import { Instrument_Serif } from 'next/font/google'
+import { IBM_Plex_Mono } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'  // npm: geist
+
+const instrumentSerif = Instrument_Serif({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-serif',
+})
+
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ['400', '500'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-mono',
+})
+
+// GeistSans is a variable font — use its built-in variable export
+// GeistSans.variable gives you --font-geist-sans
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html
+      lang="en"
+      className={`${instrumentSerif.variable} ${ibmPlexMono.variable} ${GeistSans.variable}`}
+    >
+      <body className="font-sans bg-surface text-olive-900 antialiased">
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+### Font Assignment Rules — Which Tag Maps to Which Face
+
+| Element | Font | Tailwind Class | Notes |
+|---|---|---|---|
+| Page title (h1) | Instrument Serif | `font-serif text-display` | Student profile name, dashboard title |
+| Section title (h2) | Instrument Serif | `font-serif text-title` | Card headers, report section titles |
+| Subsection (h3) | Geist 600 | `font-sans text-subhead font-semibold` | Table column groups, panel titles |
+| Body text | Geist 400 | `font-sans text-body` | Descriptions, session summaries, labels |
+| Small labels | Geist 500 | `font-sans text-label font-medium uppercase tracking-wide` | Field labels, table headers |
+| Nav items | Geist 500 | `font-sans text-body font-medium` | Sidebar navigation |
+| All numbers | IBM Plex Mono | `font-mono text-data` | EVERY count, percentage, date in a table |
+| KPI values | IBM Plex Mono | `font-mono text-data-lg font-medium` | Incident count headline, % reduction |
+| Incident counts in tables | IBM Plex Mono | `font-mono text-data tabular-nums` | Ensures column alignment |
+| Goal completion % | IBM Plex Mono | `font-mono text-data` | Always mono, never sans |
+| Dates in tables | IBM Plex Mono | `font-mono text-data-sm text-olive-600` | |
+| Button labels | Geist 500 | `font-sans text-body font-medium` | |
+| Badge text | Geist 500 | `font-sans text-label font-medium` | Status badges |
+| Error messages | Geist 400 | `font-sans text-body-sm text-error` | Inline validation |
+| Caption / helper text | Geist 400 | `font-sans text-caption text-olive-500` | Below inputs, footnotes |
+
+**Rule:** `font-mono` is used EXCLUSIVELY for data values. Never for labels, headings, descriptions, or UI text. If it is a number in a data context, it is mono. No exceptions.
+
+---
+
+## 3. COMPONENT PATTERNS
+
+### 3.1 Student Card (Dashboard List Item)
+
+```tsx
+// components/students/StudentCard.tsx
+// Used in dashboard table and counselor's student list
+
+<div className="
+  bg-surface border border-olive-200 rounded-lg shadow-card
+  px-5 py-4 flex items-start justify-between gap-4
+  hover:border-olive-300 hover:shadow-elevated
+  transition-all duration-150
+  cursor-pointer
+">
+  {/* Left: Identity */}
+  <div className="flex-1 min-w-0">
+    <div className="flex items-center gap-2 mb-1">
+      <h3 className="font-serif text-heading text-olive-900 truncate">
+        {student.first_name} {student.last_name}
+      </h3>
+      <StudentStatusBadge status={student.status} />
+      {hasEscalationFlag && <EscalationChip />}
+    </div>
+    <p className="font-sans text-body-sm text-olive-600 truncate">
+      {student.school} · Grade {student.grade} · {student.assigned_counselor?.name ?? 'Unassigned'}
+    </p>
+  </div>
+
+  {/* Right: Key Metrics — always IBM Plex Mono */}
+  <div className="flex items-center gap-6 shrink-0">
+    <div className="text-right">
+      <p className="font-sans text-label text-olive-500 uppercase tracking-wide">Incidents (30d)</p>
+      <p className="font-mono text-data-lg font-medium text-olive-900">{metrics.recent_count}</p>
+    </div>
+    <div className="text-right">
+      <p className="font-sans text-label text-olive-500 uppercase tracking-wide">vs Baseline</p>
+      <p className={`font-mono text-data-lg font-medium ${
+        metrics.delta_pct < 0 ? 'text-success' : metrics.delta_pct > 0 ? 'text-status-regression' : 'text-olive-500'
+      }`}>
+        {metrics.delta_pct > 0 ? '+' : ''}{metrics.delta_pct}%
+      </p>
+    </div>
+    <div className="text-right">
+      <p className="font-sans text-label text-olive-500 uppercase tracking-wide">Last Session</p>
+      <p className="font-mono text-data-sm text-olive-600">{formatDate(student.last_session_date)}</p>
+    </div>
+  </div>
+</div>
+```
+
+### 3.2 Student Status Badge
+
+```tsx
+// components/ui/StudentStatusBadge.tsx
+
+const statusConfig = {
+  active:      { label: 'Active',      classes: 'bg-olive-100 text-olive-800 border-olive-200' },
+  graduated:   { label: 'Graduated',   classes: 'bg-gold-100 text-gold-800 border-gold-200' },
+  transferred: { label: 'Transferred', classes: 'bg-gray-100 text-gray-600 border-gray-200' },
+  inactive:    { label: 'Inactive',    classes: 'bg-gray-50 text-gray-400 border-gray-200' },
+} as const
+
+export function StudentStatusBadge({ status }: { status: keyof typeof statusConfig }) {
+  const config = statusConfig[status]
+  return (
+    <span className={`
+      inline-flex items-center
+      font-sans text-label font-medium
+      px-2 py-0.5
+      rounded-sm border
+      ${config.classes}
+    `}>
+      {config.label}
+    </span>
+  )
+}
+```
+
+### 3.3 Incident Type Badge
+
+```tsx
+// components/ui/IncidentBadge.tsx
+
+const incidentConfig = {
+  office_referral:    { label: 'Office Referral',    classes: 'bg-amber-50 text-amber-800 border-amber-200' },
+  suspension_iss:     { label: 'ISS',                classes: 'bg-red-50 text-red-800 border-red-200' },
+  suspension_oss:     { label: 'OSS',                classes: 'bg-red-100 text-red-900 border-red-300' },
+  teacher_referral:   { label: 'Teacher Referral',   classes: 'bg-orange-50 text-orange-800 border-orange-200' },
+  behavioral_incident:{ label: 'Behavioral',         classes: 'bg-yellow-50 text-yellow-800 border-yellow-200' },
+  other:              { label: 'Other',              classes: 'bg-gray-50 text-gray-600 border-gray-200' },
+} as const
+
+export function IncidentBadge({ type }: { type: keyof typeof incidentConfig }) {
+  const config = incidentConfig[type]
+  return (
+    <span className={`
+      inline-flex items-center gap-1
+      font-sans text-label font-medium
+      px-2 py-0.5 rounded-sm border
+      ${config.classes}
+    `}>
+      {config.label}
+    </span>
+  )
+}
+```
+
+### 3.4 Severity Indicator
+
+```tsx
+// Always paired with text — color is never the only differentiator (WCAG)
+const severityConfig = {
+  high:   { label: 'High',   dot: 'bg-status-severity_high',   text: 'text-status-severity_high' },
+  medium: { label: 'Medium', dot: 'bg-status-severity_medium', text: 'text-status-severity_medium' },
+  low:    { label: 'Low',    dot: 'bg-status-severity_low',    text: 'text-status-severity_low' },
+}
+
+<span className="inline-flex items-center gap-1.5">
+  <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} aria-hidden="true" />
+  <span className={`font-sans text-label font-medium ${config.text}`}>{config.label}</span>
+</span>
+```
+
+### 3.5 Session Row (Timeline List)
+
+```tsx
+// components/sessions/SessionRow.tsx
+<div className="
+  relative pl-8 pb-6
+  before:absolute before:left-2.5 before:top-2 before:bottom-0
+  before:w-px before:bg-olive-200
+">
+  {/* Timeline dot */}
+  <span className="
+    absolute left-0 top-1.5
+    w-5 h-5 rounded-full
+    bg-surface border-2 border-olive-400
+    flex items-center justify-center
+  " aria-hidden="true" />
+
+  {/* Session Header */}
+  <div className="flex items-center justify-between mb-1">
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-data-sm text-olive-600">{formatDate(session.session_date)}</span>
+      <SessionTypeBadge type={session.session_type} />
+      <AttendanceBadge status={session.attendance_status} />
+    </div>
+    <span className="font-mono text-data-sm text-olive-500">{session.duration_minutes} min</span>
+  </div>
+
+  {/* Goal Completion — always mono */}
+  {session.goals_attempted > 0 && (
+    <div className="flex items-center gap-1 mb-2">
+      <span className="font-sans text-caption text-olive-500">Goals:</span>
+      <span className="font-mono text-data-sm font-medium text-olive-800">
+        {session.goals_met}/{session.goals_attempted}
+      </span>
+      <span className="font-mono text-data-sm text-olive-600">
+        ({session.goal_completion_rate.toFixed(0)}%)
+      </span>
+    </div>
+  )}
+
+  {/* Summary preview */}
+  {session.session_summary && (
+    <p className="font-sans text-body-sm text-olive-700 line-clamp-2">
+      {session.session_summary}
+    </p>
+  )}
+</div>
+```
+
+### 3.6 Chart Container (Standard Shell)
+
+```tsx
+// components/charts/ChartCard.tsx
+// Recharts components receive pre-computed data from server. No logic inside.
+
+interface ChartCardProps {
+  title: string          // Plain-language: "Office Referrals per Month — Last 6 Months"
+  description?: string   // Optional subtitle
+  children: React.ReactNode
+  className?: string
+}
+
+export function ChartCard({ title, description, children, className }: ChartCardProps) {
+  return (
+    <div className={`bg-surface border border-olive-200 rounded-lg shadow-card p-5 ${className}`}>
+      <div className="mb-4">
+        <h3 className="font-sans text-subhead font-semibold text-olive-900">{title}</h3>
+        {description && (
+          <p className="font-sans text-caption text-olive-500 mt-0.5">{description}</p>
+        )}
+      </div>
+      {/* Chart slot — children is a Recharts component fed server-computed data */}
+      <div className="w-full">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Usage:
+// <ChartCard title="Office Referrals per Month — Last 6 Months">
+//   <IncidentFrequencyChart data={serverComputedData} />
+// </ChartCard>
+```
+
+### 3.7 Form Inputs
+
+```tsx
+// Standard text input — used in all forms
+<div className="flex flex-col gap-1">
+  <label
+    htmlFor={id}
+    className="font-sans text-label font-medium text-olive-800 uppercase tracking-wide"
+  >
+    {label}
+    {required && <span className="text-error ml-1" aria-label="required">*</span>}
+  </label>
+  <input
+    id={id}
+    className="
+      w-full px-3 py-2.5
+      bg-surface-subtle border border-olive-300 rounded
+      font-sans text-body text-olive-900
+      placeholder:text-olive-400
+      /* Focus */
+      focus:outline-none focus:ring-2 focus:ring-olive-600 focus:ring-offset-1 focus:border-transparent
+      /* Hover */
+      hover:border-olive-400
+      /* Error */
+      aria-invalid:border-error aria-invalid:ring-2 aria-invalid:ring-error/20
+      /* Disabled */
+      disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-olive-50
+      transition-colors duration-150
+    "
+    aria-describedby={error ? `${id}-error` : helperText ? `${id}-helper` : undefined}
+    aria-invalid={!!error}
+  />
+  {error && (
+    <p id={`${id}-error`} className="font-sans text-caption text-error" role="alert">
+      {error}
+    </p>
+  )}
+  {helperText && !error && (
+    <p id={`${id}-helper`} className="font-sans text-caption text-olive-500">
+      {helperText}
+    </p>
+  )}
+</div>
+
+// Textarea — session summary
+<textarea
+  className="
+    w-full px-3 py-3
+    bg-surface-subtle border border-olive-300 rounded
+    font-sans text-body text-olive-900
+    placeholder:text-olive-400
+    min-h-[120px] resize-y
+    focus:outline-none focus:ring-2 focus:ring-olive-600 focus:ring-offset-1 focus:border-transparent
+    hover:border-olive-400
+    disabled:opacity-60 disabled:cursor-not-allowed
+    transition-colors duration-150
+  "
+  placeholder="Write what happened in this session..."
+/>
+
+// Select / Dropdown
+<select className="
+  w-full px-3 py-2.5
+  bg-surface-subtle border border-olive-300 rounded
+  font-sans text-body text-olive-900
+  appearance-none bg-no-repeat bg-right
+  focus:outline-none focus:ring-2 focus:ring-olive-600 focus:ring-offset-1 focus:border-transparent
+  hover:border-olive-400
+  disabled:opacity-60 disabled:cursor-not-allowed
+  transition-colors duration-150
+">
+```
+
+### 3.8 Primary Button — All States
+
+```tsx
+// Primary action button — olive background
+<button className="
+  inline-flex items-center justify-center gap-2
+  px-4 py-2.5 rounded
+  bg-olive-600 text-white font-sans text-body font-medium
+  /* Hover */
+  hover:bg-olive-700
+  /* Active */
+  active:bg-olive-800 active:scale-[0.99]
+  /* Focus */
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2
+  /* Disabled */
+  disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-olive-600
+  /* Loading — add aria-busy=true and replace children with spinner */
+  transition-all duration-100
+  min-h-[40px]
+">
+  {isLoading ? <Spinner className="w-4 h-4 text-white" /> : children}
+</button>
+
+// Secondary button — outlined
+<button className="
+  inline-flex items-center justify-center gap-2
+  px-4 py-2.5 rounded
+  bg-transparent border border-olive-400 text-olive-700 font-sans text-body font-medium
+  hover:bg-olive-50 hover:border-olive-500
+  active:bg-olive-100
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2
+  disabled:opacity-60 disabled:cursor-not-allowed
+  transition-all duration-100
+  min-h-[40px]
+">
+
+// Destructive button — error actions
+<button className="
+  inline-flex items-center justify-center gap-2
+  px-4 py-2.5 rounded
+  bg-error text-white font-sans text-body font-medium
+  hover:bg-red-700
+  active:bg-red-800
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2
+  disabled:opacity-60 disabled:cursor-not-allowed
+  transition-all duration-100
+  min-h-[40px]
+">
+```
+
+---
+
+## 4. DATA DISPLAY CONVENTIONS
+
+### 4.1 Numeric Formatting Rules
+
+**IBM Plex Mono is used for ANY number in a data context. Zero exceptions.**
+
+| Data Type | Format | Tailwind Classes |
+|---|---|---|
+| Incident count (headline KPI) | `12` | `font-mono text-data-lg font-medium text-olive-900` |
+| Percent reduction (positive = bad) | `+23%` or `-62%` | `font-mono text-data-lg font-medium` + color below |
+| Percent reduction in tables | `-62.5%` | `font-mono text-data tabular-nums` |
+| Goal completion rate | `87%` | `font-mono text-data text-olive-800` |
+| Suspension days | `3.5 days` | `font-mono text-data` |
+| Dates in tables | `Apr 09, 2026` | `font-mono text-data-sm text-olive-600` |
+| Duration | `45 min` | `font-mono text-data-sm text-olive-500` |
+
+### 4.2 Trend Indicator Colors
+
+```tsx
+// Trend direction — incidents going DOWN is improvement (green)
+// Trend direction — incidents going UP is regression (red/amber)
+
+function TrendValue({ deltaPct }: { deltaPct: number }) {
+  // deltaPct is signed: negative = fewer incidents = improvement
+  const isImprovement = deltaPct < 0
+  const isRegression = deltaPct >= 25  // 25%+ spike triggers regression alert color
+  const isFlat = deltaPct === 0
+
+  const colorClass = isImprovement
+    ? 'text-success'
+    : isRegression
+    ? 'text-status-regression'
+    : isFlat
+    ? 'text-olive-500'
+    : 'text-warning'
+
+  return (
+    <span className={`font-mono text-data font-medium tabular-nums ${colorClass}`}>
+      {deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(1)}%
+    </span>
+  )
+}
+```
+
+### 4.3 Goal Completion Rate Display
+
+```tsx
+// Never a bar in isolation — always number + context
+<div className="flex items-center gap-2">
+  <div className="flex-1 h-1.5 bg-olive-100 rounded-full overflow-hidden">
+    <div
+      className={`h-full rounded-full transition-all duration-300 ${
+        rate >= 75 ? 'bg-success' : rate >= 50 ? 'bg-gold-500' : 'bg-status-regression'
+      }`}
+      style={{ width: `${rate}%` }}
+      role="progressbar"
+      aria-valuenow={rate}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    />
+  </div>
+  <span className="font-mono text-data-sm font-medium text-olive-800 w-10 text-right tabular-nums">
+    {rate.toFixed(0)}%
+  </span>
+</div>
+```
+
+---
+
+## 5. COLOR SEMANTICS — COMPLETE SYSTEM
+
+| Semantic Role | Hex | Tailwind | When to Use |
+|---|---|---|---|
+| Primary action | `#5C6B46` | `olive-600` | Buttons, links, nav active, selected states |
+| Primary hover | `#4A5538` | `olive-700` | Hover on olive-600 elements |
+| Accent / success | `#D6A033` | `gold-500` | Achieved goals, graduated status, highlights |
+| Page background | `#FFFFFF` | `surface` | Always |
+| Card background | `#F7F8F5` | `surface-muted` | Cards, panels, alternate table rows |
+| Input background | `#EFF1EA` | `surface-subtle` | Form inputs, secondary panels |
+| Structural text | `#262D1D` | `olive-900` | Page titles, student names, primary labels |
+| Body text | `#38422B` | `olive-800` | Body text, descriptions |
+| Secondary text | `#4A5538` | `olive-700` | Secondary labels, field values |
+| Muted text | `#6E8A4C` | `olive-500` | Helper text, timestamps, captions |
+| Border default | `#C6D0B1` | `olive-200` | Card borders, input borders at rest |
+| Border interactive | `#A8B88A` | `olive-300` | Input border hover |
+| Active — student | `#5C6B46` | `olive-600` | Active status badges |
+| Graduated — student | `#D6A033` | `gold-500` | Graduated status badges |
+| Transferred | `#6B7280` | `gray-500` | Transferred status |
+| Inactive | `#9CA3AF` | `gray-400` | Inactive status |
+| Regression alert | `#B45309` | `amber-700` | 25%+ incident spike warning |
+| Escalation flag | `#991B1B` | `red-800` | Safety/clinical escalation — highest severity |
+| Plateau flag | `#1D4ED8` | `blue-700` | No progress in 3 periods |
+| Error | `#DC2626` | `red-600` | Form validation errors |
+| Success | `#16A34A` | `green-600` | Saved states, incident reduction confirmation |
+| Warning | `#D97706` | `amber-600` | Non-critical warnings |
+
+---
+
+## 6. ESCALATION ALERT — BLOCKING BANNER
+
+This is a safety-critical component. When `escalation_flag === true` on an AI analysis, this banner renders at the top of the student profile page above all other content. It cannot be dismissed without counselor acknowledgment. Do not downplay it visually.
+
+```tsx
+// components/alerts/EscalationBanner.tsx
+// Renders at the TOP of StudentProfile page when ai_analysis.escalation_flag === true
+// Sits ABOVE the student name header, full width, no margin clipping
+
+interface EscalationBannerProps {
+  reason: string
+  analysisId: string
+  hasBeenAcknowledged: boolean
+  onAcknowledge: (analysisId: string, action: string) => Promise<void>
+}
+
+export function EscalationBanner({
+  reason,
+  analysisId,
+  hasBeenAcknowledged,
+  onAcknowledge,
+}: EscalationBannerProps) {
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className={`
+        w-full px-5 py-4
+        border-b-2
+        ${hasBeenAcknowledged
+          ? 'bg-red-50 border-red-200'
+          : 'bg-red-800 border-red-900'
+        }
+      `}
+    >
+      <div className="max-w-5xl mx-auto flex items-start gap-4">
+        {/* Icon */}
+        <div className={`shrink-0 mt-0.5 ${hasBeenAcknowledged ? 'text-red-600' : 'text-white'}`}>
+          {/* Lucide AlertTriangle, size 20 */}
+          <AlertTriangle size={20} aria-hidden="true" />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1">
+          <p className={`
+            font-sans text-subhead font-semibold mb-1
+            ${hasBeenAcknowledged ? 'text-red-900' : 'text-white'}
+          `}>
+            {hasBeenAcknowledged
+              ? 'Escalation Acknowledged'
+              : 'Escalation Required — Refer to Licensed Clinician'
+            }
+          </p>
+          <p className={`
+            font-sans text-body
+            ${hasBeenAcknowledged ? 'text-red-800' : 'text-red-100'}
+          `}>
+            {reason}
+          </p>
+        </div>
+
+        {/* Acknowledgment action — required before banner changes state */}
+        {!hasBeenAcknowledged && (
+          <button
+            onClick={() => onAcknowledge(analysisId, 'reviewed')}
+            className="
+              shrink-0 px-4 py-2 rounded
+              bg-white text-red-900
+              font-sans text-body font-semibold
+              hover:bg-red-50
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-red-800
+              active:bg-red-100
+              transition-colors duration-100
+              min-h-[40px]
+            "
+          >
+            Acknowledge & Document Action
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+**Escalation banner placement rule:** In the student profile page layout, the EscalationBanner renders as the first child of the page root, before `<StudentProfileHeader>`, before navigation, before any other content. It is not inside a card or panel. It spans the full content width.
+
+**Escalation chip (in dashboard list):** When a student has an unacknowledged escalation flag in the dashboard:
+
+```tsx
+// Small chip shown on StudentCard in the dashboard list
+<span className="
+  inline-flex items-center gap-1
+  bg-red-800 text-white
+  font-sans text-label font-medium
+  px-2 py-0.5 rounded-sm
+" aria-label="Escalation flag — requires immediate action">
+  <AlertTriangle size={10} aria-hidden="true" />
+  Escalation
+</span>
+```
+
+---
+
+## 7. CHART RULES — RECHARTS IMPLEMENTATION
+
+### 7.1 Chart Color Series (Always Use These — Never Recharts Defaults)
+
+```ts
+export const chartColors = {
+  primary:   '#5C6B46',  // olive-600 — main data series
+  accent:    '#D6A033',  // gold-500  — secondary series, target lines
+  success:   '#16A34A',  // green-600 — improvement trend
+  warning:   '#D97706',  // amber-600 — plateau/concern
+  danger:    '#DC2626',  // red-600   — regression
+  baseline:  '#A8B88A',  // olive-300 — baseline reference line
+  muted:     '#C6D0B1',  // olive-200 — grid lines, axis
+  // Incident type stacked bars
+  office_referral:     '#5C6B46',  // olive-600
+  suspension_iss:      '#B45309',  // amber-700
+  suspension_oss:      '#991B1B',  // red-800
+  teacher_referral:    '#D6A033',  // gold-500
+  behavioral_incident: '#6E8A4C',  // olive-500
+  other:               '#9CA3AF',  // gray-400
+  // Severity stacked bars
+  severity_high:   '#991B1B',
+  severity_medium: '#B45309',
+  severity_low:    '#6B7280',
+}
+```
+
+### 7.2 Standard Chart Component Wrapper
+
+```tsx
+// All Recharts components follow this pattern.
+// Data is received as a prop — computed server-side, never client-side.
+// No API calls, no business logic, no useMemo computations inside chart components.
+
+import {
+  ResponsiveContainer, LineChart, Line,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ReferenceLine,
+} from 'recharts'
+
+// Custom tooltip — always use this instead of Recharts default
+const ScholarsTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-olive-900 border border-olive-700 rounded-md shadow-elevated px-3 py-2">
+      <p className="font-mono text-data-sm text-white mb-1">{label}</p>
+      {payload.map((entry) => (
+        <div key={entry.dataKey} className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="font-sans text-caption text-olive-300">{entry.name}:</span>
+          <span className="font-mono text-data-sm text-white">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// X and Y axis style — reuse across all charts
+const axisStyle = {
+  fontSize: 11,
+  fontFamily: 'IBM Plex Mono, monospace',
+  fill: '#6E8A4C',  // olive-500
+}
+```
+
+### 7.3 Incident Frequency Chart
+
+```tsx
+// components/charts/IncidentFrequencyChart.tsx
+// Receives: data: { period: string; count: number; isBaseline?: boolean }[]
+// Receives: baselineCount: number (for reference line)
+// Period toggle (week/month/year) is a parent concern — this component renders the provided series only
+
+<ResponsiveContainer width="100%" height={240}>
+  <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+    <CartesianGrid
+      strokeDasharray="3 3"
+      stroke="#C6D0B1"  // olive-200
+      vertical={false}
+    />
+    <XAxis dataKey="period" tick={axisStyle} axisLine={false} tickLine={false} />
+    <YAxis tick={axisStyle} axisLine={false} tickLine={false} allowDecimals={false} />
+    <Tooltip content={<ScholarsTooltip />} />
+    <ReferenceLine
+      y={baselineCount}
+      stroke="#A8B88A"  // olive-300
+      strokeDasharray="4 4"
+      label={{ value: 'Baseline', position: 'insideTopRight', fontSize: 11, fill: '#A8B88A', fontFamily: 'IBM Plex Mono, monospace' }}
+    />
+    <Bar
+      dataKey="count"
+      name="Incidents"
+      fill="#5C6B46"  // olive-600
+      radius={[2, 2, 0, 0]}
+      // Baseline period bars get a gold tint
+      // Handled via Cell in parent by passing isBaseline per entry
+    />
+  </BarChart>
+</ResponsiveContainer>
+```
+
+### 7.4 Goal Completion Rate Chart
+
+```tsx
+// components/charts/GoalCompletionChart.tsx
+// Receives: data: { date: string; rate: number }[]
+
+<ResponsiveContainer width="100%" height={200}>
+  <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+    <CartesianGrid strokeDasharray="3 3" stroke="#C6D0B1" vertical={false} />
+    <XAxis dataKey="date" tick={axisStyle} axisLine={false} tickLine={false} />
+    <YAxis tick={axisStyle} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+    <Tooltip content={<ScholarsTooltip />} />
+    <ReferenceLine y={75} stroke="#D6A033" strokeDasharray="4 4" />  {/* 75% target line */}
+    <Bar dataKey="rate" name="Goal Completion %" fill="#5C6B46" radius={[2, 2, 0, 0]} />
+  </BarChart>
+</ResponsiveContainer>
+```
+
+### 7.5 Empty Chart State
+
+```tsx
+// When data array is empty or undefined
+<div className="flex flex-col items-center justify-center h-[200px] text-center">
+  <div className="w-10 h-10 rounded-full bg-olive-100 flex items-center justify-center mb-3">
+    {/* Lucide BarChart2, size 18, text-olive-400 */}
+    <BarChart2 size={18} className="text-olive-400" aria-hidden="true" />
+  </div>
+  <p className="font-sans text-body-sm text-olive-600 font-medium">No data yet</p>
+  <p className="font-sans text-caption text-olive-400 mt-0.5">{emptyMessage}</p>
+</div>
+```
+
+---
+
+## 8. LAYOUT PATTERNS
+
+### 8.1 Page Shell
+
+```tsx
+// app/(dashboard)/layout.tsx structure
+<div className="min-h-screen bg-surface-muted flex">
+  {/* Sidebar — olive-800 background */}
+  <aside className="w-60 shrink-0 bg-olive-800 flex flex-col min-h-screen">
+    {/* Logo lockup */}
+    <div className="px-5 py-5 border-b border-olive-700">
+      <span className="font-serif text-heading text-white">Scholars OS</span>
+    </div>
+    {/* Nav items */}
+    <nav className="flex-1 px-3 py-4 space-y-0.5" aria-label="Main navigation">
+      {navItems.map((item) => (
+        <NavItem key={item.href} item={item} />
+      ))}
+    </nav>
+    {/* User footer */}
+    <div className="px-4 py-4 border-t border-olive-700">
+      <p className="font-sans text-body-sm text-olive-300 truncate">{user.name}</p>
+      <p className="font-sans text-caption text-olive-500 truncate">{roleLabel[user.role]}</p>
+    </div>
+  </aside>
+
+  {/* Main content */}
+  <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+    {/* Top bar */}
+    <header className="bg-surface border-b border-olive-200 px-6 py-4 flex items-center justify-between">
+      <h1 className="font-serif text-title text-olive-900">{pageTitle}</h1>
+      <div className="flex items-center gap-3">{headerActions}</div>
+    </header>
+
+    {/* Escalation banner renders HERE if applicable — before page content */}
+    {hasEscalation && <EscalationBanner {...escalationProps} />}
+
+    {/* Page content */}
+    <div className="flex-1 px-6 py-6">
+      {children}
+    </div>
+  </main>
+</div>
+```
+
+### 8.2 Sidebar Nav Item
+
+```tsx
+// Default
+<Link href={item.href} className="
+  flex items-center gap-3
+  px-3 py-2.5 rounded
+  font-sans text-body font-medium
+  text-olive-300
+  hover:bg-olive-700 hover:text-white
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-0
+  transition-colors duration-100
+  min-h-[40px]
+">
+  <item.icon size={16} aria-hidden="true" />
+  {item.label}
+</Link>
+
+// Active state
+<Link className="... bg-olive-700 text-white">
+```
+
+---
+
+## 9. WHAT CURSOR MUST NEVER DO
+
+- Never use `text-gray-300` or `text-gray-400` on a white background — fails WCAG AA
+- Never use `text-green-600` or `text-red-600` as the ONLY differentiator between states — always pair with icon or label
+- Never hardcode hex values in component files — always use Tailwind semantic tokens from this config
+- Never use Inter, Roboto, or Arial in any component
+- Never compute chart data, percentages, or aggregations client-side — receive from server props only
+- Never use `shadcn/ui` default styles without overriding all color tokens to the olive/gold system
+- Never use `purple`, `violet`, `indigo`, or `blue` as primary or accent colors — this system uses only olive and gold
+- Never use a pie chart for more than 4 categories
+- Never use placeholder text as a label substitute — labels are always above the input field
+- Never style a select element with custom CSS that overrides the native browser control on iOS Safari
+- Never place the primary action button only in a top navigation bar on mobile
+- Never use `font-serif` (Instrument Serif) for body text, form labels, navigation, or numeric data
+- Never use `font-sans` (Geist) for incident counts, percentages, dates in tables, or any data value
+- Never use a modal when an inline panel or page navigation suffices
+- Never produce the escalation banner as anything less than full-width and visually dominant — this is a safety feature

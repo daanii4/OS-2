@@ -1,0 +1,434 @@
+---
+description: API route rules for Operation Scholars OS. Apply to every file in app/api/**. Non-negotiable patterns for auth, validation, permissions, and error handling.
+globs: ["app/api/**/*.ts", "app/api/**/*.tsx"]
+alwaysApply: true
+---
+
+# Operation Scholars OS — API Route Rules
+
+Every API route in this system handles FERPA-protected student records.
+The patterns below are non-negotiable. No route ships without following this structure.
+
+---
+
+## Standard Route Structure — Every Route Follows This Pattern
+
+```typescript
+// app/api/[resource]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
+import { canAccessStudent } from '@/lib/permissions'
+import { z } from 'zod'
+
+// Define ALL accepted fields explicitly.
+// Fields not in this schema are stripped — never reach the DB.
+const RequestSchema = z.object({
+  // ... fields
+})
+
+export async function POST(req: NextRequest) {
+  // STEP 1: Authenticate — must be first, always (see Session Retrieval in Route Handlers)
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized', code: 'UNAUTHORIZED' },
+      { status: 401 }
+    )
+  }
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { id: true, role: true, active: true, name: true },
+  })
+  if (!profile || !profile.active) {
+    return NextResponse.json(
+      { error: 'Forbidden', code: 'FORBIDDEN' },
+      { status: 403 }
+    )
+  }
+  const { id: userId, role } = profile
+
+  // STEP 2: Authorize — role check + resource access
+  // For student-scoped routes: use canAccessStudent()
+  // For role-only checks: use role from profile
+  const authorized = await canAccessStudent(userId, role, studentId)
+  if (!authorized) {
+    return NextResponse.json(
+      { error: 'Forbidden', code: 'FORBIDDEN' },
+      { status: 403 }
+    )
+  }
+
+  // STEP 3: Parse + validate — before ANY database operation
+  const body = await req.json()
+  const parsed = RequestSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid input', code: 'VALIDATION_ERROR', detail: parsed.error.flatten() },
+      { status: 400 }
+    )
+  }
+
+  // STEP 4: Compute server-side fields — never trust client-supplied computed values
+  // goals_attempted, goals_met, goal_completion_rate, incident aggregations — always here
+  const computedFields = computeFields(parsed.data)
+
+  // STEP 5: Database operation — wrapped in try/catch, always
+  try {
+    const record = await prisma.resource.create({
+      data: {
+        ...parsed.data,
+        ...computedFields,
+        createdById: userId  // always from authenticated profile, never from request body
+      }
+    })
+    return NextResponse.json({ data: record }, { status: 201 })
+  } catch (error) {
+    // Detailed error → server logs only. Generic message → client.
+    console.error('[resource/POST]', error)
+    return NextResponse.json(
+      { error: 'Server error', code: 'SERVER_ERROR' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+---
+
+## Error Response Contract
+
+All error responses follow this shape. No exceptions.
+
+```typescript
+type ErrorResponse = {
+  error: string         // Human-readable. Generic to client — never leaks internals.
+  code: ErrorCode       // Machine-readable. Use for client-side handling.
+  detail?: unknown      // Validation errors only (zod .flatten() output). Never stack traces.
+}
+
+type ErrorCode =
+  | 'UNAUTHORIZED'      // No valid session
+  | 'FORBIDDEN'         // Session exists but role/access denied
+  | 'NOT_FOUND'         // Resource doesn't exist (or counselor not authorized — treat same)
+  | 'VALIDATION_ERROR'  // Zod parse failure
+  | 'SERVER_ERROR'      // Unexpected error — generic to client, detailed to server log
+```
+
+---
+
+## Session Retrieval in Route Handlers
+
+Replaces `getServerSession(authOptions)`. Use the server Supabase client, then load role from Prisma `profiles`.
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized', code: 'UNAUTHORIZED' },
+      { status: 401 }
+    )
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { id: true, role: true, active: true, name: true },
+  })
+
+  if (!profile || !profile.active) {
+    return NextResponse.json(
+      { error: 'Forbidden', code: 'FORBIDDEN' },
+      { status: 403 }
+    )
+  }
+
+  const { id: userId, role } = profile
+  // Continue with canAccessStudent(), resource queries, etc.
+}
+```
+
+**Never leak:**
+- Stack traces to the client
+- Database error messages to the client
+- Student names or IDs in error messages
+- Internal table names or query structure
+
+---
+
+## Permissions — Enforced at the DB Query Layer
+
+### canAccessStudent() — Required for Every Student-Scoped Route
+
+```typescript
+// lib/permissions.ts
+export async function canAccessStudent(
+  userId: string,
+  role: UserRole,
+  studentId: string
+): Promise<boolean> {
+  // Owner and assistant see all students
+  if (role === 'owner' || role === 'assistant') return true
+
+  // Counselor: query DB to verify assignment — never trust client-supplied data
+  const assignment = await prisma.student.findFirst({
+    where: { id: studentId, assigned_counselor_id: userId },
+    select: { id: true }
+  })
+  return !!assignment
+}
+```
+
+### withRoleGuard() — For Owner/Assistant-Only Routes
+
+```typescript
+// lib/permissions.ts — pattern: getUser() + prisma.profile, then check role
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
+
+export function withRoleGuard(
+  handler: (req: NextRequest, ctx: RouteContext) => Promise<NextResponse>,
+  allowedRoles: UserRole[]
+) {
+  return async (req: NextRequest, ctx: RouteContext) => {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+    }
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { id: true, role: true, active: true },
+    })
+    if (!profile || !profile.active) {
+      return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
+    }
+    if (!allowedRoles.includes(profile.role)) {
+      return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
+    }
+    return handler(req, ctx)
+  }
+}
+```
+
+### DB-Layer Filtering — Never JS-Layer Filtering
+
+```typescript
+// CORRECT — filter at DB query level
+const students = await prisma.student.findMany({
+  where: {
+    ...(role === 'counselor' ? { assigned_counselor_id: userId } : {})
+  },
+  select: {
+    id: true,
+    first_name: true,
+    last_name: true,
+    grade: true,
+    school: true,
+    status: true,
+    // session_summary is NEVER included in list queries
+    // presenting_problem is NEVER included in list queries
+  }
+})
+
+// WRONG — never do this
+const allStudents = await prisma.student.findMany()
+const filtered = allStudents.filter(s => s.assigned_counselor_id === userId)
+// ^ Fetches every student from DB before filtering. One middleware bug exposes all records.
+```
+
+---
+
+## Sensitive Field Rules
+
+These fields are NEVER included in list endpoints and NEVER returned without per-record auth:
+
+| Field | Table | Rule |
+|-------|-------|------|
+| `session_summary` | sessions | Only to assigned counselor, assistant, or owner. Never in session lists. |
+| `presenting_problem` | students | Only in detail view with verified access. Never in student lists. |
+| `general_notes` | students | Same as presenting_problem. |
+| `escalation_reason` | ai_analyses | Only to assigned counselor, assistant, or owner. |
+| `counselor_notes` | ai_analyses | Same as escalation_reason. |
+
+---
+
+## Async AI / External Call Pattern
+
+Session saves, incident saves, and plan operations must return **immediately**.
+AI analysis always runs in the background.
+
+```typescript
+// CORRECT — save first, trigger AI async, return immediately
+export async function POST(req: NextRequest) {
+  // ... auth, validation ...
+
+  const session = await prisma.session.create({ data: parsed.data })
+
+  // Fire AI asynchronously — do NOT await
+  triggerAIAnalysis(session.student_id, 'new_session', session.id).catch(err => {
+    console.error('[ai/analyze] Background analysis failed:', err)
+    // Failure is logged but never surfaces to the user
+  })
+
+  // Return immediately — user does not wait for Claude
+  return NextResponse.json({ data: session }, { status: 201 })
+}
+
+// WRONG — never do this
+const aiResult = await callClaudeAPI(studentContext)  // blocks the route handler
+return NextResponse.json({ data: session, ai: aiResult })  // user waits for Claude
+```
+
+---
+
+## Computed Fields — Never Accept from Client
+
+These fields are always computed server-side on save and stored in the database.
+Zod schemas must NOT include them (or use `.strip()` to discard them if present).
+
+| Field | Table | Computation |
+|-------|-------|-------------|
+| `goals_attempted` | sessions | `session_goals.length` |
+| `goals_met` | sessions | `session_goals.filter(g => g.met).length` |
+| `goal_completion_rate` | sessions | `(goals_met / goals_attempted) * 100` — stored as Float, 2 decimal places |
+| `counselor_id` | sessions | Always set from authenticated `profile.id` — NEVER from request body |
+| `logged_by` | behavioral_incidents | Always set from authenticated `profile.id` |
+| `created_by` | success_plans | Always set from authenticated `profile.id` |
+
+---
+
+## Session Source — Always From Authenticated Profile, Never From Client
+
+These fields are always set from the authenticated user’s **`profile.id`** (after `getUser()` + Prisma) — never accepted from the request body:
+
+- `counselor_id` on sessions
+- `logged_by` on incidents
+- `created_by` on plans, notes, any resource
+
+```typescript
+// CORRECT
+const record = await prisma.session.create({
+  data: {
+    ...parsed.data,
+    counselor_id: userId,  // from profile after getUser()
+    student_id: studentId           // from URL param, verified by canAccessStudent()
+  }
+})
+
+// WRONG
+const record = await prisma.session.create({
+  data: {
+    ...parsed.data,
+    counselor_id: parsed.data.counselor_id  // NEVER — client-supplied identity
+  }
+})
+```
+
+---
+
+## AI Source Validation — Non-Negotiable
+
+Before saving any AI analysis response, validate that every intervention includes a source URL
+from the trusted domain list. If any intervention fails validation → reject the entire response.
+Do not save partial records.
+
+```typescript
+const TRUSTED_DOMAINS = [
+  'pbis.org',
+  'casel.org',
+  'samhsa.gov',
+  'nasponline.org',
+  'schoolmentalhealth.org',
+  'ies.ed.gov',
+  'cdc.gov',
+]
+
+function validateAIResponse(response: AIAnalysisResponse): boolean {
+  if (!response.recommended_interventions?.length) return false
+  return response.recommended_interventions.every(intervention => {
+    try {
+      const url = new URL(intervention.source?.url ?? '')
+      return TRUSTED_DOMAINS.some(domain =>
+        url.hostname === domain || url.hostname.endsWith(`.${domain}`)
+      )
+    } catch {
+      return false
+    }
+  })
+}
+```
+
+---
+
+## Route Logging Rules
+
+Server-side logging is allowed for debugging. Student PII is never logged.
+
+```typescript
+// CORRECT — log identifiers and error shape only
+console.error('[sessions/POST] Failed to save session:', {
+  studentId,
+  counselorId: userId,
+  error: error instanceof Error ? error.message : 'Unknown error'
+})
+
+// WRONG — never log PII
+console.error('[sessions/POST] Failed:', {
+  studentName: student.first_name + ' ' + student.last_name,  // NEVER
+  summary: parsed.data.session_summary,  // NEVER
+  problem: student.presenting_problem    // NEVER
+})
+```
+
+---
+
+## Response Shape Consistency
+
+Successful responses follow these shapes:
+
+```typescript
+// Single resource
+{ data: T }
+
+// List
+{ data: T[], total?: number }
+
+// Computed / aggregated
+{ data: ComputedShape }  // typed explicitly — never `any`
+
+// Created (201)
+{ data: T }  // always return the created record
+```
+
+---
+
+## Rate Limiting — Auth Endpoints
+
+Auth endpoints (login, password reset) must be rate-limited.
+Implement at middleware or Vercel Edge. Do not implement at the route handler level.
+
+```typescript
+// middleware.ts — rate limit /api/auth/* routes
+// Use @upstash/ratelimit or Vercel's built-in edge rate limiting
+// Limit: 10 requests per minute per IP on auth routes
+```
+
+---
+
+## What Never Goes in an API Route
+
+- UI logic or presentation formatting
+- Business logic that belongs in a shared lib function
+- Client-side state management
+- Hardcoded secrets or credentials
+- `console.log` with student PII
+- `.then()` chains on async operations — use `async/await` consistently
+- Bare `catch(e) {}` — always log the error server-side

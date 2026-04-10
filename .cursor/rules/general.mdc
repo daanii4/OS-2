@@ -1,0 +1,188 @@
+---
+description: General engineering rules for Operation Scholars OS. Apply to every file, every session, no exceptions.
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Operation Scholars OS — General Engineering Rules
+
+## Identity & Scope
+
+You are building **Operation Scholars OS** — a student behavioral intelligence platform for
+De'marieya Nelson and Operation Scholars, a counseling contractor serving middle and high
+school students in California's Central Valley (209 area).
+
+**Source of truth:** Engineering Action Plan v2.0 (April 2026). The brief replaces any prior
+CASEL 1–5 session scoring with an **evidence-based behavioral incident** model: office referrals,
+suspensions, teacher referrals, and behavioral incidents are the primary progress metrics; chart
+and report headline numbers are **percent reduction from individual baseline** (baseline window:
+first 30 days in system or first four sessions, whichever comes first).
+
+This system handles FERPA-protected student records. Every architectural and implementation
+decision must reflect that reality from line one.
+
+**Stack:**
+- Framework: Next.js 14 (App Router) — `/app` directory only. No Pages Router.
+- Database: Supabase (PostgreSQL) via **Prisma ORM only**. Never use Supabase's auto-generated REST API or Supabase client for data queries.
+- Auth: Supabase Auth via @supabase/ssr. Session verified server-side with supabase.auth.getUser(). Role fetched from profiles table via Prisma. Never use the Supabase client for data queries — Prisma only.
+- Styling: Tailwind CSS
+- Charts: Recharts — all data server-computed
+- AI: Anthropic SDK — `claude-sonnet-4-20250514` — always async, never blocking
+- Hosting: Vercel
+- Validation: Zod — every API route, no exceptions
+
+---
+
+## Non-Negotiable Rules
+
+### 1. TypeScript Everywhere
+- All files are `.ts` or `.tsx`. No `.js` or `.jsx` ever.
+- `strict: true` in `tsconfig.json`. No `any` without an explicit comment explaining why.
+- All function parameters and return types are explicitly typed.
+- Zod schemas define the shape of every API request body. `z.infer<typeof Schema>` for derived types.
+
+### 2. Never Hallucinate APIs
+- If uncertain whether a library method exists or behaves as expected at the version in use —
+  say so. Do not fabricate function signatures, config keys, or framework behaviors.
+- Always note the target version when behavior differs across versions.
+- When in doubt: check. Do not guess.
+
+### 3. Security is Baseline — Not a Pass-Two Task
+- Authentication and authorization are implemented in the first line of every route.
+- Permissions enforced at the **database query layer** — never filtered in JavaScript after fetching.
+- Sensitive fields (session_summary, presenting_problem, clinical notes) are never logged, never returned to unauthorized callers, never transmitted in plaintext.
+- No student PII ever appears in Vercel runtime logs, error messages, or external monitoring services.
+
+### 4. Secrets & Environment
+- Every secret in `.env`. No secrets in code, comments, or commit history.
+- `.env.example` documents every required key with a description — no values.
+- Error messages returned to clients are **generic**. Detailed errors log server-side only.
+- Never log passwords, tokens, session summaries, or any student-identifying data.
+
+### 5. Async Operations Never Block
+- Any operation potentially >200ms: AI calls, external APIs, email, PDF generation — runs asynchronously.
+- User-facing response returns **immediately** with the saved state.
+- Background operations `.catch()` and log failures server-side. Failures do not affect the user response.
+
+### 6. Computed Fields Are Always Server-Side
+- `goals_attempted`, `goals_met`, `goal_completion_rate`, all incident aggregations, all chart series —
+  computed by server-side API logic on save, stored in the database.
+- Frontend receives pre-computed values and renders them. No business logic in the browser.
+- Client-supplied values for computed fields are silently ignored. Zod schemas strip them.
+
+### 7. Build What the Brief Specifies — Nothing More
+- Scope is defined by the current sprint day's deliverables.
+- Do not add features not in today's brief.
+- Do not refactor code outside today's task.
+- Identify something worth building? Log it as a note. Do not build it unilaterally.
+
+### 8. Acceptance Gates Are Pass/Fail
+- Every task has an acceptance gate. Run it completely. Report pass or fail.
+- Do not mark a task complete if the gate is not fully verified.
+- If a gate fails: debug and fix before moving on, or report the exact failure with detail.
+
+### 9. End-of-Session Report Required
+Every session ends with:
+1. What shipped
+2. Acceptance gate result — pass or fail, with failure detail
+3. Blockers or open decisions needed for next session
+
+---
+
+## Engineering Decision Priority Order
+
+When facing an implementation choice, apply this order:
+
+1. **Correctness** — Does this enforce access control and protect sensitive data? If no → stop.
+2. **Data integrity** — Are computed values and stored data correct? If no → stop.
+3. **Scalability** — Works at 10× current load? If no → flag it, note it in a code comment, do not over-engineer now.
+4. **Performance** — Returns in under 500ms? If no → optimize the query.
+5. **Maintainability** — Will the next engineer understand this in 6 months? If no → add a comment, fix naming.
+
+---
+
+## FERPA Compliance
+
+This system handles student education records. FERPA is not optional.
+
+| Rule | Implementation |
+|------|----------------|
+| No public endpoints | Every route requires authentication. No unauthenticated access to any student data. |
+| Role-based access at DB layer | Counselors see only assigned students — enforced in the Prisma `where` clause, not in JS after the query. |
+| Sensitive fields | `session_summary`, `presenting_problem`, clinical notes — never in list endpoints, never returned without per-record auth verification. |
+| No PII in external services | Student names, IDs, grade, school — never passed to external logging, monitoring, or analytics services. |
+
+---
+
+## Scale Target
+
+Client brief: on the order of **~200 active students** in scope; counseling model scales to
+**5+ counselors** and **100+ students per counselor** by Year 3. Early deployments may be
+smaller; **every** data model decision, permission implementation, and query pattern must support
+Year 3 scale **without a rewrite.** Flag anything that would require restructuring at 10× load;
+do not silently create a scaling trap.
+
+---
+
+## Project Structure
+
+```
+scholars-os/
+├── app/
+│   ├── (auth)/
+│   │   └── login/
+│   ├── (dashboard)/
+│   │   ├── dashboard/
+│   │   ├── students/
+│   │   │   ├── [id]/
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── incidents/
+│   │   │   │   ├── sessions/
+│   │   │   │   ├── plans/
+│   │   │   │   └── report/
+│   ├── api/
+│   │   ├── auth/
+│   │   ├── students/
+│   │   │   └── [id]/
+│   │   │       ├── route.ts
+│   │   │       ├── incidents/
+│   │   │       ├── sessions/
+│   │   │       ├── plans/
+│   │   │       ├── progress/
+│   │   │       ├── context/
+│   │   │       ├── charts/
+│   │   │       └── ai/
+│   │   ├── ai/
+│   │   │   └── analyze/
+│   │   └── org/
+│   │       └── charts/
+├── lib/
+│   ├── auth.ts           # NextAuth config
+│   ├── prisma.ts         # Prisma client singleton
+│   ├── permissions.ts    # canAccessStudent(), withRoleGuard()
+│   ├── ai/
+│   │   ├── analyze.ts    # triggerAIAnalysis() — async wrapper
+│   │   ├── context.ts    # getStudentContext() — builds full context payload
+│   │   └── prompts.ts    # System prompt constants
+│   └── validators/       # Zod schemas — one file per resource
+│       ├── student.ts
+│       ├── incident.ts
+│       ├── session.ts
+│       └── plan.ts
+├── prisma/
+│   ├── schema.prisma
+│   └── migrations/
+├── types/
+│   └── next-auth.d.ts    # Session type augmentation
+└── middleware.ts          # Route protection
+```
+
+---
+
+## What This Agent Does Not Do
+
+- Does not work on QuasarNova internal tools (Sniper OS, IntakeOS, LexOS)
+- Does not make pricing or contract decisions
+- Does not design UI/UX — implements specs from the Solutions UI/UX Designer
+- Does not deploy to production without explicit owner sign-off
+- Does not diagnose, prescribe, or generate regulated professional content

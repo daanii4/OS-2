@@ -1,0 +1,179 @@
+---
+description: Environment configuration, secrets management, and Vercel deployment rules for Operation Scholars OS. Apply when touching .env files, vercel.json, environment variable usage, or deployment configuration.
+globs: [".env*", "vercel.json", "next.config.*"]
+alwaysApply: true
+---
+
+# Operation Scholars OS — Environment & Deployment Rules
+
+---
+
+## Environment Variables — Required Keys
+
+All of the following must exist in `.env` (local) and in Vercel (all environments: production, preview, development).
+
+```bash
+# .env.example — commit this file with descriptions, never with values
+
+# ─── DATABASE ─────────────────────────────────────────────────────────────────
+# Supabase connection pooler (pgBouncer) — used by Prisma at runtime
+# Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+DATABASE_URL=
+
+# Supabase direct connection — used by Prisma for migrations only (port 5432, no pgbouncer)
+# Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+DIRECT_URL=
+
+# ─── AUTH ─────────────────────────────────────────────────────────────────────
+# NextAuth secret — generate with: openssl rand -base64 32
+NEXTAUTH_SECRET=
+
+# NextAuth URL — full URL of deployment (no trailing slash)
+# Local: http://localhost:3000
+# Production: https://scholars.quasarnova.net
+NEXTAUTH_URL=
+
+# ─── AI ───────────────────────────────────────────────────────────────────────
+# Anthropic API key — from console.anthropic.com
+ANTHROPIC_API_KEY=
+
+# ─── APP ──────────────────────────────────────────────────────────────────────
+# Environment identifier — used for conditional logging
+# Values: development | preview | production
+NODE_ENV=
+```
+
+---
+
+## Secrets Rules
+
+- All secrets in environment variables. No exceptions.
+- `.env` is in `.gitignore`. Never commit it.
+- `.env.example` is committed with key names and descriptions. Never values.
+- No secrets in `next.config.ts`, source files, or comments.
+- No hardcoded API keys, database URLs, or passwords anywhere in the codebase.
+- Rotate `NEXTAUTH_SECRET` immediately if it appears in any commit or log.
+
+---
+
+## Environment Variable Access Patterns
+
+```typescript
+// CORRECT — server-side only (API routes, lib files, server components)
+const apiKey = process.env.ANTHROPIC_API_KEY
+if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set')
+
+// CORRECT — exposing to client: NEXT_PUBLIC_ prefix only, non-sensitive values only
+// No NEXT_PUBLIC_ variables are needed for this application.
+// Student data never flows to client-side environment variables.
+
+// WRONG — never access server secrets in client components or browser context
+// Never use NEXT_PUBLIC_ for API keys, database URLs, or auth secrets
+```
+
+---
+
+## next.config.ts
+
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  // Enforce type and lint checks on build
+  typescript: {
+    ignoreBuildErrors: false,  // Never set to true — catches type regressions
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  // Log levels — never log query content in production
+  // No serverRuntimeConfig or publicRuntimeConfig needed
+}
+
+export default nextConfig
+```
+
+---
+
+## Vercel Configuration
+
+### Project Settings
+
+| Setting | Value |
+|---------|-------|
+| Framework | Next.js |
+| Root directory | `.` (repo root) |
+| Build command | `npx prisma generate && next build` |
+| Install command | `npm install` |
+| Node.js version | 20.x |
+
+### Build Command — Prisma Generate Required
+
+The build command must run `prisma generate` before `next build`.
+Without it, the Prisma client is not generated and the build fails.
+
+```json
+// vercel.json (if needed for build override)
+{
+  "buildCommand": "npx prisma generate && next build"
+}
+```
+
+### Environment Variables in Vercel
+
+Set in Vercel dashboard → Project → Settings → Environment Variables.
+
+Required in all three environments (Production, Preview, Development):
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL` (different value per environment)
+- `ANTHROPIC_API_KEY`
+
+`NEXTAUTH_URL` values:
+- Production: `https://scholars.quasarnova.net`
+- Preview: `https://[branch-name]-scholars-os.vercel.app` (or use `VERCEL_URL` dynamic)
+- Development: `http://localhost:3000`
+
+---
+
+## Production Deploy Checklist
+
+Never deploy to production without Daniel's explicit sign-off. When sign-off is given, verify:
+
+- [ ] All 10 Phase 1 acceptance criteria pass on staging
+- [ ] All environment variables set in Vercel production environment
+- [ ] `prisma migrate deploy` run against production database (not `migrate dev`)
+- [ ] No `console.log` statements containing student data
+- [ ] `.env` not in repository
+- [ ] `NEXTAUTH_SECRET` is production-specific (not shared with dev)
+- [ ] De'marieya's owner account created with a secure initial password
+- [ ] Seed data confirmed (2–3 anonymized test students)
+
+---
+
+## Migration in CI/CD
+
+```bash
+# Development — creates migration files and applies them
+npx prisma migrate dev --name migration_name
+
+# Production / CI — applies existing migration files only, no schema diff
+npx prisma migrate deploy
+
+# Never run `prisma migrate dev` against production
+# Never run `prisma migrate reset` against production
+```
+
+---
+
+## What Never Happens
+
+- `typescript.ignoreBuildErrors: true` — never. Fix the type error.
+- `eslint.ignoreDuringBuilds: true` — never. Fix the lint error.
+- Secrets committed to the repository in any file
+- `NEXT_PUBLIC_` prefix on any sensitive variable
+- Deploying to production without owner sign-off
+- Running `prisma migrate dev` or `prisma migrate reset` against the production database
+- Sharing `NEXTAUTH_SECRET` across environments

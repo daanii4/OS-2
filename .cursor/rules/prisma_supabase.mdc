@@ -1,0 +1,300 @@
+---
+description: Prisma ORM and Supabase configuration rules for Operation Scholars OS. Apply to all schema files, migrations, and any file that imports from @prisma/client or lib/prisma.
+globs: ["prisma/**/*", "lib/prisma.ts", "app/api/**/*.ts"]
+alwaysApply: true
+---
+
+# Operation Scholars OS — Prisma + Supabase Rules
+
+---
+
+## Connection Configuration — Required Setup
+
+Supabase requires **two separate connection strings** in every environment.
+Missing either one breaks migrations or runtime queries.
+
+### schema.prisma — Required datasource block
+
+```prisma
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")        // pgbouncer=true, port 6543 — for runtime queries
+  directUrl = env("DIRECT_URL")          // no pgbouncer, port 5432 — for migrations
+}
+```
+
+### .env — Required variables (never commit values)
+
+```bash
+# Runtime connection — pgBouncer pooled, port 6543
+DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-us-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+
+# Migration connection — direct, port 5432
+DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-0-us-west-1.pooler.supabase.com:5432/postgres"
+```
+
+### Vercel — Both variables required in every environment
+
+Set both `DATABASE_URL` and `DIRECT_URL` in:
+- Production
+- Preview
+- Development
+
+If `DIRECT_URL` is missing, `prisma migrate deploy` fails in CI.
+
+---
+
+## Prisma Client Singleton
+
+One instance. Always. Prevents connection pool exhaustion in Next.js hot reload.
+
+```typescript
+// lib/prisma.ts
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    // Never log 'query' in any environment — queries may contain student data
+  })
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+**Never** instantiate `new PrismaClient()` in route handlers, lib functions, or anywhere outside this singleton.
+
+---
+
+## Schema Rules
+
+Table and field definitions must match **Engineering Action Plan v2.0 §4** (users, students,
+behavioral incidents, sessions, success plans with milestones JSON, ai analyses). The measurement
+model is incident-based; there is no CASEL 1–5 session score column.
+
+### All Tables Use UUIDs
+
+```prisma
+model Student {
+  id  String  @id @default(uuid())
+  // ...
+}
+```
+
+No auto-increment integers for primary keys. UUIDs prevent enumeration attacks on student records.
+
+### Enum Values — snake_case Lowercase
+
+```prisma
+enum UserRole {
+  owner
+  assistant
+  counselor
+}
+
+enum IncidentType {
+  office_referral
+  suspension_iss
+  suspension_oss
+  teacher_referral
+  behavioral_incident
+  other
+}
+
+enum Severity {
+  low
+  medium
+  high
+}
+```
+
+### Computed Fields — Schema Comment Required
+
+Any field computed server-side must have a schema comment marking it as never written from the client:
+
+```prisma
+model Session {
+  // ...
+  goals_attempted      Int?    // COMPUTED server-side — never written from client
+  goals_met            Int?    // COMPUTED server-side — never written from client
+  goal_completion_rate Float?  // COMPUTED server-side — never written from client. goals_met / goals_attempted * 100
+}
+```
+
+### JSON Fields — Explicitly Typed in Application Code
+
+Prisma returns JSON fields as `Prisma.JsonValue`. Always cast to the explicit type on read:
+
+```typescript
+// types/session.ts
+export type SessionGoal = {
+  goal: string
+  met: boolean
+}
+
+// In route handler
+const goals = session.session_goals as SessionGoal[] | null
+```
+
+### Timestamps
+
+All tables include `created_at`. Tables with mutable records include `updated_at`.
+
+```prisma
+created_at  DateTime  @default(now())
+updated_at  DateTime  @updatedAt
+```
+
+---
+
+## Query Patterns
+
+### Row-Level Access — Always in WHERE, Never in JS
+
+```typescript
+// CORRECT — DB-layer filter
+const students = await prisma.student.findMany({
+  where: {
+    ...(role === 'counselor' ? { assigned_counselor_id: userId } : {})
+  }
+})
+
+// WRONG — never fetch all and filter in JS
+const all = await prisma.student.findMany()
+const filtered = all.filter(s => s.assigned_counselor_id === userId)
+```
+
+### SELECT Only What You Need
+
+List endpoints never return sensitive fields. Use explicit `select` on every query.
+
+```typescript
+// List endpoint — minimal fields, no sensitive data
+const students = await prisma.student.findMany({
+  where: { ... },
+  select: {
+    id: true,
+    first_name: true,
+    last_name: true,
+    grade: true,
+    school: true,
+    status: true,
+    assigned_counselor_id: true,
+    baseline_incident_count: true,
+    // NEVER include in list: presenting_problem, general_notes
+  }
+})
+
+// Detail endpoint — full fields, after canAccessStudent() verified
+const student = await prisma.student.findUnique({
+  where: { id: studentId },
+  // Can include presenting_problem here — access already verified
+})
+```
+
+### Session Summary — Restricted Field Pattern
+
+`session_summary` is the richest source of student data in this system.
+Never return it in list queries. Always verify access before returning in detail queries.
+
+```typescript
+// CORRECT — session list, no summary
+const sessions = await prisma.session.findMany({
+  where: { student_id: studentId },
+  select: {
+    id: true,
+    session_date: true,
+    session_type: true,
+    attendance_status: true,
+    duration_minutes: true,
+    goal_completion_rate: true,
+    goals_attempted: true,
+    goals_met: true,
+    // session_summary intentionally excluded from list
+  },
+  orderBy: { session_date: 'desc' }
+})
+
+// CORRECT — session detail, access already verified upstream
+const session = await prisma.session.findUnique({
+  where: { id: sessionId },
+  // Full select — includes session_summary
+})
+```
+
+### findUniqueOrThrow vs findUnique
+
+Use `findUniqueOrThrow` only inside try/catch when the not-found case is truly unexpected.
+For access-controlled resources, use `findUnique` + null check → 403/404 manually.
+
+```typescript
+// Preferred for access-controlled resources
+const student = await prisma.student.findUnique({
+  where: { id: studentId }
+})
+if (!student) {
+  // Return 403 (not 404) — do not confirm whether the record exists to unauthorized callers
+  return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
+}
+```
+
+### Transactions — Required for Multi-Table Writes
+
+Any operation that writes to multiple tables must use a Prisma transaction:
+
+```typescript
+const result = await prisma.$transaction(async (tx) => {
+  const session = await tx.session.create({ data: sessionData })
+  await tx.student.update({
+    where: { id: studentId },
+    data: { updated_at: new Date() }
+  })
+  return session
+})
+```
+
+---
+
+## Migration Rules
+
+### Always Use Named Migrations
+
+```bash
+npx prisma migrate dev --name descriptive_migration_name
+# Examples:
+# --name add_sessions_table
+# --name add_escalation_flag_to_students
+# --name add_incident_type_peer_conflict
+```
+
+### Never Edit Applied Migrations
+
+Once a migration is applied to any environment — it is immutable.
+Create a new migration for corrections.
+
+### Migration Checklist Before Running
+
+- [ ] `schema.prisma` compiles cleanly (`npx prisma validate`)
+- [ ] All new fields have appropriate defaults or are nullable (no stranded NOT NULL columns)
+- [ ] All new enums are additive (removing enum values is a breaking change)
+- [ ] `DIRECT_URL` is set in the environment running the migration
+
+### Enum Changes — Additive Only
+
+Adding enum values is safe. Removing or renaming enum values requires a migration plan.
+Never remove an enum value without auditing all rows using it first.
+
+---
+
+## What Never Happens
+
+- **Never** use Supabase's auto-generated REST API (`supabase.from('students').select(...)`)
+- **Never** use Supabase Auth — use NextAuth.js only
+- **Never** use `prisma.$queryRaw` with string concatenation — use parameterized queries only
+- **Never** instantiate `new PrismaClient()` outside `lib/prisma.ts`
+- **Never** call `prisma.disconnect()` in route handlers
+- **Never** log Prisma query results that may contain student data
+- **Never** use `@ignore` on a field to skip schema validation
+- **Never** commit `.env` — only `.env.example` with documented keys and no values

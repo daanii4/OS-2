@@ -1,0 +1,18 @@
+# OS^2 workspace
+.DS_Store
+
+# Next.js app (scholars-os)
+scholars-os/node_modules/
+scholars-os/.next/
+scholars-os/out/
+scholars-os/build/
+scholars-os/.vercel
+scholars-os/.env
+scholars-os/.env.*
+!scholars-os/.env.example
+scholars-os/npm-debug.log*
+scholars-os/*.tsbuildinfo
+scholars-os/coverage/
+scholars-os/.pnp
+scholars-os/.pnp.*
+scholars-os/app/generated/prisma
