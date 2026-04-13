@@ -33,22 +33,20 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[var(--surface-page)]">
-      <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 lg:grid-cols-[240px_1fr]">
+      <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 lg:grid-cols-[420px_1fr]">
         <aside className="hidden bg-[var(--olive-800)] text-white lg:flex lg:flex-col">
           <div className="border-b border-white/10 px-5 py-5">
             <div className="flex items-center gap-3">
-              <div className="relative h-8 w-8 overflow-hidden rounded-md bg-white/10">
+              <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white/10 flex-shrink-0">
                 <img
                   src="/IMG_0219.PNG"
                   alt="Operation Scholars logo"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               </div>
               <div>
                 <p className="os-heading text-white">Scholars OS</p>
-                <p className="os-caption text-white/60">
-                  Behavioral intelligence platform
-                </p>
+                <p className="os-caption text-white/60">Behavioral intelligence platform</p>
               </div>
             </div>
           </div>

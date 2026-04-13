@@ -329,7 +329,7 @@ export function DashboardShell({
         {/* Desktop sidebar */}
         <aside
           className={`flex flex-col bg-[var(--olive-800)] transition-[width] duration-300 ease-out ${
-            sidebarOpen ? 'w-[220px]' : 'w-[76px]'
+            sidebarOpen ? 'w-[260px]' : 'w-[76px]'
           }`}
         >
           <div className="border-b border-white/10 px-4 py-5">
@@ -338,7 +338,7 @@ export function DashboardShell({
                 <img
                   src="/IMG_0219.PNG"
                   alt="Operation Scholars logo"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               </div>
               <div
