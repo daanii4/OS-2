@@ -1,6 +1,17 @@
 import { prisma } from '@/lib/prisma'
 import type { UserRole } from '@prisma/client'
 
+function getDatabaseHost(): string {
+  const url = process.env.DATABASE_URL
+  if (!url) return 'missing'
+
+  try {
+    return new URL(url).hostname
+  } catch {
+    return 'invalid'
+  }
+}
+
 /**
  * Verifies that a user can access a specific student record.
  * Owner and assistant see all students.
@@ -42,15 +53,30 @@ export async function canAccessStudent(
  * Returns null if profile does not exist or is inactive.
  */
 export async function getProfile(userId: string) {
-  return prisma.profile.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      active: true,
-      tenant_id: true,
-    },
-  })
+  try {
+    return await prisma.profile.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        tenant_id: true,
+      },
+    })
+  } catch (error) {
+    const prismaCode =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code?: unknown }).code ?? 'unknown')
+        : 'unknown'
+
+    console.error('[permissions/getProfile] Prisma query failed', {
+      prismaCode,
+      dbHost: getDatabaseHost(),
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+
+    throw error
+  }
 }
