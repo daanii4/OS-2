@@ -4,8 +4,6 @@ import { getStudentContext } from './context'
 import { validateAIResponse, type AIAnalysisResponse } from './validation'
 import { ANALYSIS_SYSTEM_PROMPT } from './prompts'
 
-const openai = new OpenAI() // reads OPENAI_API_KEY from env
-
 // Must match ai_analyses.triggered_by enum in schema.prisma
 export type AITrigger =
   | 'new_session'
@@ -29,6 +27,7 @@ export async function triggerAIAnalysis(
   triggeredBy: AITrigger,
   linkedSessionId?: string
 ): Promise<void> {
+  const openai = new OpenAI()
   const context = await getStudentContext(studentId)
 
   const response = await openai.chat.completions.create({

@@ -21,9 +21,8 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
-const openai = new OpenAI()
-
 export async function POST(req: Request, ctx: RouteContext) {
+  const openai = new OpenAI()
   const { id: studentId } = await ctx.params
 
   const supabase = await createClient()
