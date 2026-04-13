@@ -13,13 +13,21 @@ import type { UserRole } from '@prisma/client'
 export async function canAccessStudent(
   userId: string,
   role: UserRole,
-  studentId: string
+  studentId: string,
+  tenantId?: string
 ): Promise<boolean> {
-  if (role === 'owner' || role === 'assistant') return true
+  if (role === 'owner' || role === 'assistant') {
+    const student = await prisma.student.findFirst({
+      where: tenantId ? { id: studentId, tenant_id: tenantId } : { id: studentId },
+      select: { id: true },
+    })
+    return student !== null
+  }
 
   const assignment = await prisma.student.findFirst({
     where: {
       id: studentId,
+      ...(tenantId ? { tenant_id: tenantId } : {}),
       assigned_counselor_id: userId,
     },
     select: { id: true },
@@ -42,6 +50,7 @@ export async function getProfile(userId: string) {
       email: true,
       role: true,
       active: true,
+      tenant_id: true,
     },
   })
 }

@@ -49,10 +49,19 @@ export async function POST(req: NextRequest) {
   }
   const { id: userId, role } = profile
 
-  // STEP 2: Authorize — role check + resource access
-  // For student-scoped routes: use canAccessStudent()
-  // For role-only checks: use role from profile
-  const authorized = await canAccessStudent(userId, role, studentId)
+  // STEP 2: Tenant context — from proxy header, never from body/query
+  const tenant = await getTenantFromRequest()
+
+  // STEP 3: Defense-in-depth tenant assertion
+  if (profile.tenant_id !== tenant.id) {
+    return NextResponse.json(
+      { error: 'Forbidden', code: 'FORBIDDEN' },
+      { status: 403 }
+    )
+  }
+
+  // STEP 4: Authorize — role check + resource access with tenant scope
+  const authorized = await canAccessStudent(userId, role, studentId, tenant.id)
   if (!authorized) {
     return NextResponse.json(
       { error: 'Forbidden', code: 'FORBIDDEN' },
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // STEP 3: Parse + validate — before ANY database operation
+  // STEP 5: Parse + validate — before ANY database operation
   const body = await req.json()
   const parsed = RequestSchema.safeParse(body)
   if (!parsed.success) {
@@ -70,14 +79,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // STEP 4: Compute server-side fields — never trust client-supplied computed values
+  // STEP 6: Compute server-side fields — never trust client-supplied computed values
   // goals_attempted, goals_met, goal_completion_rate, incident aggregations — always here
   const computedFields = computeFields(parsed.data)
 
-  // STEP 5: Database operation — wrapped in try/catch, always
+  // STEP 7: Database operation — wrapped in try/catch, always
   try {
     const record = await prisma.resource.create({
       data: {
+        tenant_id: tenant.id, // always server-injected
         ...parsed.data,
         ...computedFields,
         createdById: userId  // always from authenticated profile, never from request body
@@ -224,6 +234,7 @@ export function withRoleGuard(
 // CORRECT — filter at DB query level
 const students = await prisma.student.findMany({
   where: {
+    tenant_id: tenantId,
     ...(role === 'counselor' ? { assigned_counselor_id: userId } : {})
   },
   select: {
@@ -243,6 +254,14 @@ const allStudents = await prisma.student.findMany()
 const filtered = allStudents.filter(s => s.assigned_counselor_id === userId)
 // ^ Fetches every student from DB before filtering. One middleware bug exposes all records.
 ```
+
+### Tenant Rules
+
+- `tenant_id` is NEVER accepted from the request body
+- Always call `getTenantFromRequest()` near the top of every route
+- Always verify `profile.tenant_id === tenant.id` before any DB operation
+- Every Prisma write includes `tenant_id: tenant.id`
+- Every Prisma read includes `tenant_id` in `where`
 
 ---
 

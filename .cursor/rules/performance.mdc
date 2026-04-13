@@ -1,0 +1,218 @@
+---
+description: QuasarNova Enterprise Engineering Standards — Performance & Compilation guardrails for Operation Scholars OS. Always applied.
+globs:
+  - "scholars-os/**/*.ts"
+  - "scholars-os/**/*.tsx"
+alwaysApply: true
+---
+
+# Operation Scholars OS — Performance & Compilation Rules
+
+This codebase previously suffered HMR collapse (400k+ ms rebuild times) caused by heavy static
+imports in large client components. These rules prevent regression.
+
+---
+
+## 1. No Barrel Files — Direct Path Imports Only
+
+Never import from barrel/index files. Always use the direct path to the module.
+
+```typescript
+// CORRECT
+import { StudentIncidentChart } from '@/app/dashboard/students/[id]/student-incident-chart'
+import { canAccessStudent } from '@/lib/permissions'
+
+// WRONG — barrel files cause entire subtrees to be bundled together
+import { StudentIncidentChart } from '@/app/dashboard/students/[id]'
+import { canAccessStudent, getProfile, withRoleGuard } from '@/lib'
+```
+
+Never create `index.ts` or `index.tsx` files that re-export multiple modules from a directory.
+
+---
+
+## 2. Dynamic Imports for Heavy Libraries
+
+Any library with a bundle footprint above ~100 KB must be loaded with `next/dynamic` and `ssr: false`.
+This severs the dependency from Next.js server compilation and HMR hot paths.
+
+**Libraries that require dynamic import in this project:**
+- `recharts` — all chart components
+- `@react-pdf/renderer` — PDF generation (already server-only via API route, do not import in client components)
+
+### Required pattern
+
+```typescript
+import dynamic from 'next/dynamic'
+
+const MyChart = dynamic(() => import('./my-chart'), {
+  ssr: false,
+  loading: () => (
+    // Loading skeleton — must match the chart container height exactly
+    <div className="h-[240px] w-full animate-pulse rounded-md bg-[var(--surface-inner)]" />
+  ),
+})
+```
+
+### What the dynamically-loaded file must contain
+
+- Only the chart JSX and its prop type
+- The `recharts` imports
+- No state, no data fetching, no `useEffect`
+
+```typescript
+// CORRECT — minimal chart file
+'use client'
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+
+type Props = { data: { label: string; value: number }[] }
+
+export default function MyChart({ data }: Props) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data}>...</BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+// WRONG — do not mix data fetching or state into a chart file
+'use client'
+import { useState, useEffect } from 'react'
+import { BarChart, ... } from 'recharts'
+
+export default function MyChart({ studentId }: { studentId: string }) {
+  const [data, setData] = useState(null) // state belongs in the parent
+  useEffect(() => { fetch(...) }, []) // data fetching belongs in the parent
+  ...
+}
+```
+
+---
+
+## 3. Chart Container Sizing — Mandatory
+
+Recharts `ResponsiveContainer` reads its parent element's computed dimensions. If the parent
+resolves to `0×0` during SSR or the first render pass, Recharts logs a warning and renders
+a blank chart.
+
+**Every chart container div must have:**
+
+```typescript
+// CORRECT — explicit height, full width, flex-box overflow guard
+<div className="h-[240px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+  <MyChart data={data} />
+</div>
+
+// WRONG — missing height or missing min-w-0
+<div className="w-full rounded-md bg-[var(--surface-inner)] p-3">
+  <MyChart data={data} />  {/* height unknown → 0px → Recharts warning */}
+</div>
+
+<div className="flex h-[240px] rounded-md bg-[var(--surface-inner)] p-3">
+  <MyChart data={data} />  {/* flex child without min-w-0 may collapse to 0px wide */}
+</div>
+```
+
+Required classes:
+- `h-[Xpx]` — explicit pixel height matching the chart's `loading` skeleton height
+- `w-full` — full available width
+- `min-w-0` — prevents flexbox children from overflowing and collapsing to zero width
+
+---
+
+## 4. No Chart Render Before Data
+
+Never render a chart component when data is `null`, `undefined`, or an empty array that would
+produce a meaningless chart. Always gate behind a loading state.
+
+```typescript
+// CORRECT — skeleton while loading, empty state when no data
+{loading ? (
+  <div className="h-[200px] w-full animate-pulse rounded-sm bg-[var(--surface-inner)]" />
+) : data.length === 0 ? (
+  <p className="os-body">No data for this period.</p>
+) : (
+  <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+    <MyChart data={data} />
+  </div>
+)}
+
+// WRONG — renders chart with empty or undefined data
+<div className="h-[200px] rounded-md bg-[var(--surface-inner)] p-3">
+  <MyChart data={data ?? []} />  {/* empty array still triggers Recharts render with warnings */}
+</div>
+```
+
+---
+
+## 5. Memoize Chart Data Transformations
+
+All data transformations that produce chart-ready arrays must be wrapped in `useMemo`.
+Prevents recalculation and child re-renders on every parent state change.
+
+```typescript
+// CORRECT
+const chartData = useMemo(
+  () => raw.map(d => ({ label: d.month, incidents: d.count })),
+  [raw]
+)
+
+// WRONG — transformation runs on every render
+const chartData = raw.map(d => ({ label: d.month, incidents: d.count }))
+```
+
+---
+
+## 6. Component File Length Limit
+
+No single component file should exceed **300 lines**. If a file approaches this limit:
+
+1. Extract chart JSX into a dedicated `*-chart.tsx` file (chart rendering only)
+2. Extract complex forms into a dedicated `*-form.tsx` file
+3. Extract sub-panels into dedicated `*-panel.tsx` files
+
+The parent file retains only state management, data fetching, and layout composition.
+
+---
+
+## 7. OS^2 Design System — Performance-Safe Patterns
+
+These patterns are correct for this codebase's design system. Do not use alternatives.
+
+### Loading skeleton class
+```typescript
+className="animate-pulse rounded-md bg-[var(--surface-inner)]"
+// For inner containers use bg-[var(--surface-inner)]
+// For page-level skeletons use bg-[var(--surface-page)]
+```
+
+### Color tokens — use CSS vars, not hardcoded hex
+```typescript
+// CORRECT
+fill="var(--olive-600)"
+stroke="var(--gold-500)"
+background: 'var(--surface-card)'
+
+// WRONG — hardcoded values drift from design system
+fill="#4f6035"
+stroke="#b8952a"
+```
+
+### Typography tokens — use font variables
+```typescript
+// CORRECT — references the Next.js font variable
+fontFamily: 'var(--font-ibm-plex-mono), monospace'
+
+// ACCEPTABLE in minimal chart files (no access to CSS vars in recharts inline styles)
+fontFamily: 'IBM Plex Mono, monospace'
+```
+
+---
+
+## What Never Happens
+
+- Never statically import `recharts` in a component that also contains sidebar navigation, data fetching, forms, or state management
+- Never render `<ResponsiveContainer>` inside a container with no explicit height
+- Never create an `index.ts` barrel file
+- Never skip the `loading` skeleton in a `next/dynamic` call
+- Never place data fetching logic inside a chart component file

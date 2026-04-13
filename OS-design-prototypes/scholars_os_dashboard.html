@@ -1,0 +1,507 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --olive-900:#1e2517;--olive-800:#2d3820;--olive-700:#3d4c2c;--olive-600:#5C6B46;
+    --olive-500:#6e8050;--olive-400:#8a9e69;--olive-300:#aabb8a;--olive-200:#c8d6aa;
+    --olive-100:#e4eccc;--olive-50:#f3f7e8;
+    --gold-500:#D6A033;--gold-400:#e0b44e;--gold-200:#f0d898;--gold-100:#faf0d0;--gold-50:#fdf8ec;
+    --surface:#fff;--surface-muted:#f6f7f2;--surface-subtle:#eef0e8;
+    --error:#dc2626;--success:#16a34a;--warning:#d97706;
+  }
+  body{font-family:'Geist',system-ui,sans-serif;background:var(--surface-muted);color:var(--olive-900)}
+  .serif{font-family:'DM Serif Display',Georgia,serif}
+  .mono{font-family:'IBM Plex Mono',monospace}
+
+  .shell{display:flex;height:100vh;min-height:640px;overflow:hidden}
+
+  /* SIDEBAR */
+  .sidebar{width:220px;min-width:220px;background:var(--olive-800);display:flex;flex-direction:column;overflow:hidden}
+  .sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .sidebar-logo .mark{width:28px;height:28px;background:var(--gold-500);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+  .sidebar-logo .mark span{font-size:13px;font-weight:600;color:var(--olive-800)}
+  .sidebar-logo h1{font-family:'DM Serif Display',serif;font-size:15px;color:#fff;font-weight:400;line-height:1.2}
+  .sidebar-logo p{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.04em;text-transform:uppercase;margin-top:2px;font-family:'Geist',sans-serif}
+  .nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:1px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(255,255,255,.5);cursor:pointer;transition:all .15s;line-height:1}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8)}
+  .nav-item.active{background:rgba(255,255,255,.1);color:#fff}
+  .nav-item .nav-icon{width:14px;height:14px;opacity:.7;flex-shrink:0}
+  .nav-section{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:12px 10px 4px;font-family:'Geist',sans-serif}
+  .sidebar-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08)}
+  .user-chip{display:flex;align-items:center;gap:8px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:var(--olive-600);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+  .user-info p{font-size:12px;color:rgba(255,255,255,.8);font-weight:500;white-space:nowrap}
+  .user-info span{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.04em}
+
+  /* MAIN */
+  .main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+  .topbar{background:var(--surface);border-bottom:1px solid rgba(92,107,70,.12);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:10}
+  .topbar h2{font-family:'DM Serif Display',serif;font-size:20px;color:var(--olive-900);font-weight:400}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .top-btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid rgba(92,107,70,.25);background:transparent;color:var(--olive-700);font-family:'Geist',sans-serif;transition:all .15s}
+  .top-btn:hover{background:var(--olive-50);border-color:var(--olive-400)}
+  .top-btn.primary{background:var(--olive-600);color:#fff;border-color:var(--olive-600)}
+  .top-btn.primary:hover{background:var(--olive-700)}
+
+  /* CONTENT */
+  .content{padding:20px 24px;flex:1}
+
+  /* KPI ROW */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+  .kpi-card{background:var(--surface);border:1px solid rgba(92,107,70,.14);border-radius:10px;padding:14px 16px}
+  .kpi-label{font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--olive-500);margin-bottom:8px;font-family:'Geist',sans-serif}
+  .kpi-value{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:500;color:var(--olive-900);line-height:1}
+  .kpi-delta{display:flex;align-items:center;gap:4px;margin-top:6px}
+  .kpi-delta span{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500}
+  .kpi-delta small{font-size:10px;color:var(--olive-500);font-family:'Geist',sans-serif}
+  .down{color:var(--success)}
+  .up{color:#b45309}
+  .flat{color:var(--olive-400)}
+  .kpi-accent{border-left:3px solid var(--gold-500)}
+
+  /* GRID */
+  .grid-2{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:20px}
+
+  /* CHART CARD */
+  .card{background:var(--surface);border:1px solid rgba(92,107,70,.14);border-radius:10px;padding:16px}
+  .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+  .card-title{font-size:13px;font-weight:600;color:var(--olive-900);font-family:'Geist',sans-serif}
+  .card-sub{font-size:11px;color:var(--olive-500);margin-top:2px;font-family:'Geist',sans-serif}
+  .period-toggle{display:flex;gap:2px;background:var(--surface-subtle);border-radius:6px;padding:2px}
+  .pt-btn{font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;border:none;background:transparent;color:var(--olive-500);cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s}
+  .pt-btn.on{background:var(--surface);color:var(--olive-800);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+  /* ALERT BANNER */
+  .escalation-banner{background:var(--error);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .escalation-banner p{font-size:12px;font-weight:500;color:#fff;font-family:'Geist',sans-serif}
+  .escalation-banner p strong{font-weight:600}
+  .ack-btn{font-size:11px;font-weight:600;color:var(--error);background:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:'Geist',sans-serif;white-space:nowrap;flex-shrink:0;margin-left:16px}
+
+  /* STUDENT TABLE */
+  .table-card{background:var(--surface);border:1px solid rgba(92,107,70,.14);border-radius:10px;overflow:hidden}
+  .table-toolbar{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(92,107,70,.08)}
+  .search-wrap{position:relative;display:flex;align-items:center}
+  .search-wrap input{background:var(--surface-subtle);border:1px solid rgba(92,107,70,.18);border-radius:20px;padding:5px 10px 5px 28px;font-size:12px;color:var(--olive-800);font-family:'Geist',sans-serif;outline:none;width:180px;transition:border .15s}
+  .search-wrap input:focus{border-color:var(--olive-400);width:220px}
+  .search-icon{position:absolute;left:9px;color:var(--olive-400);pointer-events:none}
+  .filter-chips{display:flex;gap:6px}
+  .chip{font-size:10px;font-weight:500;padding:3px 8px;border-radius:20px;border:1px solid rgba(92,107,70,.2);color:var(--olive-600);cursor:pointer;font-family:'Geist',sans-serif;background:transparent;transition:all .15s}
+  .chip.on{background:var(--olive-100);border-color:var(--olive-400);color:var(--olive-800)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--olive-400);padding:8px 12px;text-align:left;border-bottom:1px solid rgba(92,107,70,.08);font-family:'Geist',sans-serif;background:var(--surface-muted)}
+  tbody tr{transition:background .12s;cursor:pointer;border-bottom:1px solid rgba(92,107,70,.06)}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--olive-50)}
+  tbody td{padding:10px 12px;vertical-align:middle}
+  .student-name{font-family:'DM Serif Display',serif;font-size:14px;color:var(--olive-900);font-weight:400}
+  .student-meta{font-size:10px;color:var(--olive-500);margin-top:1px;font-family:'Geist',sans-serif}
+  .badge{display:inline-flex;align-items:center;font-size:9px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:3px;font-family:'Geist',sans-serif;text-transform:uppercase}
+  .badge-active{background:var(--olive-100);color:var(--olive-700);border:1px solid var(--olive-200)}
+  .badge-graduated{background:var(--gold-100);color:#7a5a10;border:1px solid var(--gold-200)}
+  .badge-inactive{background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb}
+  .badge-escalation{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:3px}
+  .num{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--olive-900)}
+  .num-muted{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--olive-500)}
+  .delta-good{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--success)}
+  .delta-bad{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#b45309}
+  .delta-flat{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--olive-400)}
+
+  /* MINI SPARKLINE */
+  .spark{width:64px;height:24px;display:block}
+
+  /* SIDEBAR RIGHT PANEL — small metrics */
+  .metrics-stack{display:flex;flex-direction:column;gap:10px}
+  .metric-row{background:var(--surface);border:1px solid rgba(92,107,70,.14);border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+  .metric-row-label{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--olive-500);margin-bottom:4px;font-family:'Geist',sans-serif}
+  .metric-row-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:500;color:var(--olive-900)}
+  .donut-wrap{position:relative;width:48px;height:48px}
+  .progress-bar-wrap{margin-top:6px;height:4px;background:var(--olive-100);border-radius:2px;overflow:hidden}
+  .progress-bar{height:100%;border-radius:2px;background:var(--olive-600)}
+  .progress-bar.gold{background:var(--gold-500)}
+
+  /* AI INSIGHT CARD */
+  .ai-card{background:linear-gradient(135deg,var(--olive-800) 0%,var(--olive-900) 100%);border-radius:10px;padding:14px 16px;margin-top:10px}
+  .ai-card-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+  .ai-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-500)}
+  .ai-card-head span{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-400);font-family:'Geist',sans-serif}
+  .ai-card p{font-size:12px;line-height:1.6;color:rgba(255,255,255,.7);font-family:'Geist',sans-serif}
+  .ai-card p strong{color:#fff;font-weight:500}
+</style>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="mark"><span>OS</span></div>
+      <h1>Operation Scholars</h1>
+      <p>Behavioral Intelligence</p>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Main</div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 13c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Students
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
+        Sessions
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M3 4h7M3 12h5"/></svg>
+        Incidents
+      </div>
+      <div class="nav-section">Reports</div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12V6l4-3 4 3v6"/><rect x="6" y="9" width="4" height="3"/></svg>
+        Analytics
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10l1 3H2L3 2zM2 5v9h12V5"/><path d="M6 9h4M8 9v3"/></svg>
+        Reports
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar">DN</div>
+        <div class="user-info">
+          <p>De'marieya N.</p>
+          <span>Owner</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div class="main">
+
+    <!-- ESCALATION BANNER -->
+    <div class="escalation-banner">
+      <p><strong>Escalation Required</strong> — Marcus T. · AI flagged a safety concern requiring licensed clinician referral</p>
+      <button class="ack-btn">Acknowledge</button>
+    </div>
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <h2>Dashboard</h2>
+      <div class="topbar-right">
+        <button class="top-btn">Export Report</button>
+        <button class="top-btn primary">+ Log Session</button>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- KPI ROW -->
+      <div class="kpi-row">
+        <div class="kpi-card kpi-accent">
+          <div class="kpi-label">Active Students</div>
+          <div class="kpi-value">47</div>
+          <div class="kpi-delta">
+            <span class="flat">—</span>
+            <small>no change this week</small>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Incidents (30d)</div>
+          <div class="kpi-value">23</div>
+          <div class="kpi-delta">
+            <span class="down">↓ 38%</span>
+            <small>vs prior period</small>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Goal Completion</div>
+          <div class="kpi-value">71%</div>
+          <div class="kpi-delta">
+            <span class="down">↑ 8pts</span>
+            <small>last 4 sessions</small>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Sessions This Week</div>
+          <div class="kpi-value">14</div>
+          <div class="kpi-delta">
+            <span class="up">2 no-shows</span>
+            <small>need follow-up</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="grid-2">
+
+        <!-- INCIDENT CHART + TABLE -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Chart -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Incident Frequency — All Students</div>
+                <div class="card-sub">Office referrals, suspensions, and behavioral incidents</div>
+              </div>
+              <div class="period-toggle">
+                <button class="pt-btn">Wk</button>
+                <button class="pt-btn on">Mo</button>
+                <button class="pt-btn">Yr</button>
+              </div>
+            </div>
+            <div style="position:relative;height:180px">
+              <canvas id="incidentChart" role="img" aria-label="Monthly incident frequency bar chart showing decline from baseline of 37 to 23 over 6 months">Monthly incidents over 6 months: Nov 37, Dec 32, Jan 41, Feb 28, Mar 19, Apr 23.</canvas>
+            </div>
+          </div>
+
+          <!-- STUDENT TABLE -->
+          <div class="table-card">
+            <div class="table-toolbar">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="search-wrap">
+                  <svg class="search-icon" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+                  <input type="text" placeholder="Search students..." />
+                </div>
+                <div class="filter-chips">
+                  <button class="chip on">All</button>
+                  <button class="chip">Regression</button>
+                  <button class="chip">Escalation</button>
+                  <button class="chip">No-show</button>
+                </div>
+              </div>
+              <span class="num-muted" style="font-size:11px">47 students</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>School</th>
+                  <th style="text-align:center">Status</th>
+                  <th style="text-align:right">Incidents 30d</th>
+                  <th style="text-align:right">vs Baseline</th>
+                  <th style="text-align:right">Last Session</th>
+                  <th style="text-align:center">Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="student-name">Marcus T.</div>
+                    <div class="student-meta">Grade 8 · Ind.</div>
+                  </td>
+                  <td><span style="font-size:12px;color:var(--olive-600)">Lincoln MS</span></td>
+                  <td style="text-align:center">
+                    <span class="badge badge-active">Active</span><br/>
+                    <span class="badge badge-escalation" style="margin-top:3px">
+                      <svg width="7" height="7" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm0 4v4m0 2v2"/></svg>
+                      Escalation
+                    </span>
+                  </td>
+                  <td style="text-align:right"><span class="num">7</span></td>
+                  <td style="text-align:right"><span class="delta-bad">+75%</span></td>
+                  <td style="text-align:right"><span class="num-muted">Apr 08</span></td>
+                  <td style="text-align:center">
+                    <svg class="spark" viewBox="0 0 64 24"><polyline points="0,18 11,15 22,20 33,22 44,16 55,8 64,14" fill="none" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="student-name">Aaliyah J.</div>
+                    <div class="student-meta">Grade 10 · Ind.</div>
+                  </td>
+                  <td><span style="font-size:12px;color:var(--olive-600)">Cesar Chavez HS</span></td>
+                  <td style="text-align:center"><span class="badge badge-active">Active</span></td>
+                  <td style="text-align:right"><span class="num">2</span></td>
+                  <td style="text-align:right"><span class="delta-good">−62%</span></td>
+                  <td style="text-align:right"><span class="num-muted">Apr 09</span></td>
+                  <td style="text-align:center">
+                    <svg class="spark" viewBox="0 0 64 24"><polyline points="0,22 11,20 22,16 33,14 44,10 55,6 64,4" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="student-name">DeShawn M.</div>
+                    <div class="student-meta">Grade 7 · Ind.</div>
+                  </td>
+                  <td><span style="font-size:12px;color:var(--olive-600)">King MS</span></td>
+                  <td style="text-align:center"><span class="badge badge-active">Active</span></td>
+                  <td style="text-align:right"><span class="num">4</span></td>
+                  <td style="text-align:right"><span class="delta-good">−29%</span></td>
+                  <td style="text-align:right"><span class="num-muted">Apr 07</span></td>
+                  <td style="text-align:center">
+                    <svg class="spark" viewBox="0 0 64 24"><polyline points="0,20 11,18 22,17 33,15 44,12 55,10 64,9" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="student-name">Priya K.</div>
+                    <div class="student-meta">Grade 9 · Grp.</div>
+                  </td>
+                  <td><span style="font-size:12px;color:var(--olive-600)">Chavez HS</span></td>
+                  <td style="text-align:center"><span class="badge badge-active">Active</span></td>
+                  <td style="text-align:right"><span class="num">1</span></td>
+                  <td style="text-align:right"><span class="delta-good">−83%</span></td>
+                  <td style="text-align:right"><span class="num-muted">Apr 10</span></td>
+                  <td style="text-align:center">
+                    <svg class="spark" viewBox="0 0 64 24"><polyline points="0,22 11,19 22,14 33,10 44,6 55,4 64,3" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="student-name">Jaylen B.</div>
+                    <div class="student-meta">Grade 11 · Ind.</div>
+                  </td>
+                  <td><span style="font-size:12px;color:var(--olive-600)">Lincoln MS</span></td>
+                  <td style="text-align:center"><span class="badge badge-graduated">Graduated</span></td>
+                  <td style="text-align:right"><span class="num">0</span></td>
+                  <td style="text-align:right"><span class="delta-good">−100%</span></td>
+                  <td style="text-align:right"><span class="num-muted">Mar 28</span></td>
+                  <td style="text-align:center">
+                    <svg class="spark" viewBox="0 0 64 24"><polyline points="0,20 11,16 22,12 33,7 44,4 55,2 64,1" fill="none" stroke="#D6A033" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- Goal completion chart -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Goal Completion Rate</div>
+                <div class="card-sub">Avg across all sessions, last 8</div>
+              </div>
+            </div>
+            <div style="position:relative;height:130px">
+              <canvas id="goalChart" role="img" aria-label="Goal completion rate bar chart, last 8 sessions, ranging from 55 to 87 percent">Goal completion rates: 55, 60, 58, 70, 68, 75, 80, 87 percent.</canvas>
+            </div>
+          </div>
+
+          <!-- Metrics stack -->
+          <div class="metrics-stack">
+            <div class="metric-row">
+              <div>
+                <div class="metric-row-label">Avg Reduction from Baseline</div>
+                <div class="metric-row-val">54%</div>
+                <div class="progress-bar-wrap"><div class="progress-bar" style="width:54%"></div></div>
+              </div>
+            </div>
+            <div class="metric-row">
+              <div style="flex:1">
+                <div class="metric-row-label">Session Attendance Rate</div>
+                <div class="metric-row-val">88%</div>
+                <div class="progress-bar-wrap"><div class="progress-bar gold" style="width:88%"></div></div>
+              </div>
+            </div>
+            <div class="metric-row" style="border-left:3px solid #b45309">
+              <div>
+                <div class="metric-row-label" style="color:#b45309">Regression Flags</div>
+                <div class="metric-row-val" style="color:#b45309;font-size:22px">3</div>
+              </div>
+              <div style="font-size:10px;color:var(--olive-500);text-align:right;font-family:'Geist',sans-serif;line-height:1.5">Requires<br/>plan review</div>
+            </div>
+          </div>
+
+          <!-- AI Insight -->
+          <div class="ai-card">
+            <div class="ai-card-head">
+              <div class="ai-dot"></div>
+              <span>AI Briefing — Next Sessions</span>
+            </div>
+            <p>
+              <strong>Marcus T.</strong> requires immediate escalation review before your next session. For <strong>DeShawn M.</strong>, PBIS check-in strategy showing early traction — maintain current approach. <strong>Aaliyah J.</strong> milestone 3 on track; introduce coping strategy phase.
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const oliveBar = '#5C6B46';
+const oliveBaseline = '#aabb8a';
+const goldBar = '#D6A033';
+const tickFont = { family: "'IBM Plex Mono', monospace", size: 10 };
+const gridColor = 'rgba(92,107,70,.1)';
+
+new Chart(document.getElementById('incidentChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Nov','Dec','Jan','Feb','Mar','Apr'],
+    datasets: [{
+      label: 'Incidents',
+      data: [37,32,41,28,19,23],
+      backgroundColor: ['rgba(92,107,70,.35)','rgba(92,107,70,.35)','rgba(92,107,70,.35)','rgba(92,107,70,.65)','rgba(92,107,70,.85)','#5C6B46'],
+      borderRadius: 3,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#2d3820',
+        titleFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+        bodyFont: { family: "'Geist', sans-serif", size: 11 },
+        titleColor: '#fff', bodyColor: 'rgba(255,255,255,.7)',
+        padding: 8, cornerRadius: 6,
+        callbacks: { title: (i) => i[0].label, label: (i) => `  ${i.raw} incidents` }
+      },
+      annotation: {}
+    },
+    scales: {
+      x: { ticks: { font: tickFont, color: '#8a9e69' }, grid: { display: false }, border: { display: false } },
+      y: { ticks: { font: tickFont, color: '#8a9e69', stepSize: 10 }, grid: { color: gridColor }, border: { display: false }, beginAtZero: true }
+    }
+  }
+});
+
+new Chart(document.getElementById('goalChart'), {
+  type: 'bar',
+  data: {
+    labels: ['S1','S2','S3','S4','S5','S6','S7','S8'],
+    datasets: [{
+      label: 'Goal %',
+      data: [55,60,58,70,68,75,80,87],
+      backgroundColor: (ctx) => {
+        const v = ctx.raw;
+        return v >= 75 ? '#D6A033' : v >= 60 ? '#5C6B46' : 'rgba(92,107,70,.35)';
+      },
+      borderRadius: 3,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#2d3820',
+        titleFont: { family: "'IBM Plex Mono', monospace", size: 10 },
+        bodyFont: { family: "'Geist', sans-serif", size: 10 },
+        titleColor: '#fff', bodyColor: 'rgba(255,255,255,.7)',
+        padding: 6, cornerRadius: 5,
+        callbacks: { label: (i) => `  ${i.raw}% goals met` }
+      }
+    },
+    scales: {
+      x: { ticks: { font: { ...tickFont, size: 9 }, color: '#8a9e69' }, grid: { display: false }, border: { display: false } },
+      y: { ticks: { font: { ...tickFont, size: 9 }, color: '#8a9e69', callback: (v) => v + '%' }, grid: { color: gridColor }, border: { display: false }, beginAtZero: true, max: 100 }
+    }
+  }
+});
+</script>

@@ -16,13 +16,17 @@ All of the following must exist in `.env` (local) and in Vercel (all environment
 # .env.example — commit this file with descriptions, never with values
 
 # ─── DATABASE ─────────────────────────────────────────────────────────────────
-# Supabase connection pooler (pgBouncer) — used by Prisma at runtime
-# Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
-DATABASE_URL=
+# Pooler URLs (aws-0-*.pooler.supabase.com) cause FATAL: Tenant or user not found on migrations
+# and must NEVER be used for DIRECT_URL. Migrations require the direct database host only.
 
-# Supabase direct connection — used by Prisma for migrations only (port 5432, no pgbouncer)
-# Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
-DIRECT_URL=
+# CORRECT — direct host, port 5432, no pgbouncer param (replace [password] and hostname with your project)
+DIRECT_URL=postgresql://postgres:[password]@db.lgclshewixkovkshfxbl.supabase.co:5432/postgres
+
+# Local dev: use the same direct host for DATABASE_URL so Prisma Client and migrate both work reliably.
+DATABASE_URL=postgresql://postgres:[password]@db.lgclshewixkovkshfxbl.supabase.co:5432/postgres
+
+# Production (optional): pooler on 6543 with ?pgbouncer=true&connection_limit=1 may be used for DATABASE_URL
+# only — DIRECT_URL must always stay db.*.supabase.co:5432. Never point DIRECT_URL at the pooler hostname.
 
 # ─── AUTH ─────────────────────────────────────────────────────────────────────
 # NextAuth secret — generate with: openssl rand -base64 32

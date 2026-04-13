@@ -18,19 +18,25 @@ Missing either one breaks migrations or runtime queries.
 ```prisma
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")        // pgbouncer=true, port 6543 — for runtime queries
-  directUrl = env("DIRECT_URL")          // no pgbouncer, port 5432 — for migrations
+  url       = env("DATABASE_URL")   // Runtime queries (see .env — local dev often uses direct host)
+  directUrl = env("DIRECT_URL")     // Migrations only — MUST be db.* host, never pooler (see below)
 }
 ```
 
 ### .env — Required variables (never commit values)
 
-```bash
-# Runtime connection — pgBouncer pooled, port 6543
-DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-us-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+**Pooler URLs** (`aws-0-*.pooler.supabase.com`) **must never** be used for `DIRECT_URL`. They cause **`FATAL: Tenant or user not found`** during `prisma migrate` and other schema operations. Migrations require the **direct database host**.
 
-# Migration connection — direct, port 5432
-DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-0-us-west-1.pooler.supabase.com:5432/postgres"
+```bash
+# CORRECT — direct host, port 5432, no pgbouncer param (use your project ref in the hostname)
+DIRECT_URL="postgresql://postgres:[password]@db.lgclshewixkovkshfxbl.supabase.co:5432/postgres"
+
+# Local dev: use the same direct host for DATABASE_URL so Prisma Client and migrate both work reliably.
+DATABASE_URL="postgresql://postgres:[password]@db.lgclshewixkovkshfxbl.supabase.co:5432/postgres"
+
+# Production (optional): you may use the Supabase pooler on port 6543 with pgbouncer=true for DATABASE_URL
+# only — but DIRECT_URL must always remain the db.*:5432 direct URL above. Never point DIRECT_URL at
+# aws-0-*.pooler.supabase.com.
 ```
 
 ### Vercel — Both variables required in every environment
@@ -149,6 +155,53 @@ updated_at  DateTime  @updatedAt
 
 ---
 
+## Supabase Auth trigger — `profiles` row on new `auth.users`
+
+`profiles.role` is Prisma enum **`UserRole`** in Postgres. Inserts must cast metadata to **`"UserRole"`**; plain text fails.
+
+Store and version this SQL in the repo (do **not** treat the Supabase SQL editor as the source of truth):
+
+**File:** `prisma/sql/handle_new_user.sql`
+
+**Apply locally / CI** (after `DIRECT_URL` is correct):
+
+```bash
+npx prisma db execute --file prisma/sql/handle_new_user.sql --schema prisma/schema.prisma
+```
+
+**Never** run raw migration or trigger DDL only in the Supabase SQL editor without committing the same SQL to the repository first.
+
+```sql
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, name, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'name', new.email),
+    coalesce(
+      (new.raw_user_meta_data->>'role')::"UserRole",
+      'counselor'::"UserRole"
+    )
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+```
+
+---
+
 ## Query Patterns
 
 ### Row-Level Access — Always in WHERE, Never in JS
@@ -157,6 +210,7 @@ updated_at  DateTime  @updatedAt
 // CORRECT — DB-layer filter
 const students = await prisma.student.findMany({
   where: {
+    tenant_id: tenantId,
     ...(role === 'counselor' ? { assigned_counselor_id: userId } : {})
   }
 })
@@ -164,6 +218,23 @@ const students = await prisma.student.findMany({
 // WRONG — never fetch all and filter in JS
 const all = await prisma.student.findMany()
 const filtered = all.filter(s => s.assigned_counselor_id === userId)
+```
+
+### Multi-Tenancy Query Pattern
+
+```typescript
+// CORRECT — every query scoped to tenant
+const students = await prisma.student.findMany({
+  where: {
+    tenant_id: tenantId,
+    ...(role === 'counselor' ? { assigned_counselor_id: userId } : {})
+  }
+})
+
+// WRONG — missing tenant scope
+const students = await prisma.student.findMany({
+  where: { assigned_counselor_id: userId }
+})
 ```
 
 ### SELECT Only What You Need
@@ -291,7 +362,7 @@ Never remove an enum value without auditing all rows using it first.
 ## What Never Happens
 
 - **Never** use Supabase's auto-generated REST API (`supabase.from('students').select(...)`)
-- **Never** use Supabase Auth — use NextAuth.js only
+- **Never** use the Supabase client for application data — Prisma only (Supabase Auth is identity only)
 - **Never** use `prisma.$queryRaw` with string concatenation — use parameterized queries only
 - **Never** instantiate `new PrismaClient()` outside `lib/prisma.ts`
 - **Never** call `prisma.disconnect()` in route handlers

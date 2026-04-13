@@ -1,0 +1,557 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --o900:#1e2517;--o800:#2d3820;--o700:#3d4c2c;--o600:#5C6B46;--o500:#6e8050;
+  --o400:#8a9e69;--o300:#aabb8a;--o200:#c8d6aa;--o100:#e4eccc;--o50:#f3f7e8;
+  --g500:#D6A033;--g400:#e0b44e;--g100:#faf0d0;
+  --sf:#fff;--sm:#f5f6f1;--ss:#eef0e8;
+  --err:#dc2626;--ok:#16a34a;
+}
+body{font-family:'Geist',system-ui,sans-serif;background:var(--sm);color:var(--o900);font-size:13px}
+
+.shell{display:flex;height:920px;overflow:hidden}
+
+.sidebar{width:200px;min-width:200px;background:var(--o800);display:flex;flex-direction:column}
+.sb-logo{padding:16px 14px 12px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px}
+.sb-mark{width:26px;height:26px;background:var(--g500);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--o800);flex-shrink:0}
+.sb-name{font-family:'DM Serif Display',serif;font-size:13px;color:#fff;font-weight:400}
+.nav{flex:1;padding:10px 6px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:5px;font-size:12px;font-weight:500;color:rgba(255,255,255,.45);cursor:pointer;transition:all .15s;margin-bottom:1px}
+.ni:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.75)}
+.ni.active{background:rgba(255,255,255,.1);color:#fff}
+.ni svg{width:13px;height:13px;flex-shrink:0}
+.ns{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.22);padding:10px 8px 3px}
+.sb-foot{padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:7px}
+.av{width:24px;height:24px;border-radius:50%;background:var(--o600);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;flex-shrink:0}
+.av-info p{font-size:11px;color:rgba(255,255,255,.75);font-weight:500}
+.av-info span{font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.04em}
+
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.topbar{background:var(--sf);border-bottom:1px solid rgba(92,107,70,.1);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:10}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--o500)}
+.breadcrumb svg{color:var(--o300)}
+.breadcrumb strong{color:var(--o800);font-weight:500}
+.breadcrumb a{color:var(--o500);cursor:pointer;text-decoration:none}
+.breadcrumb a:hover{color:var(--o600)}
+
+.page-body{padding:20px;display:flex;gap:20px;align-items:flex-start}
+
+.form-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.side-col{width:280px;min-width:280px;display:flex;flex-direction:column;gap:14px}
+
+.card{background:var(--sf);border:1px solid rgba(92,107,70,.12);border-radius:10px;overflow:hidden}
+.card-head{padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600;color:var(--o900)}
+.card-sub{font-size:10px;color:var(--o500);margin-top:2px}
+.card-body{padding:14px 16px}
+
+.student-context{background:var(--o800);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.sc-geo{position:absolute;right:-20px;bottom:-20px;width:100px;height:100px;border-radius:50%;border:18px solid rgba(255,255,255,.04)}
+.sc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative;z-index:1}
+.sc-avatar{width:36px;height:36px;border-radius:8px;background:var(--o600);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:14px;color:#fff;flex-shrink:0}
+.sc-name{font-family:'DM Serif Display',serif;font-size:18px;color:#fff;font-weight:400}
+.sc-meta{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+.sc-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:relative;z-index:1}
+.sc-field{background:rgba(255,255,255,.06);border-radius:6px;padding:8px 10px}
+.sc-field-label{font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:3px}
+.sc-field-val{font-size:12px;color:#fff;font-weight:500}
+.sc-field-val.mono{font-family:'IBM Plex Mono',monospace;font-size:11px}
+.auto-pill{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:rgba(214,160,51,.15);color:var(--g400);border:1px solid rgba(214,160,51,.2);padding:2px 5px;border-radius:3px;margin-left:4px;vertical-align:middle}
+
+.field-group{display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--o700);display:flex;align-items:center;gap:6px}
+.req{color:var(--err);font-size:11px}
+.field-hint{font-size:10px;color:var(--o500)}
+.field-input{width:100%;height:40px;padding:0 12px;background:var(--ss);border:1px solid rgba(92,107,70,.2);border-radius:7px;font-size:13px;color:var(--o900);font-family:'Geist',sans-serif;outline:none;transition:border .15s,background .15s}
+.field-input:focus{background:var(--sf);border-color:var(--o600);box-shadow:0 0 0 3px rgba(92,107,70,.1)}
+.field-input:hover:not(:focus){border-color:rgba(92,107,70,.35)}
+.field-input.mono{font-family:'IBM Plex Mono',monospace}
+.field-input.readonly{background:var(--o50);color:var(--o600);cursor:default;border-color:rgba(92,107,70,.12)}
+.err-msg{font-size:10px;color:var(--err);display:none;align-items:center;gap:3px;margin-top:2px}
+.err-msg.show{display:flex}
+.field-input.err{border-color:var(--err);background:var(--sf)}
+.field-input.err:focus{box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+
+select.field-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a9e69' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+
+.form-row{display:grid;gap:12px}
+.col-2{grid-template-columns:1fr 1fr}
+.col-3{grid-template-columns:1fr 1fr 1fr}
+
+.attendance-seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.att-opt{position:relative}
+.att-opt input{position:absolute;opacity:0;width:0;height:0}
+.att-opt label{display:flex;align-items:center;justify-content:center;height:38px;border-radius:7px;border:1px solid rgba(92,107,70,.2);font-size:11px;font-weight:500;color:var(--o600);cursor:pointer;background:var(--ss);transition:all .15s;text-align:center;padding:0 6px;line-height:1.2}
+.att-opt label:hover{border-color:var(--o400);background:var(--o50)}
+.att-opt input:checked + label{background:var(--o600);border-color:var(--o600);color:#fff}
+.att-opt input:checked + label.no-show{background:var(--err);border-color:var(--err)}
+.att-opt input:checked + label.rescheduled{background:var(--o500);border-color:var(--o500)}
+.att-opt input:checked + label.cancelled{background:#6b7280;border-color:#6b7280}
+.att-opt input:focus-visible + label{box-shadow:0 0 0 2px var(--o600),0 0 0 4px rgba(92,107,70,.15)}
+
+.summary-wrap{position:relative}
+textarea.field-input{height:auto;padding:12px;resize:none;line-height:1.6;font-size:13px}
+.char-count{position:absolute;bottom:10px;right:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--o400)}
+
+.goals-section{display:flex;flex-direction:column;gap:8px}
+.goal-row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--ss);border-radius:8px;border:1px solid rgba(92,107,70,.12);transition:border .15s}
+.goal-row:focus-within{border-color:rgba(92,107,70,.3);background:var(--sf)}
+.goal-num{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--o400);width:20px;flex-shrink:0;text-align:center}
+.goal-input{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--o900);font-family:'Geist',sans-serif}
+.goal-input::placeholder{color:var(--o400)}
+.goal-toggle{display:flex;gap:4px;flex-shrink:0}
+.gt-btn{padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid rgba(92,107,70,.2);background:transparent;font-family:'Geist',sans-serif;transition:all .15s;height:28px;display:flex;align-items:center}
+.gt-btn.met{color:var(--o600);border-color:rgba(92,107,70,.2)}
+.gt-btn.met.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.gt-btn.notmet{color:var(--o600);border-color:rgba(92,107,70,.2)}
+.gt-btn.notmet.on{background:var(--err);border-color:var(--err);color:#fff}
+.goal-del{background:none;border:none;cursor:pointer;color:var(--o300);padding:4px;display:flex;align-items:center;transition:color .15s}
+.goal-del:hover{color:var(--err)}
+.add-goal-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:8px;border:1px dashed rgba(92,107,70,.3);background:transparent;font-size:12px;font-weight:500;color:var(--o500);cursor:pointer;transition:all .15s;font-family:'Geist',sans-serif;width:100%}
+.add-goal-btn:hover{border-color:var(--o400);color:var(--o600);background:var(--o50)}
+
+.goal-summary-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--o50);border-radius:7px;border:1px solid var(--o100)}
+.gsb-label{font-size:11px;color:var(--o600)}
+.gsb-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--o800)}
+
+.incidents-link{display:flex;flex-direction:column;gap:6px}
+.inc-opt{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--ss);border-radius:7px;cursor:pointer;transition:background .12s;border:1px solid transparent}
+.inc-opt:hover{background:var(--o50);border-color:var(--o100)}
+.inc-opt.selected{background:var(--o50);border-color:var(--o200)}
+.inc-opt input[type=checkbox]{width:14px;height:14px;accent-color:var(--o600);flex-shrink:0}
+.inc-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.inc-date-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--o600);flex-shrink:0}
+.inc-type-label{font-size:11px;font-weight:500;color:var(--o800);flex:1}
+.inc-sev-badge{font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;text-transform:uppercase}
+.sev-h{background:#fef2f2;color:var(--err);border:1px solid #fecaca}
+.sev-m{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+
+.ai-preview{background:var(--o800);border-radius:10px;overflow:hidden}
+.ai-preview-head{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:6px}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--g500)}
+.ai-preview-title{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--g500)}
+.ai-preview-body{padding:12px 14px}
+.ai-preview-text{font-size:11px;line-height:1.7;color:rgba(255,255,255,.6)}
+.ai-preview-text strong{color:#fff;font-weight:500}
+.ai-trigger-note{font-size:9px;color:rgba(255,255,255,.3);margin-top:8px;display:flex;align-items:center;gap:4px}
+
+.form-footer{background:var(--sf);border-top:1px solid rgba(92,107,70,.1);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;bottom:0;z-index:10}
+.footer-status{font-size:11px;color:var(--o500);display:flex;align-items:center;gap:6px}
+.footer-status .dot{width:6px;height:6px;border-radius:50%;background:var(--g500)}
+.footer-actions{display:flex;gap:8px}
+.btn{padding:0 16px;height:36px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid rgba(92,107,70,.22);background:transparent;color:var(--o700);font-family:'Geist',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--o50)}
+.btn.primary{background:var(--o600);color:#fff;border-color:var(--o600);font-weight:600}
+.btn.primary:hover{background:var(--o700)}
+.btn.primary:active{transform:scale(.99)}
+.btn.primary:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+.validation-toast{position:sticky;top:0;z-index:20;background:#fef2f2;border-bottom:1px solid #fecaca;padding:8px 20px;display:none;align-items:center;gap:8px;font-size:12px;color:var(--err)}
+.validation-toast.show{display:flex}
+</style>
+
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Log a new counseling session for Marcus Thompson — pre-populated form with attendance, summary, goals, and incident linking</h2>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark">OS</div>
+      <div class="sb-name">Scholars OS</div>
+    </div>
+    <nav class="nav">
+      <div class="ns">Main</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard</div>
+      <div class="ni active"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 13c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>Students</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>Sessions</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M3 4h7M3 12h5"/></svg>Incidents</div>
+      <div class="ns">Reports</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12V6l4-3 4 3v6"/></svg>Analytics</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10l1 3H2L3 2zM2 5v9h12V5"/></svg>Reports</div>
+    </nav>
+    <div class="sb-foot">
+      <div class="av">JR</div>
+      <div class="av-info"><p>J. Rivera</p><span>Counselor</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="breadcrumb">
+        <a>Students</a>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        <a>Marcus Thompson</a>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        <strong>Log Session</strong>
+      </div>
+      <span style="font-size:11px;color:var(--o400);font-family:'IBM Plex Mono',monospace">Session #13</span>
+    </div>
+
+    <div class="validation-toast" id="valToast">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0V5zm.75 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+      <span id="valMsg">Session summary is required for attended sessions.</span>
+    </div>
+
+    <div class="page-body">
+      <div class="form-col">
+
+        <div class="student-context">
+          <div class="sc-geo"></div>
+          <div class="sc-top">
+            <div class="sc-avatar">MT</div>
+            <div>
+              <div class="sc-name">Marcus Thompson</div>
+              <div class="sc-meta">Grade 8 · Lincoln MS · Stockton USD</div>
+            </div>
+          </div>
+          <div class="sc-fields">
+            <div class="sc-field">
+              <div class="sc-field-label">Counselor <span class="auto-pill">Auto</span></div>
+              <div class="sc-field-val">J. Rivera</div>
+            </div>
+            <div class="sc-field">
+              <div class="sc-field-label">Date <span class="auto-pill">Auto</span></div>
+              <div class="sc-field-val mono" id="sessionDateDisplay">Apr 11, 2026</div>
+            </div>
+            <div class="sc-field">
+              <div class="sc-field-label">Format <span class="auto-pill">Auto</span></div>
+              <div class="sc-field-val">Individual</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Session Details</div></div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+
+            <div class="form-row col-3">
+              <div class="field-group">
+                <label class="field-label">Session Date <span class="req">*</span></label>
+                <input type="date" class="field-input mono" id="sessionDate" value="2026-04-11" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Session Type <span class="req">*</span></label>
+                <select class="field-input" id="sessionType">
+                  <option value="follow_up" selected>Follow-up</option>
+                  <option value="initial_assessment">Initial Assessment</option>
+                  <option value="check_in">Check-in</option>
+                  <option value="crisis">Crisis</option>
+                  <option value="group">Group</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Duration (min) <span class="req">*</span></label>
+                <input type="number" class="field-input mono" id="duration" value="30" min="5" max="120" style="text-align:center" />
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Attendance Status <span class="req">*</span></label>
+              <div class="attendance-seg">
+                <div class="att-opt">
+                  <input type="radio" name="attendance" id="att-attended" value="attended" checked />
+                  <label for="att-attended" class="attended">Attended</label>
+                </div>
+                <div class="att-opt">
+                  <input type="radio" name="attendance" id="att-noshow" value="no_show" />
+                  <label for="att-noshow" class="no-show">No-show</label>
+                </div>
+                <div class="att-opt">
+                  <input type="radio" name="attendance" id="att-rescheduled" value="rescheduled" />
+                  <label for="att-rescheduled" class="rescheduled">Rescheduled</label>
+                </div>
+                <div class="att-opt">
+                  <input type="radio" name="attendance" id="att-cancelled" value="cancelled" />
+                  <label for="att-cancelled" class="cancelled">Cancelled</label>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="card" id="summaryCard">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Session Summary <span class="req" style="font-size:11px">*</span></div>
+              <div class="card-sub" style="margin-top:3px">Primary AI input — describe what happened, what was addressed, and how the student responded</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="summary-wrap field-group">
+              <textarea class="field-input" id="summaryText" rows="7" placeholder="Write what happened in this session. Include: topics discussed, student's emotional state and engagement, techniques used, any disclosures or significant moments, and how the session ended..." style="width:100%;padding:12px;line-height:1.6;resize:vertical;min-height:140px"></textarea>
+              <div class="char-count" id="charCount">0</div>
+            </div>
+            <div class="err-msg" id="summaryErr">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0V5zm.75 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+              Session summary is required when attendance is Attended.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head" style="padding-bottom:12px">
+            <div>
+              <div class="card-title">Session Goals <span style="font-size:10px;color:var(--o500);font-weight:400;text-transform:none;letter-spacing:0"> — optional</span></div>
+              <div class="card-sub">Add 1–5 goals. Mark each met or not met.</div>
+            </div>
+            <div class="goal-summary-bar" id="goalBar" style="display:none">
+              <span class="gsb-label">Goals met</span>
+              <span class="gsb-val" id="goalSummary">0 / 0</span>
+            </div>
+          </div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+            <div class="goals-section" id="goalsSection"></div>
+            <button class="add-goal-btn" id="addGoalBtn" onclick="addGoal()">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
+              Add goal
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="side-col">
+
+        <div class="ai-preview">
+          <div class="ai-preview-head">
+            <div class="ai-dot"></div>
+            <span class="ai-preview-title">Pre-session AI Briefing</span>
+          </div>
+          <div class="ai-preview-body">
+            <p class="ai-preview-text"><strong>Open with connection, not the incident.</strong> Do not lead with Apr 8 OSS. Begin with a general check-in — Marcus responds better when heard before challenged.</p>
+            <p class="ai-preview-text" style="margin-top:8px">At the 10-min mark, use the <strong>STOP technique</strong> to walk through the cafeteria incident for self-awareness, not blame. Close by revisiting the home conversation opened Mar 25.</p>
+            <p class="ai-preview-text" style="margin-top:8px">If he discloses further about home situation — <strong style="color:#fca5a5">escalation protocol applies.</strong></p>
+            <div class="ai-trigger-note">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 7v5M8 5v1"/></svg>
+              AI will re-analyze after you save this session
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head" style="padding-bottom:10px">
+            <div>
+              <div class="card-title">Link Incidents</div>
+              <div class="card-sub">Connect incidents discussed in this session</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="incidents-link" id="incidentsList">
+              <div class="inc-opt" onclick="toggleInc(this)">
+                <input type="checkbox" id="inc1" />
+                <div class="inc-dot" style="background:var(--err)"></div>
+                <span class="inc-date-label">Apr 08</span>
+                <span class="inc-type-label">OSS — Cafeteria</span>
+                <span class="inc-sev-badge sev-h">High</span>
+              </div>
+              <div class="inc-opt" onclick="toggleInc(this)">
+                <input type="checkbox" id="inc2" />
+                <div class="inc-dot" style="background:var(--g500)"></div>
+                <span class="inc-date-label">Apr 03</span>
+                <span class="inc-type-label">Office Referral</span>
+                <span class="inc-sev-badge sev-m">Med</span>
+              </div>
+              <div class="inc-opt" onclick="toggleInc(this)">
+                <input type="checkbox" id="inc3" />
+                <div class="inc-dot" style="background:var(--o400)"></div>
+                <span class="inc-date-label">Mar 28</span>
+                <span class="inc-type-label">Behavioral</span>
+                <span class="inc-sev-badge" style="background:var(--o50);color:var(--o600);border:1px solid var(--o100)">Low</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Notes for Record</div><div class="card-sub">Admin context only — not AI-analyzed</div></div></div>
+          <div class="card-body">
+            <textarea class="field-input" rows="3" placeholder="Add any administrative notes, scheduling notes, or context not relevant to behavioral analysis..." style="width:100%;padding:10px 12px;resize:none;line-height:1.6;font-size:12px"></textarea>
+          </div>
+        </div>
+
+        <div style="background:var(--o50);border:1px solid var(--o100);border-radius:8px;padding:10px 12px">
+          <div style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--o500);margin-bottom:6px">After saving</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--o700)">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--o400)" stroke-width="1.5" style="margin-top:1px;flex-shrink:0"><path d="M3 8l3 3 7-7"/></svg>
+              Session saved to Marcus's timeline
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--o700)">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--o400)" stroke-width="1.5" style="margin-top:1px;flex-shrink:0"><path d="M3 8l3 3 7-7"/></svg>
+              Goal completion rate computed server-side
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--o700)">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--g500)" stroke-width="1.5" style="margin-top:1px;flex-shrink:0"><path d="M8 3v10M3 8h10"/></svg>
+              <span style="color:var(--o700)">AI re-analysis triggered automatically — updated briefing ready before next session</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <div class="footer-status">
+        <div class="dot"></div>
+        <span id="footerStatus">All required fields complete — ready to save</span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn" onclick="saveDraft()">Save Draft</button>
+        <button class="btn primary" id="submitBtn" onclick="handleSubmit()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l3 3 7-7"/></svg>
+          Log Session &amp; Trigger AI Analysis
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let goals = [];
+let goalIdCounter = 0;
+
+function addGoal() {
+  if (goals.length >= 5) return;
+  const id = ++goalIdCounter;
+  goals.push({ id, text: '', met: null });
+  renderGoals();
+  setTimeout(() => {
+    const inp = document.getElementById('goal-input-' + id);
+    if (inp) inp.focus();
+  }, 50);
+}
+
+function removeGoal(id) {
+  goals = goals.filter(g => g.id !== id);
+  renderGoals();
+  updateGoalSummary();
+}
+
+function setGoalMet(id, val) {
+  const g = goals.find(g => g.id === id);
+  if (g) { g.met = g.met === val ? null : val; }
+  renderGoals();
+  updateGoalSummary();
+}
+
+function renderGoals() {
+  const sec = document.getElementById('goalsSection');
+  sec.innerHTML = '';
+  goals.forEach((g, i) => {
+    const row = document.createElement('div');
+    row.className = 'goal-row';
+    row.innerHTML = `
+      <span class="goal-num">${i + 1}</span>
+      <input class="goal-input" id="goal-input-${g.id}" type="text" placeholder="Describe the goal for this session..." value="${g.text}" />
+      <div class="goal-toggle">
+        <button class="gt-btn met${g.met === true ? ' on' : ''}" onclick="setGoalMet(${g.id}, true)">Met</button>
+        <button class="gt-btn notmet${g.met === false ? ' on' : ''}" onclick="setGoalMet(${g.id}, false)">Not Met</button>
+      </div>
+      <button class="goal-del" onclick="removeGoal(${g.id})" aria-label="Remove goal">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </button>`;
+    row.querySelector('.goal-input').addEventListener('input', function() {
+      const gObj = goals.find(x => x.id === g.id);
+      if (gObj) gObj.text = this.value;
+    });
+    sec.appendChild(row);
+  });
+  const addBtn = document.getElementById('addGoalBtn');
+  addBtn.style.display = goals.length >= 5 ? 'none' : 'flex';
+  updateGoalSummary();
+}
+
+function updateGoalSummary() {
+  const bar = document.getElementById('goalBar');
+  const summary = document.getElementById('goalSummary');
+  if (goals.length === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const met = goals.filter(g => g.met === true).length;
+  const attempted = goals.filter(g => g.met !== null).length;
+  summary.textContent = `${met} / ${goals.length}`;
+}
+
+const textarea = document.getElementById('summaryText');
+const charCount = document.getElementById('charCount');
+textarea.addEventListener('input', function() {
+  const len = this.value.length;
+  charCount.textContent = len > 0 ? len : '';
+  if (len > 0) {
+    this.classList.remove('err');
+    document.getElementById('summaryErr').classList.remove('show');
+  }
+  updateFooterStatus();
+});
+
+function updateFooterStatus() {
+  const att = document.querySelector('input[name="attendance"]:checked')?.value;
+  const sum = document.getElementById('summaryText').value.trim();
+  const status = document.getElementById('footerStatus');
+  const dot = document.querySelector('.footer-status .dot');
+  if (att === 'attended' && sum.length === 0) {
+    status.textContent = 'Session summary required for attended sessions';
+    dot.style.background = '#b45309';
+  } else {
+    status.textContent = 'All required fields complete — ready to save';
+    dot.style.background = 'var(--g500)';
+  }
+}
+
+document.querySelectorAll('input[name="attendance"]').forEach(r => {
+  r.addEventListener('change', function() {
+    const isAttended = this.value === 'attended';
+    const summaryCard = document.getElementById('summaryCard');
+    summaryCard.style.opacity = isAttended ? '1' : '0.5';
+    updateFooterStatus();
+  });
+});
+
+function toggleInc(el) {
+  const cb = el.querySelector('input[type=checkbox]');
+  cb.checked = !cb.checked;
+  el.classList.toggle('selected', cb.checked);
+}
+
+function handleSubmit() {
+  const att = document.querySelector('input[name="attendance"]:checked')?.value;
+  const sum = document.getElementById('summaryText').value.trim();
+  const toast = document.getElementById('valToast');
+
+  if (att === 'attended' && sum.length === 0) {
+    document.getElementById('summaryText').classList.add('err');
+    document.getElementById('summaryErr').classList.add('show');
+    document.getElementById('summaryText').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4000);
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M8 2a6 6 0 010 12"/></svg> Saving &amp; triggering AI…`;
+
+  setTimeout(() => {
+    btn.style.background = 'var(--ok)';
+    btn.style.borderColor = 'var(--ok)';
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l3 3 7-7"/></svg> Session Saved`;
+    document.getElementById('footerStatus').textContent = 'Session #13 saved · AI analysis queued';
+    document.querySelector('.footer-status .dot').style.background = 'var(--ok)';
+  }, 1800);
+}
+
+function saveDraft() {
+  const btn = document.querySelector('.btn:not(.primary)');
+  const orig = btn.textContent;
+  btn.textContent = 'Draft saved';
+  btn.style.color = 'var(--ok)';
+  btn.style.borderColor = 'var(--ok)';
+  setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+}
+
+updateFooterStatus();
+</script>
+<style>
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+</style>

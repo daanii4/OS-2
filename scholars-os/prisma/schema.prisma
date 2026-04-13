@@ -18,6 +18,12 @@ enum UserRole {
   counselor
 }
 
+enum TenantPlan {
+  starter
+  growth
+  enterprise
+}
+
 enum StudentStatus {
   active
   graduated
@@ -47,11 +53,27 @@ enum Grade {
 }
 
 enum SessionType {
-  initial_assessment
-  follow_up
+  intake_assessment
+  behavioral_observation
+  classroom_support
+  emotional_regulation
+  group_behavior_support
+  peer_conflict_mediation
   check_in
   crisis
-  group
+}
+
+enum ReferralStatus {
+  open
+  in_progress
+  completed
+  closed
+}
+
+enum ConsentStatus {
+  active
+  expired
+  revoked
 }
 
 enum AttendanceStatus {
@@ -112,8 +134,31 @@ enum CounselorAction {
 // Extends Supabase auth.users — id matches auth.users.id exactly
 // ─────────────────────────────────────────────
 
+model Tenant {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  subdomain   String     @unique
+  owner_email String
+  plan        TenantPlan @default(starter)
+  active      Boolean    @default(true)
+  created_at  DateTime   @default(now())
+
+  profiles        Profile[]
+  students        Student[]
+  referrals       Referral[]
+  consent_records ConsentRecord[]
+  incidents       BehavioralIncident[]
+  sessions        Session[]
+  success_plans   SuccessPlan[]
+  ai_analyses     AiAnalysis[]
+
+  @@map("tenants")
+}
+
 model Profile {
   id         String   @id // UUID from Supabase Auth — do not generate here
+  tenant_id  String?
   name       String
   email      String   @unique
   role       UserRole @default(counselor)
@@ -121,12 +166,17 @@ model Profile {
   created_at DateTime @default(now())
 
   // Relations
+  tenant               Tenant?               @relation(fields: [tenant_id], references: [id])
   assigned_students    Student[]            @relation("AssignedCounselor")
   sessions             Session[]
   logged_incidents     BehavioralIncident[]
   created_plans        SuccessPlan[]
   ai_analyses_reviewed AiAnalysis[]
+  assigned_referrals   Referral[]            @relation("AssignedReferrals")
+  created_referrals    Referral[]            @relation("CreatedReferrals")
+  consent_records      ConsentRecord[]
 
+  @@index([tenant_id])
   @@map("profiles")
 }
 
@@ -136,6 +186,7 @@ model Profile {
 
 model Student {
   id                      String        @id @default(uuid())
+  tenant_id               String?
   first_name              String
   last_name               String
   grade                   Grade
@@ -150,18 +201,24 @@ model Student {
   baseline_incident_count Int?
   baseline_window_start   DateTime?
   baseline_window_end     DateTime?
+  school_year             String?
   general_notes           String?       @db.Text // NOT AI-analyzed per spec
   escalation_active       Boolean       @default(false)
   created_at              DateTime      @default(now())
   updated_at              DateTime      @updatedAt
 
   // Relations
+  tenant             Tenant?               @relation(fields: [tenant_id], references: [id])
   assigned_counselor Profile?             @relation("AssignedCounselor", fields: [assigned_counselor_id], references: [id])
   incidents          BehavioralIncident[]
   sessions           Session[]
   success_plans      SuccessPlan[]
   ai_analyses        AiAnalysis[]
+  referrals          Referral[]
+  consent_records    ConsentRecord[]
 
+  @@index([tenant_id])
+  @@index([tenant_id, assigned_counselor_id])
   @@map("students")
 }
 
@@ -172,6 +229,7 @@ model Student {
 
 model BehavioralIncident {
   id                String       @id @default(uuid())
+  tenant_id         String?
   student_id        String
   incident_date     DateTime
   incident_type     IncidentType
@@ -184,10 +242,13 @@ model BehavioralIncident {
   created_at        DateTime     @default(now())
 
   // Relations
+  tenant            Tenant?  @relation(fields: [tenant_id], references: [id])
   student           Student  @relation(fields: [student_id], references: [id])
   logged_by_profile Profile  @relation(fields: [logged_by], references: [id])
   linked_session    Session? @relation(fields: [linked_session_id], references: [id])
 
+  @@index([tenant_id])
+  @@index([tenant_id, student_id])
   @@map("behavioral_incidents")
 }
 
@@ -198,10 +259,11 @@ model BehavioralIncident {
 
 model Session {
   id                   String           @id @default(uuid())
+  tenant_id            String?
   student_id           String
   counselor_id         String           // Always set from auth — never from request body
   session_date         DateTime
-  session_type         SessionType      @default(follow_up)
+  session_type         SessionType      @default(check_in)
   session_format       SessionFormat    @default(individual)
   duration_minutes     Int              @default(30)
   attendance_status    AttendanceStatus
@@ -214,11 +276,14 @@ model Session {
   updated_at           DateTime         @updatedAt
 
   // Relations
+  tenant           Tenant?               @relation(fields: [tenant_id], references: [id])
   student          Student              @relation(fields: [student_id], references: [id])
   counselor        Profile              @relation(fields: [counselor_id], references: [id])
   linked_incidents BehavioralIncident[]
   ai_analyses      AiAnalysis[]
 
+  @@index([tenant_id])
+  @@index([tenant_id, student_id])
   @@map("sessions")
 }
 
@@ -228,6 +293,7 @@ model Session {
 
 model SuccessPlan {
   id                   String           @id @default(uuid())
+  tenant_id            String?
   student_id           String
   created_by           String           // FK → profiles — always set from auth
   status               PlanStatus       @default(active)
@@ -243,10 +309,64 @@ model SuccessPlan {
   updated_at           DateTime         @updatedAt
 
   // Relations
+  tenant             Tenant?  @relation(fields: [tenant_id], references: [id])
   student            Student @relation(fields: [student_id], references: [id])
   created_by_profile Profile @relation(fields: [created_by], references: [id])
 
+  @@index([tenant_id])
+  @@index([tenant_id, student_id])
   @@map("success_plans")
+}
+
+model Referral {
+  id                 String         @id @default(uuid())
+  tenant_id          String
+  student_id         String
+  referral_date      DateTime
+  referred_by        String
+  brief_description  String?        @db.Text
+  intervention_types SessionType[]
+  status             ReferralStatus @default(open)
+  assigned_to        String?
+  linked_consent_id  String?
+  created_by         String
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+
+  tenant             Tenant         @relation(fields: [tenant_id], references: [id])
+  student            Student        @relation(fields: [student_id], references: [id])
+  assigned_profile   Profile?       @relation("AssignedReferrals", fields: [assigned_to], references: [id])
+  created_by_profile Profile        @relation("CreatedReferrals", fields: [created_by], references: [id])
+  consent_record     ConsentRecord? @relation(fields: [linked_consent_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([tenant_id, student_id])
+  @@map("referrals")
+}
+
+model ConsentRecord {
+  id                   String        @id @default(uuid())
+  tenant_id            String
+  student_id           String
+  school_year          String
+  parent_guardian_name String
+  consent_date         DateTime
+  district             String
+  school               String
+  behaviorist_name     String
+  status               ConsentStatus @default(active)
+  signed_copy_url      String?
+  created_by           String
+  created_at           DateTime      @default(now())
+
+  tenant             Tenant    @relation(fields: [tenant_id], references: [id])
+  student            Student   @relation(fields: [student_id], references: [id])
+  created_by_profile Profile   @relation(fields: [created_by], references: [id])
+  referrals          Referral[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, student_id])
+  @@map("consent_records")
 }
 
 // ─────────────────────────────────────────────
@@ -255,6 +375,7 @@ model SuccessPlan {
 
 model AiAnalysis {
   id                        String          @id @default(uuid())
+  tenant_id                 String?
   student_id                String
   triggered_by              AITrigger
   problem_analysis          String          @db.Text
@@ -269,9 +390,12 @@ model AiAnalysis {
   created_at                DateTime        @default(now())
 
   // Relations
+  tenant                Tenant?  @relation(fields: [tenant_id], references: [id])
   student               Student  @relation(fields: [student_id], references: [id])
   reviewed_by_profile   Profile? @relation(fields: [reviewed_by], references: [id])
   linked_session        Session? @relation(fields: [linked_session_id], references: [id])
 
+  @@index([tenant_id])
+  @@index([tenant_id, student_id])
   @@map("ai_analyses")
 }

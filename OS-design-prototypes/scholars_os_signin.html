@@ -1,0 +1,260 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --o900:#1e2517;--o800:#2d3820;--o700:#3d4c2c;--o600:#5C6B46;--o500:#6e8050;
+  --o400:#8a9e69;--o300:#aabb8a;--o200:#c8d6aa;--o100:#e4eccc;--o50:#f3f7e8;
+  --g500:#D6A033;--g400:#e0b44e;--g200:#f0d898;--g100:#faf0d0;--g50:#fdf8ec;
+  --sf:#fff;--sm:#f6f7f2;--ss:#eef0e8;
+  --err:#dc2626;--ok:#16a34a;
+}
+body{font-family:'Geist',system-ui,sans-serif;background:var(--sm)}
+
+.page{display:grid;grid-template-columns:1fr 1fr;min-height:680px}
+
+.left{background:var(--o800);display:flex;flex-direction:column;padding:40px 44px;position:relative;overflow:hidden}
+
+.geo-accent{position:absolute;bottom:-60px;right:-60px;width:280px;height:280px;border-radius:50%;border:40px solid rgba(214,160,51,.08)}
+.geo-accent2{position:absolute;top:-40px;left:-40px;width:180px;height:180px;border-radius:50%;border:28px solid rgba(255,255,255,.04)}
+.geo-bar{position:absolute;top:0;left:0;width:4px;height:100%;background:var(--g500)}
+
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:48px;position:relative;z-index:1}
+.brand-mark{width:32px;height:32px;background:var(--g500);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark span{font-size:12px;font-weight:700;color:var(--o800);font-family:'Geist',sans-serif;letter-spacing:-.01em}
+.brand-name{font-family:'DM Serif Display',serif;font-size:16px;color:#fff;font-weight:400;line-height:1.1}
+.brand-sub{font-size:9px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;font-family:'Geist',sans-serif}
+
+.left-body{flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:1}
+.left-eyebrow{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);margin-bottom:12px;font-family:'Geist',sans-serif}
+.left-headline{font-family:'DM Serif Display',serif;font-size:32px;color:#fff;font-weight:400;line-height:1.2;margin-bottom:20px}
+.left-headline em{color:var(--g400);font-style:italic}
+.left-body-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.5);max-width:300px;font-family:'Geist',sans-serif}
+
+.stat-row{display:flex;gap:24px;margin-top:36px}
+.stat{border-left:2px solid rgba(214,160,51,.3);padding-left:12px}
+.stat-n{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500;color:#fff;line-height:1}
+.stat-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;font-family:'Geist',sans-serif}
+
+.left-foot{font-size:10px;color:rgba(255,255,255,.25);margin-top:auto;padding-top:32px;font-family:'Geist',sans-serif;position:relative;z-index:1}
+.left-foot span{color:rgba(214,160,51,.5)}
+
+.right{background:var(--sf);display:flex;align-items:center;justify-content:center;padding:40px 48px}
+.form-wrap{width:100%;max-width:360px}
+
+.form-eyebrow{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--o400);margin-bottom:8px;font-family:'Geist',sans-serif}
+.form-title{font-family:'DM Serif Display',serif;font-size:26px;color:var(--o900);font-weight:400;margin-bottom:4px}
+.form-sub{font-size:12px;color:var(--o500);margin-bottom:32px;font-family:'Geist',sans-serif}
+
+.field{margin-bottom:18px}
+.field label{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--o700);margin-bottom:6px;font-family:'Geist',sans-serif}
+.field input{
+  width:100%;height:44px;padding:0 14px;
+  background:var(--ss);border:1px solid rgba(92,107,70,.2);border-radius:8px;
+  font-size:14px;color:var(--o900);font-family:'Geist',sans-serif;
+  outline:none;transition:border .15s,background .15s;
+}
+.field input:focus{background:var(--sf);border-color:var(--o600);box-shadow:0 0 0 3px rgba(92,107,70,.12)}
+.field input::placeholder{color:rgba(92,107,70,.35)}
+.field input.has-val{background:var(--sf);border-color:rgba(92,107,70,.3)}
+
+.field-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.field-row label{margin-bottom:0}
+.forgot{font-size:11px;color:var(--o500);font-family:'Geist',sans-serif;cursor:pointer;text-decoration:none;transition:color .15s}
+.forgot:hover{color:var(--o600)}
+
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:44px}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--o400);padding:4px;display:flex;align-items:center;transition:color .15s}
+.pw-toggle:hover{color:var(--o600)}
+
+.remember-row{display:flex;align-items:center;gap:8px;margin-bottom:24px}
+.remember-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--o600);cursor:pointer;flex-shrink:0}
+.remember-row label{font-size:12px;color:var(--o600);cursor:pointer;font-family:'Geist',sans-serif}
+
+.submit-btn{
+  width:100%;height:46px;border-radius:8px;
+  background:var(--o600);color:#fff;border:none;
+  font-size:14px;font-weight:600;font-family:'Geist',sans-serif;
+  cursor:pointer;transition:background .15s,transform .1s;
+  letter-spacing:.01em;
+}
+.submit-btn:hover{background:var(--o700)}
+.submit-btn:active{background:var(--o800);transform:scale(.99)}
+
+.divider{display:flex;align-items:center;gap:10px;margin:20px 0}
+.divider-line{flex:1;height:1px;background:rgba(92,107,70,.12)}
+.divider span{font-size:10px;color:var(--o400);font-family:'Geist',sans-serif;white-space:nowrap}
+
+.ferpa-notice{background:var(--o50);border:1px solid rgba(92,107,70,.18);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:8px}
+.ferpa-icon{width:14px;height:14px;flex-shrink:0;margin-top:1px;color:var(--o500)}
+.ferpa-text{font-size:10px;line-height:1.5;color:var(--o600);font-family:'Geist',sans-serif}
+.ferpa-text strong{font-weight:600;color:var(--o700)}
+
+.form-foot{text-align:center;margin-top:20px;font-size:11px;color:var(--o400);font-family:'Geist',sans-serif}
+.form-foot a{color:var(--o600);text-decoration:none;font-weight:500}
+
+.error-msg{display:none;font-size:11px;color:var(--err);margin-top:5px;font-family:'Geist',sans-serif;align-items:center;gap:4px}
+.error-msg.show{display:flex}
+
+.input-err{border-color:var(--err) !important;background:var(--sf) !important}
+.input-err:focus{box-shadow:0 0 0 3px rgba(220,38,38,.12) !important}
+</style>
+
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Operation Scholars OS sign-in page with brand panel and login form</h2>
+
+<div class="page">
+
+  <div class="left">
+    <div class="geo-accent"></div>
+    <div class="geo-accent2"></div>
+    <div class="geo-bar"></div>
+
+    <div class="brand">
+      <div class="brand-mark"><span>OS</span></div>
+      <div>
+        <div class="brand-name">Operation Scholars</div>
+        <div class="brand-sub">Behavioral Intelligence Platform</div>
+      </div>
+    </div>
+
+    <div class="left-body">
+      <div class="left-eyebrow">209 Area · Central Valley, CA</div>
+      <h1 class="left-headline">Every student's<br>story, <em>clearly told.</em></h1>
+      <p class="left-body-text">Evidence-based behavioral tracking for counseling contractors serving middle and high school students across the Central Valley.</p>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-n">54%</div>
+          <div class="stat-l">Avg incident reduction</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">88%</div>
+          <div class="stat-l">Session attendance rate</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">47</div>
+          <div class="stat-l">Active students</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="left-foot">
+      Secured by <span>FERPA-compliant</span> infrastructure · QuasarNova LLC · 2026
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="form-wrap">
+      <div class="form-eyebrow">Counselor Access</div>
+      <h2 class="form-title">Sign in to Scholars OS</h2>
+      <p class="form-sub">Access is restricted to authorized Operation Scholars staff.</p>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="you@opscholars.org" autocomplete="email" />
+        <div class="error-msg" id="email-err">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0V5zm.75 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+          Enter a valid email address
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="password">Password</label>
+          <a class="forgot" href="#">Forgot password?</a>
+        </div>
+        <div class="pw-wrap">
+          <input type="password" id="password" placeholder="••••••••••" autocomplete="current-password" />
+          <button class="pw-toggle" id="pw-toggle" aria-label="Show password" type="button">
+            <svg id="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg id="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+        <div class="error-msg" id="pw-err">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0V5zm.75 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+          Incorrect password — try again
+        </div>
+      </div>
+
+      <div class="remember-row">
+        <input type="checkbox" id="remember" />
+        <label for="remember">Keep me signed in for 30 days</label>
+      </div>
+
+      <button class="submit-btn" id="sign-in-btn" type="button" onclick="handleSignIn()">Sign in</button>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span>Protected access</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <div class="ferpa-notice">
+        <svg class="ferpa-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 016 0v2"/></svg>
+        <p class="ferpa-text"><strong>FERPA notice:</strong> This system contains protected student education records. Unauthorized access is prohibited. All sessions are logged.</p>
+      </div>
+
+      <div class="form-foot">
+        Need access? Contact <a href="#">De'marieya Nelson</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const emailEl = document.getElementById('email');
+const pwEl = document.getElementById('password');
+const emailErr = document.getElementById('email-err');
+const pwErr = document.getElementById('pw-err');
+const toggle = document.getElementById('pw-toggle');
+const eyeShow = document.getElementById('eye-show');
+const eyeHide = document.getElementById('eye-hide');
+
+toggle.addEventListener('click', () => {
+  const isHidden = pwEl.type === 'password';
+  pwEl.type = isHidden ? 'text' : 'password';
+  eyeShow.style.display = isHidden ? 'none' : 'block';
+  eyeHide.style.display = isHidden ? 'block' : 'none';
+  toggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+});
+
+emailEl.addEventListener('input', () => {
+  emailEl.classList.remove('input-err');
+  emailErr.classList.remove('show');
+  if(emailEl.value) emailEl.classList.add('has-val');
+  else emailEl.classList.remove('has-val');
+});
+
+pwEl.addEventListener('input', () => {
+  pwEl.classList.remove('input-err');
+  pwErr.classList.remove('show');
+  if(pwEl.value) pwEl.classList.add('has-val');
+  else pwEl.classList.remove('has-val');
+});
+
+function handleSignIn() {
+  let valid = true;
+  const emailVal = emailEl.value.trim();
+  const pwVal = pwEl.value;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+
+  if(!emailOk) {
+    emailEl.classList.add('input-err');
+    emailErr.classList.add('show');
+    valid = false;
+  }
+  if(pwVal.length < 1) {
+    pwEl.classList.add('input-err');
+    pwErr.classList.add('show');
+    valid = false;
+  }
+  if(valid) {
+    const btn = document.getElementById('sign-in-btn');
+    btn.textContent = 'Signing in…';
+    btn.style.opacity = '.7';
+    btn.style.cursor = 'not-allowed';
+  }
+}
+</script>

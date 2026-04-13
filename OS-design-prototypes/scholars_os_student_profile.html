@@ -1,0 +1,655 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --o900:#1e2517;--o800:#2d3820;--o700:#3d4c2c;--o600:#5C6B46;--o500:#6e8050;
+  --o400:#8a9e69;--o300:#aabb8a;--o200:#c8d6aa;--o100:#e4eccc;--o50:#f3f7e8;
+  --g500:#D6A033;--g400:#e0b44e;--g200:#f0d898;--g100:#faf0d0;--g50:#fdf8ec;
+  --sf:#fff;--sm:#f5f6f1;--ss:#eef0e8;
+  --err:#dc2626;--ok:#16a34a;--warn:#b45309;
+}
+body{font-family:'Geist',system-ui,sans-serif;background:var(--sm);color:var(--o900);font-size:13px}
+.serif{font-family:'DM Serif Display',Georgia,serif}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+.shell{display:flex;height:900px;overflow:hidden}
+
+.sidebar{width:200px;min-width:200px;background:var(--o800);display:flex;flex-direction:column}
+.sb-logo{padding:16px 14px 12px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px}
+.sb-mark{width:26px;height:26px;background:var(--g500);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--o800);flex-shrink:0}
+.sb-name{font-family:'DM Serif Display',serif;font-size:13px;color:#fff;font-weight:400}
+.nav{flex:1;padding:10px 6px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:5px;font-size:12px;font-weight:500;color:rgba(255,255,255,.45);cursor:pointer;transition:all .15s;margin-bottom:1px}
+.ni:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.75)}
+.ni.active{background:rgba(255,255,255,.1);color:#fff}
+.ni svg{width:13px;height:13px;flex-shrink:0}
+.ns{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.22);padding:10px 8px 3px;font-family:'Geist',sans-serif}
+.sb-foot{padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:7px}
+.av{width:24px;height:24px;border-radius:50%;background:var(--o600);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;flex-shrink:0}
+.av-info p{font-size:11px;color:rgba(255,255,255,.75);font-weight:500}
+.av-info span{font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.04em}
+
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+.esc-banner{background:var(--err);padding:9px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.esc-banner p{font-size:12px;font-weight:500;color:#fff}
+.esc-banner p strong{font-weight:700}
+.esc-ack{font-size:11px;font-weight:600;color:var(--err);background:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;flex-shrink:0;margin-left:12px;font-family:'Geist',sans-serif}
+
+.topbar{background:var(--sf);border-bottom:1px solid rgba(92,107,70,.1);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--o500)}
+.breadcrumb span{color:var(--o300)}
+.breadcrumb strong{color:var(--o800);font-weight:500}
+.tb-actions{display:flex;align-items:center;gap:8px}
+.btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid rgba(92,107,70,.22);background:transparent;color:var(--o700);font-family:'Geist',sans-serif;transition:all .15s;height:32px;display:flex;align-items:center;gap:5px}
+.btn:hover{background:var(--o50);border-color:var(--o400)}
+.btn.primary{background:var(--o600);color:#fff;border-color:var(--o600)}
+.btn.primary:hover{background:var(--o700)}
+.btn.gold{background:var(--g500);color:var(--o800);border-color:var(--g500);font-weight:600}
+.btn.gold:hover{background:var(--g400)}
+
+.page-body{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+
+.profile-header{background:var(--o800);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden}
+.ph-geo{position:absolute;right:-30px;bottom:-30px;width:160px;height:160px;border-radius:50%;border:28px solid rgba(255,255,255,.04)}
+.ph-geo2{position:absolute;right:60px;top:-40px;width:100px;height:100px;border-radius:50%;border:16px solid rgba(214,160,51,.07)}
+.ph-top{display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:1}
+.ph-id{display:flex;align-items:center;gap:12px}
+.ph-avatar{width:44px;height:44px;border-radius:10px;background:var(--o600);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:18px;color:#fff;font-weight:400;flex-shrink:0}
+.ph-name h1{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;font-weight:400;line-height:1.1}
+.ph-name p{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px}
+.ph-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:3px;font-family:'Geist',sans-serif;text-transform:uppercase}
+.b-active{background:rgba(228,236,204,.15);color:#c8d6aa;border:1px solid rgba(200,214,170,.2)}
+.b-esc{background:rgba(220,38,38,.2);color:#fca5a5;border:1px solid rgba(220,38,38,.3)}
+.b-ind{background:rgba(214,160,51,.15);color:#e0b44e;border:1px solid rgba(214,160,51,.2)}
+
+.ph-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);position:relative;z-index:1}
+.ph-stat-label{font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px}
+.ph-stat-val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500;color:#fff;line-height:1}
+.ph-stat-val.good{color:#86efac}
+.ph-stat-val.warn{color:#fcd34d}
+.ph-stat-val.bad{color:#fca5a5}
+.ph-stat-sub{font-size:9px;color:rgba(255,255,255,.3);margin-top:3px}
+
+.two-col{display:grid;grid-template-columns:1fr 300px;gap:14px}
+.three-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.card{background:var(--sf);border:1px solid rgba(92,107,70,.12);border-radius:10px;overflow:hidden}
+.card-head{padding:13px 16px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.card-title{font-size:12px;font-weight:600;color:var(--o900)}
+.card-sub{font-size:10px;color:var(--o500);margin-top:2px}
+.card-body{padding:12px 16px 14px}
+
+.period-toggle{display:flex;gap:2px;background:var(--ss);border-radius:5px;padding:2px}
+.pt{font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px;border:none;background:transparent;color:var(--o500);cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s}
+.pt.on{background:var(--sf);color:var(--o800);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.chart-wrap{position:relative}
+
+.sessions-list{display:flex;flex-direction:column}
+.session-item{padding:10px 16px;border-bottom:1px solid rgba(92,107,70,.07);display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:background .12s}
+.session-item:last-child{border-bottom:none}
+.session-item:hover{background:var(--o50)}
+.s-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--o400);background:var(--sf);flex-shrink:0;margin-top:4px}
+.s-dot.attended{border-color:var(--ok)}
+.s-dot.noshow{border-color:var(--err)}
+.s-meta{flex:1;min-width:0}
+.s-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.s-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--o600);font-weight:500}
+.s-type{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:2px;background:var(--o50);color:var(--o600);border:1px solid var(--o100)}
+.s-att-ok{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:2px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.s-att-no{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:1px 5px;border-radius:2px;background:#fef2f2;color:var(--err);border:1px solid #fecaca}
+.s-summary{font-size:11px;color:var(--o700);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-goals{display:flex;align-items:center;gap:4px;margin-top:3px}
+.s-goals span{font-size:9px;color:var(--o500)}
+.s-goals .gv{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--o800)}
+
+.intake-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.intake-field{padding:8px 10px;background:var(--ss);border-radius:6px}
+.ifl{font-size:9px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--o500);margin-bottom:3px}
+.ifv{font-size:12px;color:var(--o800);font-weight:500;line-height:1.3}
+.intake-full{grid-column:span 2;padding:8px 10px;background:var(--ss);border-radius:6px}
+.intake-text{font-size:11px;color:var(--o700);line-height:1.6}
+
+.plan-card{border:1px solid rgba(92,107,70,.12);border-radius:8px;overflow:hidden}
+.plan-head{padding:10px 12px;background:var(--o50);border-bottom:1px solid rgba(92,107,70,.1);display:flex;align-items:center;justify-content:space-between}
+.plan-title{font-size:11px;font-weight:600;color:var(--o800)}
+.plan-status-badge{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:var(--o100);color:var(--o700);text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--o200)}
+.plan-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.plan-goal{font-size:11px;color:var(--o700);line-height:1.6;padding:8px;background:var(--ss);border-radius:6px;border-left:2px solid var(--o400)}
+.plan-row{display:flex;align-items:center;justify-content:space-between}
+.plan-row-label{font-size:10px;color:var(--o500)}
+.plan-row-val{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--o800)}
+.pbar{height:4px;background:var(--o100);border-radius:2px;overflow:hidden;margin-top:4px}
+.pbar-fill{height:100%;border-radius:2px;background:var(--o600)}
+.pbar-fill.gold{background:var(--g500)}
+
+.milestones{display:flex;flex-direction:column;gap:4px}
+.ms-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--ss)}
+.ms-week{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--o500);width:36px;flex-shrink:0}
+.ms-bar-wrap{flex:1;height:4px;background:var(--o100);border-radius:2px;overflow:hidden}
+.ms-bar{height:100%;border-radius:2px}
+.ms-bar.met{background:var(--ok)}
+.ms-bar.missed{background:var(--err)}
+.ms-bar.ahead{background:var(--g500)}
+.ms-bar.upcoming{background:var(--o200)}
+.ms-status{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;width:52px;text-align:right;flex-shrink:0}
+.ms-met{color:var(--ok)}
+.ms-missed{color:var(--err)}
+.ms-ahead{color:#7a5a10}
+.ms-upcoming{color:var(--o400)}
+.ms-actual{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--o700);width:24px;text-align:center;flex-shrink:0}
+
+.ai-panel{background:var(--o800);border-radius:10px;overflow:hidden}
+.ai-head{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between}
+.ai-head-left{display:flex;align-items:center;gap:6px}
+.ai-pulse{width:7px;height:7px;border-radius:50%;background:var(--g500)}
+.ai-head-title{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--g500);font-family:'Geist',sans-serif}
+.ai-head-sub{font-size:10px;color:rgba(255,255,255,.35)}
+.ai-section{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.ai-section:last-child{border-bottom:none}
+.ai-sec-label{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:7px;font-family:'Geist',sans-serif}
+.ai-text{font-size:12px;line-height:1.7;color:rgba(255,255,255,.65);font-family:'Geist',sans-serif}
+.ai-text strong{color:#fff;font-weight:500}
+
+.intervention{padding:8px 10px;background:rgba(255,255,255,.05);border-radius:6px;border-left:2px solid var(--g500);margin-bottom:6px}
+.intervention:last-child{margin-bottom:0}
+.int-name{font-size:11px;font-weight:500;color:#fff;margin-bottom:3px}
+.int-rationale{font-size:10px;line-height:1.6;color:rgba(255,255,255,.55)}
+.int-source{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:500;color:var(--g400);margin-top:4px;letter-spacing:.02em;font-family:'IBM Plex Mono',monospace}
+
+.ask-ai-wrap{padding:12px 16px;border-top:1px solid rgba(255,255,255,.07)}
+.ask-ai-label{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:7px;font-family:'Geist',sans-serif}
+.ask-row{display:flex;gap:6px}
+.ask-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:7px 10px;font-size:12px;color:#fff;font-family:'Geist',sans-serif;outline:none;transition:border .15s}
+.ask-input:focus{border-color:rgba(214,160,51,.4);background:rgba(255,255,255,.09)}
+.ask-input::placeholder{color:rgba(255,255,255,.25)}
+.ask-btn{padding:0 12px;height:34px;border-radius:6px;background:var(--g500);border:none;color:var(--o800);font-size:11px;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:background .15s;flex-shrink:0}
+.ask-btn:hover{background:var(--g400)}
+
+.incident-list{display:flex;flex-direction:column}
+.inc-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid rgba(92,107,70,.07);cursor:pointer;transition:background .12s}
+.inc-item:last-child{border-bottom:none}
+.inc-item:hover{background:var(--o50)}
+.inc-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.inc-dot.oss{background:var(--err)}
+.inc-dot.iss{background:var(--warn)}
+.inc-dot.ref{background:var(--g500)}
+.inc-dot.beh{background:var(--o400)}
+.inc-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--o600);width:70px;flex-shrink:0}
+.inc-type{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;width:110px;flex-shrink:0}
+.inc-type.oss{color:var(--err)}
+.inc-type.iss{color:var(--warn)}
+.inc-type.ref{color:#7a5a10}
+.inc-type.beh{color:var(--o600)}
+.inc-sev{font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
+.sev-high{background:#fef2f2;color:var(--err);border:1px solid #fecaca}
+.sev-med{background:#fffbeb;color:var(--warn);border:1px solid #fde68a}
+.sev-low{background:var(--o50);color:var(--o600);border:1px solid var(--o100)}
+.inc-desc{font-size:11px;color:var(--o600);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Marcus T. student behavioral profile with incident history, session log, success plan, and AI counselor briefing</h2>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark">OS</div>
+      <div class="sb-name">Scholars OS</div>
+    </div>
+    <nav class="nav">
+      <div class="ns">Main</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard</div>
+      <div class="ni active"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 13c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>Students</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>Sessions</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M3 4h7M3 12h5"/></svg>Incidents</div>
+      <div class="ns">Reports</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12V6l4-3 4 3v6"/><rect x="6" y="9" width="4" height="3"/></svg>Analytics</div>
+      <div class="ni"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10l1 3H2L3 2zM2 5v9h12V5"/><path d="M6 9h4M8 9v3"/></svg>Reports</div>
+    </nav>
+    <div class="sb-foot">
+      <div class="av">DN</div>
+      <div class="av-info"><p>De'marieya N.</p><span>Owner</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="esc-banner">
+      <p><strong>Escalation Required</strong> — AI has flagged a safety concern. Refer to licensed clinician before next session.</p>
+      <button class="esc-ack" onclick="this.closest('.esc-banner').style.background='#991b1b';this.textContent='Acknowledged'">Acknowledge &amp; Document</button>
+    </div>
+
+    <div class="topbar">
+      <div class="breadcrumb">
+        <span>Students</span>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        <strong>Marcus Thompson</strong>
+      </div>
+      <div class="tb-actions">
+        <button class="btn">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
+          Log Session
+        </button>
+        <button class="btn">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M3 4h7M3 12h5"/></svg>
+          Log Incident
+        </button>
+        <button class="btn gold">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10l1 3H2L3 2zM2 5v9h12V5"/></svg>
+          Export Report
+        </button>
+        <button class="btn" style="padding:5px 8px">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="3" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="8" cy="13" r="1"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <div class="profile-header">
+        <div class="ph-geo"></div><div class="ph-geo2"></div>
+        <div class="ph-top">
+          <div class="ph-id">
+            <div class="ph-avatar">MT</div>
+            <div class="ph-name">
+              <h1>Marcus Thompson</h1>
+              <p>Grade 8 · Lincoln Middle School · Stockton USD · Assigned to J. Rivera</p>
+            </div>
+          </div>
+          <div class="ph-badges" style="margin-top:4px">
+            <span class="badge b-active">Active</span>
+            <span class="badge b-ind">Individual</span>
+            <span class="badge b-esc">
+              <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm0 4v4m0 2v2"/></svg>
+              Escalation Flag
+            </span>
+          </div>
+        </div>
+        <div class="ph-stats">
+          <div>
+            <div class="ph-stat-label">Incidents (30d)</div>
+            <div class="ph-stat-val bad">7</div>
+            <div class="ph-stat-sub">vs 4 baseline</div>
+          </div>
+          <div>
+            <div class="ph-stat-label">vs Baseline</div>
+            <div class="ph-stat-val bad">+75%</div>
+            <div class="ph-stat-sub">Regression active</div>
+          </div>
+          <div>
+            <div class="ph-stat-label">Goal Completion</div>
+            <div class="ph-stat-val warn">58%</div>
+            <div class="ph-stat-sub">Last session</div>
+          </div>
+          <div>
+            <div class="ph-stat-label">Sessions Total</div>
+            <div class="ph-stat-val" style="color:#fff">12</div>
+            <div class="ph-stat-sub">Since Jan 14, 2026</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="card">
+            <div class="card-head">
+              <div><div class="card-title">Incident Frequency Over Time</div><div class="card-sub">Office referrals, suspensions, and behavioral incidents</div></div>
+              <div class="period-toggle">
+                <button class="pt">Wk</button>
+                <button class="pt on">Mo</button>
+                <button class="pt">Yr</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding-top:10px">
+              <div class="chart-wrap" style="height:160px;position:relative">
+                <canvas id="incChart" role="img" aria-label="Monthly incident chart for Marcus Thompson showing regression in April">Monthly incidents: Jan 3, Feb 5, Mar 2, Apr 7. Baseline: 4.</canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="three-col">
+            <div class="card">
+              <div class="card-head"><div><div class="card-title">Incident Type Breakdown</div><div class="card-sub">Composition by type</div></div></div>
+              <div class="card-body" style="padding-top:10px">
+                <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+                  <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--o600)"><span style="width:8px;height:8px;border-radius:1px;background:var(--err);display:inline-block"></span>OSS</span>
+                  <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--o600)"><span style="width:8px;height:8px;border-radius:1px;background:var(--warn);display:inline-block"></span>ISS</span>
+                  <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--o600)"><span style="width:8px;height:8px;border-radius:1px;background:var(--g500);display:inline-block"></span>Referral</span>
+                  <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--o600)"><span style="width:8px;height:8px;border-radius:1px;background:var(--o400);display:inline-block"></span>Behavioral</span>
+                </div>
+                <div style="height:120px;position:relative">
+                  <canvas id="typeChart" role="img" aria-label="Stacked bar chart of incident types over 4 months">Incident type breakdown by month showing increase in OSS in April.</canvas>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><div class="card-title">Goal Completion Rate</div><div class="card-sub">Per session, last 8</div></div></div>
+              <div class="card-body" style="padding-top:10px">
+                <div style="height:120px;position:relative">
+                  <canvas id="goalChart" role="img" aria-label="Goal completion rate bar chart, last 8 sessions">Goal completion rates per session ranging from 40 to 80 percent.</canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head" style="padding-bottom:10px">
+              <div><div class="card-title">Behavioral Incident Log</div><div class="card-sub">All recorded incidents · most recent first</div></div>
+              <button class="btn" style="font-size:11px;height:28px">+ Log Incident</button>
+            </div>
+            <div class="incident-list">
+              <div class="inc-item">
+                <div class="inc-dot oss"></div>
+                <span class="inc-date">Apr 08, 2026</span>
+                <span class="inc-type oss">OSS</span>
+                <span class="inc-sev sev-high">High</span>
+                <span class="inc-desc">Physical altercation in cafeteria — 3-day suspension issued</span>
+              </div>
+              <div class="inc-item">
+                <div class="inc-dot ref"></div>
+                <span class="inc-date">Apr 03, 2026</span>
+                <span class="inc-type ref">Office Referral</span>
+                <span class="inc-sev sev-med">Med</span>
+                <span class="inc-desc">Refusal to comply with teacher redirect, classroom disruption</span>
+              </div>
+              <div class="inc-item">
+                <div class="inc-dot beh"></div>
+                <span class="inc-date">Mar 28, 2026</span>
+                <span class="inc-type beh">Behavioral</span>
+                <span class="inc-sev sev-low">Low</span>
+                <span class="inc-desc">Verbal disagreement with peer, de-escalated by teacher</span>
+              </div>
+              <div class="inc-item">
+                <div class="inc-dot iss"></div>
+                <span class="inc-date">Feb 19, 2026</span>
+                <span class="inc-type iss">ISS</span>
+                <span class="inc-sev sev-med">Med</span>
+                <span class="inc-desc">Chronic tardiness policy violation — 1-day in-school suspension</span>
+              </div>
+              <div class="inc-item">
+                <div class="inc-dot ref"></div>
+                <span class="inc-date">Jan 30, 2026</span>
+                <span class="inc-type ref">Office Referral</span>
+                <span class="inc-sev sev-low">Low</span>
+                <span class="inc-desc">Disruptive behavior during transition period</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="card">
+            <div class="card-head" style="padding-bottom:10px">
+              <div><div class="card-title">Recent Sessions</div><div class="card-sub">Last 5 · tap to expand</div></div>
+              <button class="btn" style="font-size:11px;height:28px">+ Log Session</button>
+            </div>
+            <div class="sessions-list">
+              <div class="session-item">
+                <div class="s-dot attended"></div>
+                <div class="s-meta">
+                  <div class="s-top">
+                    <span class="s-date">Apr 08</span>
+                    <span class="s-type">Follow-up</span>
+                    <span class="s-att-ok">Attended</span>
+                  </div>
+                  <div class="s-summary">Discussed cafeteria incident — student acknowledged impact but showed resistance to accountability. Attempted CBT reframe with limited engagement...</div>
+                  <div class="s-goals"><span>Goals:</span><span class="gv">2/4</span><span>· 50%</span></div>
+                </div>
+              </div>
+              <div class="session-item">
+                <div class="s-dot attended"></div>
+                <div class="s-meta">
+                  <div class="s-top">
+                    <span class="s-date">Mar 25</span>
+                    <span class="s-type">Follow-up</span>
+                    <span class="s-att-ok">Attended</span>
+                  </div>
+                  <div class="s-summary">Positive session — student opened up about home stressors. Practiced the STOP technique. Showed willingness to use coping strategies during...</div>
+                  <div class="s-goals"><span>Goals:</span><span class="gv">3/4</span><span>· 75%</span></div>
+                </div>
+              </div>
+              <div class="session-item">
+                <div class="s-dot noshow"></div>
+                <div class="s-meta">
+                  <div class="s-top">
+                    <span class="s-date">Mar 18</span>
+                    <span class="s-type">Follow-up</span>
+                    <span class="s-att-no">No-show</span>
+                  </div>
+                  <div class="s-summary" style="color:var(--o400);font-style:italic">Student did not attend scheduled session. No prior notice.</div>
+                </div>
+              </div>
+              <div class="session-item">
+                <div class="s-dot attended"></div>
+                <div class="s-meta">
+                  <div class="s-top">
+                    <span class="s-date">Mar 11</span>
+                    <span class="s-type">Check-in</span>
+                    <span class="s-att-ok">Attended</span>
+                  </div>
+                  <div class="s-summary">Brief 15-min check-in. On-track that week — zero incidents. Reinforced positive behavior streak and acknowledged progress.</div>
+                  <div class="s-goals"><span>Goals:</span><span class="gv">3/3</span><span>· 100%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head" style="padding-bottom:10px">
+              <div><div class="card-title">Success Plan</div><div class="card-sub">Active · Week 8 of 12</div></div>
+              <button class="btn" style="font-size:11px;height:28px">Edit Plan</button>
+            </div>
+            <div class="card-body">
+              <div class="plan-card">
+                <div class="plan-head">
+                  <span class="plan-title">Reduce incidents &amp; build coping strategies</span>
+                  <span class="plan-status-badge">Active</span>
+                </div>
+                <div class="plan-body">
+                  <div class="plan-goal">Marcus will reduce office referrals to 0–1 per month and identify 2 coping strategies for frustration by May 30, 2026.</div>
+                  <div>
+                    <div class="plan-row"><span class="plan-row-label">Target reduction from baseline</span><span class="plan-row-val">75%</span></div>
+                    <div class="pbar"><div class="pbar-fill" style="width:0%"></div></div>
+                    <div style="font-size:9px;color:var(--err);margin-top:3px">Currently at +75% — regression active</div>
+                  </div>
+                  <div>
+                    <div class="plan-row"><span class="plan-row-label">Session frequency</span><span class="plan-row-val">Weekly</span></div>
+                  </div>
+                  <div>
+                    <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--o500);margin-bottom:6px">Milestones</div>
+                    <div class="milestones">
+                      <div class="ms-item"><span class="ms-week">Wk 1</span><div class="ms-bar-wrap"><div class="ms-bar met" style="width:100%"></div></div><span class="ms-actual">2</span><span class="ms-status ms-met">Met</span></div>
+                      <div class="ms-item"><span class="ms-week">Wk 2</span><div class="ms-bar-wrap"><div class="ms-bar met" style="width:100%"></div></div><span class="ms-actual">1</span><span class="ms-status ms-met">Met</span></div>
+                      <div class="ms-item"><span class="ms-week">Wk 4</span><div class="ms-bar-wrap"><div class="ms-bar ahead" style="width:100%"></div></div><span class="ms-actual">0</span><span class="ms-status ms-ahead" style="color:var(--g500)">Ahead</span></div>
+                      <div class="ms-item"><span class="ms-week">Wk 6</span><div class="ms-bar-wrap"><div class="ms-bar met" style="width:80%"></div></div><span class="ms-actual">2</span><span class="ms-status ms-met">Met</span></div>
+                      <div class="ms-item"><span class="ms-week">Wk 8</span><div class="ms-bar-wrap"><div class="ms-bar missed" style="width:100%"></div></div><span class="ms-actual">5</span><span class="ms-status ms-missed">Missed</span></div>
+                      <div class="ms-item"><span class="ms-week">Wk 10</span><div class="ms-bar-wrap"><div class="ms-bar upcoming" style="width:60%"></div></div><span class="ms-actual">—</span><span class="ms-status ms-upcoming">Upcoming</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head" style="padding-bottom:10px"><div><div class="card-title">Student Intake</div><div class="card-sub">Referral context &amp; background</div></div></div>
+            <div class="card-body">
+              <div class="intake-grid">
+                <div class="intake-field"><div class="ifl">Referral Source</div><div class="ifv">Principal — Lincoln MS</div></div>
+                <div class="intake-field"><div class="ifl">Intake Date</div><div class="ifv" style="font-family:'IBM Plex Mono',monospace;font-size:11px">Jan 14, 2026</div></div>
+                <div class="intake-field"><div class="ifl">District</div><div class="ifv">Stockton USD</div></div>
+                <div class="intake-field"><div class="ifl">Baseline Window</div><div class="ifv" style="font-family:'IBM Plex Mono',monospace;font-size:11px">Jan 14 – Feb 14</div></div>
+                <div class="intake-full"><div class="ifl">Presenting Problem</div><div class="intake-text">Chronic behavioral disruptions including physical altercations with peers, classroom non-compliance, and escalating office referrals. History of trauma exposure noted by school psychologist. No prior counseling engagement.</div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="ai-panel">
+        <div class="ai-head">
+          <div class="ai-head-left">
+            <div class="ai-pulse"></div>
+            <span class="ai-head-title">AI Briefing — Next Session</span>
+          </div>
+          <span class="ai-head-sub">Updated Apr 08, 2026 · Based on 12 sessions + 7 incidents</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0">
+          <div class="ai-section">
+            <div class="ai-sec-label">Problem Analysis</div>
+            <p class="ai-text">Marcus is experiencing a <strong>significant regression</strong> following a period of meaningful progress in weeks 3–6. The April 8th OSS event appears linked to unresolved stress around home instability — session summaries from March 25th reference concerns about family situation that were not fully explored. The current behavioral spike is not random; it correlates with an identified environmental stressor that has not yet been addressed therapeutically. The resistance to accountability in the most recent session suggests elevated emotional dysregulation that precedes his outbursts.</p>
+          </div>
+          <div class="ai-section">
+            <div class="ai-sec-label">Next Session Guide</div>
+            <p class="ai-text" style="margin-bottom:8px"><strong>Open with connection, not the incident.</strong> Do not lead with the April 8th OSS. Begin with a check-in on how Marcus is feeling generally — he responds better when he feels heard before challenged.</p>
+            <p class="ai-text" style="margin-bottom:8px">At the 10-minute mark, transition to the STOP technique practiced Mar 25th. Ask him to walk through what happened in the cafeteria using that framework — not to assign blame, but to build self-awareness.</p>
+            <p class="ai-text"><strong>Close with the home conversation.</strong> He opened this door on Mar 25. Use motivational interviewing to create space for him to share more. If he discloses further — escalation protocol applies.</p>
+          </div>
+          <div class="ai-section" style="border-right:none">
+            <div class="ai-sec-label">Recommended Interventions</div>
+            <div class="intervention">
+              <div class="int-name">PBIS Check-in / Check-out (CICO)</div>
+              <div class="int-rationale">Structured daily touchpoints shown to reduce behavioral incidents for students with trauma histories. Re-engage formal CICO given the regression.</div>
+              <div class="int-source">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3H3v10h10V9M9 2h5v5M9 7l5-5"/></svg>
+                pbis.org · CICO
+              </div>
+            </div>
+            <div class="intervention">
+              <div class="int-name">CBT Emotional Regulation Module</div>
+              <div class="int-rationale">Structured cognitive reframing for adolescents with frustration-driven aggression. Directly addresses the pattern observed in incident descriptions.</div>
+              <div class="int-source">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3H3v10h10V9M9 2h5v5M9 7l5-5"/></svg>
+                samhsa.gov · CBT Adolescents
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ask-ai-wrap">
+          <div class="ask-ai-label">Ask AI about Marcus</div>
+          <div class="ask-row">
+            <input class="ask-input" type="text" placeholder="e.g. He shuts down when I bring up home — how do I approach this?" id="askInput" />
+            <button class="ask-btn" onclick="handleAsk()">Ask</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const tf={family:"'IBM Plex Mono',monospace",size:10};
+const gc='rgba(92,107,70,.08)';
+
+new Chart(document.getElementById('incChart'),{
+  type:'bar',
+  data:{
+    labels:['Jan','Feb','Mar','Apr'],
+    datasets:[{
+      label:'Incidents',
+      data:[3,5,2,7],
+      backgroundColor:['rgba(92,107,70,.5)','rgba(92,107,70,.5)','rgba(92,107,70,.5)','#dc2626'],
+      borderRadius:3,borderSkipped:false
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#2d3820',
+        titleFont:{family:"'IBM Plex Mono',monospace",size:11},
+        bodyFont:{family:"'Geist',sans-serif",size:11},
+        titleColor:'#fff',bodyColor:'rgba(255,255,255,.7)',
+        padding:8,cornerRadius:5,
+        callbacks:{label:(i)=>`  ${i.raw} incidents`}
+      },
+      annotation:{}
+    },
+    scales:{
+      x:{ticks:{font:tf,color:'#8a9e69'},grid:{display:false},border:{display:false}},
+      y:{ticks:{font:tf,color:'#8a9e69',stepSize:2},grid:{color:gc},border:{display:false},beginAtZero:true,
+        title:{display:true,text:'Baseline: 4',font:tf,color:'#aabb8a'}}
+    }
+  }
+});
+
+new Chart(document.getElementById('typeChart'),{
+  type:'bar',
+  data:{
+    labels:['Jan','Feb','Mar','Apr'],
+    datasets:[
+      {label:'OSS',data:[0,1,0,1],backgroundColor:'#dc2626',borderRadius:2,stack:'s'},
+      {label:'ISS',data:[0,1,0,0],backgroundColor:'#b45309',stack:'s'},
+      {label:'Referral',data:[1,2,1,3],backgroundColor:'#D6A033',stack:'s'},
+      {label:'Behavioral',data:[2,1,1,3],backgroundColor:'#8a9e69',stack:'s'}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{
+      backgroundColor:'#2d3820',
+      titleFont:{family:"'IBM Plex Mono',monospace",size:10},
+      bodyFont:{family:"'Geist',sans-serif",size:10},
+      titleColor:'#fff',bodyColor:'rgba(255,255,255,.7)',padding:6,cornerRadius:5
+    }},
+    scales:{
+      x:{ticks:{font:{...tf,size:9},color:'#8a9e69'},grid:{display:false},border:{display:false}},
+      y:{ticks:{font:{...tf,size:9},color:'#8a9e69',stepSize:2},grid:{color:gc},border:{display:false},beginAtZero:true}
+    }
+  }
+});
+
+new Chart(document.getElementById('goalChart'),{
+  type:'bar',
+  data:{
+    labels:['S1','S2','S3','S4','S5','S6','S7','S8'],
+    datasets:[{
+      label:'Goal %',
+      data:[80,65,75,70,100,75,58,50],
+      backgroundColor:(ctx)=>ctx.raw>=75?'#D6A033':ctx.raw>=60?'#5C6B46':'rgba(92,107,70,.35)',
+      borderRadius:3,borderSkipped:false
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{
+      backgroundColor:'#2d3820',
+      titleFont:{family:"'IBM Plex Mono',monospace",size:10},
+      bodyFont:{family:"'Geist',sans-serif",size:10},
+      titleColor:'#fff',bodyColor:'rgba(255,255,255,.7)',padding:6,cornerRadius:5,
+      callbacks:{label:(i)=>`  ${i.raw}% goals met`}
+    }},
+    scales:{
+      x:{ticks:{font:{...tf,size:9},color:'#8a9e69'},grid:{display:false},border:{display:false}},
+      y:{ticks:{font:{...tf,size:9},color:'#8a9e69',callback:(v)=>v+'%'},grid:{color:gc},border:{display:false},beginAtZero:true,max:100}
+    }
+  }
+});
+
+document.querySelectorAll('.pt').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.pt').forEach(b=>b.classList.remove('on'));
+    this.classList.add('on');
+  });
+});
+
+function handleAsk(){
+  const v=document.getElementById('askInput').value.trim();
+  if(v) sendPrompt('Marcus Thompson — '+v);
+}
+
+document.getElementById('askInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter') handleAsk();
+});
+</script>

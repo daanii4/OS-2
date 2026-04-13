@@ -1,5 +1,5 @@
 ---
-description: AI integration rules for Operation Scholars OS. Apply to all files in lib/ai/, app/api/ai/**, and any route that imports the Anthropic SDK or calls triggerAIAnalysis().
+description: AI integration rules for Operation Scholars OS. Apply to all files in lib/ai/, app/api/ai/**, and any route that imports the OpenAI SDK or calls triggerAIAnalysis().
 globs: ["lib/ai/**/*.ts", "app/api/ai/**/*.ts", "app/api/students/**/ai/**/*.ts"]
 alwaysApply: true
 ---
@@ -14,19 +14,19 @@ The AI layer is a **background intelligence system**, not a user-facing synchron
 Session saves, incident logs, and plan operations must return to the user immediately.
 AI analysis always runs asynchronously in the background.
 
-The counselor never waits for Claude. If the AI fails, the session still saves.
+The counselor never waits for the AI. If the AI fails, the session still saves.
 
 ---
 
 ## Model
 
-Always use: `claude-sonnet-4-20250514`
+Always use: `gpt-4o`
 
-Do not use `claude-opus-*` or older Sonnet versions. Do not use model aliases like `claude-sonnet-latest`.
+Do not use `gpt-3.5-*` or any non-`gpt-4o` model. Do not use model aliases like `gpt-4o-latest`.
 
-**Optional tooling (tech stack):** If the implementation uses Anthropic **web search** (or similar),
-restrict retrieval and citations to the same **trusted domains** as `TRUSTED_DOMAINS` in
-`lib/ai/validation.ts`. Saved analyses still must pass `validateAIResponse()` before persisting.
+**API key:** `OPENAI_API_KEY` environment variable. The `OpenAI` client reads it automatically — never pass it explicitly in code.
+
+**Response format:** Always set `response_format: { type: 'json_object' }` on chat completions to guarantee valid JSON output.
 
 ---
 
@@ -34,13 +34,13 @@ restrict retrieval and citations to the same **trusted domains** as `TRUSTED_DOM
 
 ```typescript
 // lib/ai/analyze.ts
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { prisma } from '@/lib/prisma'
 import { getStudentContext } from './context'
-import { validateAIResponse, TRUSTED_DOMAINS } from './validation'
+import { validateAIResponse } from './validation'
 import { ANALYSIS_SYSTEM_PROMPT } from './prompts'
 
-const anthropic = new Anthropic()  // API key from ANTHROPIC_API_KEY env var
+const openai = new OpenAI()  // reads OPENAI_API_KEY from env automatically
 
 // Must match `ai_analyses.triggered_by` / Engineering Action Plan §4.7 (no extra values without migration)
 export type AITrigger =
@@ -67,28 +67,26 @@ export async function triggerAIAnalysis(
 ): Promise<void> {
   const context = await getStudentContext(studentId)
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
     max_tokens: 2048,
-    system: ANALYSIS_SYSTEM_PROMPT,
+    response_format: { type: 'json_object' },
     messages: [
-      {
-        role: 'user',
-        content: JSON.stringify(context)
-      }
-    ]
+      { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+      { role: 'user', content: JSON.stringify(context) },
+    ],
   })
 
-  const raw = response.content[0]
-  if (raw.type !== 'text') {
-    throw new Error('[ai/analyze] Unexpected response type from Claude')
+  const raw = response.choices[0]?.message?.content
+  if (!raw) {
+    throw new Error('[ai/analyze] Empty response from OpenAI')
   }
 
   let parsed: AIAnalysisResponse
   try {
-    parsed = JSON.parse(raw.text)
+    parsed = JSON.parse(raw)
   } catch {
-    throw new Error('[ai/analyze] Failed to parse Claude response as JSON')
+    throw new Error('[ai/analyze] Failed to parse OpenAI response as JSON')
   }
 
   // Source validation — reject entire response if any intervention lacks a trusted URL
@@ -142,7 +140,7 @@ triggerAIAnalysis(session.student_id, 'new_session', session.id).catch(err => {
 return NextResponse.json({ data: session }, { status: 201 })  // Returns immediately
 
 // WRONG — never await AI in a route handler
-const analysis = await triggerAIAnalysis(...)  // user waits for Claude
+const analysis = await triggerAIAnalysis(...)  // user waits for OpenAI
 return NextResponse.json({ data: session, analysis })
 ```
 
@@ -401,7 +399,7 @@ The escalation acknowledgment is not optional. The UI cannot be dismissed withou
 
 ## Context Window Efficiency
 
-The full student context is sent to Claude on every analysis. Keep it efficient:
+The full student context is sent to OpenAI on every analysis. Keep it efficient:
 
 - Session summaries: include all, in chronological order
 - Incidents: include all, in chronological order
@@ -434,6 +432,6 @@ console.log('[ai/analyze] Analysis:', parsed.problem_analysis)  // Student PII
 - Never return AI response content directly from a session/incident save route
 - Never save an AI analysis with an intervention missing a trusted source URL
 - Never send student names or identifying data as part of error logs
-- Never use a model other than `claude-sonnet-4-20250514`
+- Never use a model other than `gpt-4o`
 - Never stream AI responses directly to the client (use polling or webhook pattern via DB)
-- Never let a Claude API failure cause a session save to fail — they are independent operations
+- Never let an OpenAI API failure cause a session save to fail — they are independent operations

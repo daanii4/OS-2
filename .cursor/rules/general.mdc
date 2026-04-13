@@ -25,6 +25,7 @@ decision must reflect that reality from line one.
 - Framework: Next.js 14 (App Router) — `/app` directory only. No Pages Router.
 - Database: Supabase (PostgreSQL) via **Prisma ORM only**. Never use Supabase's auto-generated REST API or Supabase client for data queries.
 - Auth: Supabase Auth via @supabase/ssr. Session verified server-side with supabase.auth.getUser(). Role fetched from profiles table via Prisma. Never use the Supabase client for data queries — Prisma only.
+- Tenant routing: Subdomain -> tenant slug -> tenant_id injected by `proxy.ts` into `x-tenant-slug` header. All route handlers call `getTenantFromRequest()`; never resolve tenant inline in handlers.
 - Styling: Tailwind CSS
 - Charts: Recharts — all data server-computed
 - AI: Anthropic SDK — `claude-sonnet-4-20250514` — always async, never blocking
@@ -157,9 +158,9 @@ scholars-os/
 │   │   └── org/
 │   │       └── charts/
 ├── lib/
-│   ├── auth.ts           # NextAuth config
 │   ├── prisma.ts         # Prisma client singleton
 │   ├── permissions.ts    # canAccessStudent(), withRoleGuard()
+│   ├── tenant.ts         # getTenantFromRequest(), getTenantFromSlug()
 │   ├── ai/
 │   │   ├── analyze.ts    # triggerAIAnalysis() — async wrapper
 │   │   ├── context.ts    # getStudentContext() — builds full context payload
@@ -172,9 +173,7 @@ scholars-os/
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
-├── types/
-│   └── next-auth.d.ts    # Session type augmentation
-└── middleware.ts          # Route protection
+└── proxy.ts              # Route protection + tenant slug injection
 ```
 
 ---
