@@ -37,11 +37,11 @@ export default function LoginPage() {
         <aside className="hidden bg-[var(--olive-800)] text-white lg:flex lg:flex-col">
           <div className="border-b border-white/10 px-5 py-5">
             <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white/10 flex-shrink-0">
+              <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white flex-shrink-0">
                 <img
-                  src="/IMG_0219.PNG"
+                  src="/logo.png"
                   alt="Operation Scholars logo"
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-contain p-0.5"
                 />
               </div>
               <div>

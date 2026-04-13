@@ -247,11 +247,11 @@ export function DashboardShell({
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <div className="relative h-7 w-7 overflow-hidden rounded bg-white/10">
+            <div className="relative h-7 w-7 overflow-hidden rounded bg-white">
               <img
-                src="/IMG_0219.PNG"
+                src="/logo.png"
                 alt="Operation Scholars logo"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain p-0.5"
               />
             </div>
             <span className="os-subhead text-[var(--text-primary)]">Scholars OS</span>
@@ -279,11 +279,11 @@ export function DashboardShell({
             <div className="border-b border-white/10 px-4 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="relative h-9 w-9 overflow-hidden rounded-md bg-white/10">
+                  <div className="relative h-9 w-9 overflow-hidden rounded-md bg-white">
                     <img
-                      src="/IMG_0219.PNG"
+                      src="/logo.png"
                       alt="Operation Scholars logo"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-0.5"
                     />
                   </div>
                   <div>
@@ -334,11 +334,11 @@ export function DashboardShell({
         >
           <div className="border-b border-white/10 px-4 py-5">
             <div className="flex items-center gap-3">
-              <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-white/10">
+              <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-white">
                 <img
-                  src="/IMG_0219.PNG"
+                  src="/logo.png"
                   alt="Operation Scholars logo"
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-contain p-0.5"
                 />
               </div>
               <div
