@@ -5,7 +5,7 @@
  */
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessStudent, getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
@@ -21,7 +21,7 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
-const anthropic = new Anthropic()
+const openai = new OpenAI()
 
 export async function POST(req: Request, ctx: RouteContext) {
   const { id: studentId } = await ctx.params
@@ -58,11 +58,12 @@ export async function POST(req: Request, ctx: RouteContext) {
   try {
     const context = await getStudentContext(studentId)
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
       max_tokens: 2048,
-      system: ANALYSIS_SYSTEM_PROMPT,
+      response_format: { type: 'json_object' },
       messages: [
+        { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
         {
           role: 'user',
           content: `${JSON.stringify(context)}\n\nCounselor question: ${parsed.data.question}`,
@@ -70,16 +71,16 @@ export async function POST(req: Request, ctx: RouteContext) {
       ],
     })
 
-    const raw = response.content[0]
-    if (raw.type !== 'text') {
-      throw new Error('Unexpected Claude response type')
+    const raw = response.choices[0]?.message?.content
+    if (!raw) {
+      throw new Error('Empty response from OpenAI')
     }
 
     let aiResponse: AIAnalysisResponse
     try {
-      aiResponse = JSON.parse(raw.text) as AIAnalysisResponse
+      aiResponse = JSON.parse(raw) as AIAnalysisResponse
     } catch {
-      throw new Error('Failed to parse Claude response as JSON')
+      throw new Error('Failed to parse OpenAI response as JSON')
     }
 
     if (!validateAIResponse(aiResponse)) {
