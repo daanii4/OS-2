@@ -23,5 +23,5 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 if (process.env.NODE_ENV === 'production') {
-  console.error(`[prisma/init] runtime DATABASE_URL host=${getDatabaseHost()}`)
+  console.error(`DBHOST:${getDatabaseHost()}`)
 }

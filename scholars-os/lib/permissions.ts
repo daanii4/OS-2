@@ -71,11 +71,7 @@ export async function getProfile(userId: string) {
         ? String((error as { code?: unknown }).code ?? 'unknown')
         : 'unknown'
 
-    console.error(
-      `[permissions/getProfile] Prisma query failed code=${prismaCode} dbHost=${getDatabaseHost()} message=${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`
-    )
+    console.error(`GPF:${prismaCode}:HOST:${getDatabaseHost()}`)
 
     throw error
   }
