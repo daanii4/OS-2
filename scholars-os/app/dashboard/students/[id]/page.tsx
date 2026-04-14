@@ -10,7 +10,8 @@ import { parseIntakeFiles } from '@/lib/types/intake-file'
 import { ProfileHeader } from './profile-header'
 import { StudentStatusControl } from './student-status-control'
 import { StudentCharts } from './student-charts'
-import { StudentSectionsClient } from './student-sections-client'
+import { normalizeStudentSection } from './student-section-ids'
+import { StudentSectionTabs } from './student-section-tabs'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessStudent, getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
@@ -18,10 +19,16 @@ import { getTenantFromRequest } from '@/lib/tenant'
 
 type StudentDetailPageProps = {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ section?: string }>
 }
 
-export default async function StudentDetailPage({ params }: StudentDetailPageProps) {
+export default async function StudentDetailPage({
+  params,
+  searchParams,
+}: StudentDetailPageProps) {
   const { id: studentId } = await params
+  const sp = await searchParams
+  const section = normalizeStudentSection(sp?.section)
 
   const supabase = await createClient()
   const {
@@ -222,8 +229,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
         avgGoalRate={avgGoalRate}
       />
 
-      <StudentSectionsClient
-        sessions={
+      <StudentSectionTabs studentId={student.id} active={section} />
+      {section === 'sessions' && (
           <div className="grid gap-4 lg:grid-cols-2">
             <AddSessionForm studentId={student.id} />
             <div className="os-card">
@@ -282,8 +289,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               )}
             </div>
           </div>
-        }
-        incidents={
+      )}
+      {section === 'incidents' && (
           <div className="grid gap-4 lg:grid-cols-2">
             <AddIncidentForm studentId={student.id} />
             <div className="os-card">
@@ -327,8 +334,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               )}
             </div>
           </div>
-        }
-        overview={
+      )}
+      {section === 'overview' && (
           <>
             {/* Progress KPI row */}
             <section className="os-kpi-grid">
@@ -542,10 +549,12 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               </div>
             )}
           </>
-        }
-        charts={<StudentCharts studentId={student.id} />}
-        ai={<AIPanel studentId={student.id} escalationActive={student.escalation_active} />}
-        plans={
+      )}
+      {section === 'charts' && <StudentCharts studentId={student.id} />}
+      {section === 'ai' && (
+        <AIPanel studentId={student.id} escalationActive={student.escalation_active} />
+      )}
+      {section === 'plans' && (
           <div className="grid gap-4 lg:grid-cols-2">
             <CreatePlanForm studentId={student.id} />
             <div className="os-card">
@@ -579,8 +588,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               )}
             </div>
           </div>
-        }
-      />
+      )}
     </div>
   )
 }
