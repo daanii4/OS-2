@@ -4,6 +4,13 @@ import { FormEvent, useState } from 'react'
 
 const frequencyOptions = ['daily', 'weekly', 'biweekly', 'as_needed'] as const
 
+const FREQUENCY_LABEL: Record<(typeof frequencyOptions)[number], string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  biweekly: 'Every two weeks',
+  as_needed: 'As needed',
+}
+
 type CreatePlanFormProps = {
   studentId: string
 }
@@ -54,70 +61,121 @@ export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
   return (
     <form onSubmit={handleSubmit} className="os-card grid gap-3">
       <h3 className="os-heading">Create success plan</h3>
-      <textarea
-        value={goalStatement}
-        onChange={e => setGoalStatement(e.target.value)}
-        required
-        disabled={loading}
-        placeholder="Goal statement"
-        className="os-textarea"
-      />
-      <input
-        type="number"
-        min="0"
-        max="100"
-        value={targetReductionPct}
-        onChange={e => setTargetReductionPct(e.target.value)}
-        required
-        disabled={loading}
-        placeholder="Target reduction %"
-        className="os-input"
-      />
-      <input
-        type="number"
-        min="1"
-        value={planDurationWeeks}
-        onChange={e => setPlanDurationWeeks(e.target.value)}
-        required
-        disabled={loading}
-        placeholder="Plan duration (weeks)"
-        className="os-input"
-      />
-      <textarea
-        value={focusBehaviorsText}
-        onChange={e => setFocusBehaviorsText(e.target.value)}
-        required
-        disabled={loading}
-        placeholder="Focus behaviors (one per line)"
-        className="os-textarea"
-      />
-      <select
-        value={sessionFrequency}
-        onChange={e =>
-          setSessionFrequency(e.target.value as (typeof frequencyOptions)[number])
-        }
-        disabled={loading}
-        className="os-select"
-      >
-        {frequencyOptions.map(option => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <textarea
-        value={planNotes}
-        onChange={e => setPlanNotes(e.target.value)}
-        disabled={loading}
-        placeholder="Plan notes (optional)"
-        className="os-textarea"
-      />
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="goal-statement">
+          Goal statement
+        </label>
+        <p className="os-caption mb-1">Plain-language outcome you are working toward for this student.</p>
+        <textarea
+          id="goal-statement"
+          value={goalStatement}
+          onChange={e => setGoalStatement(e.target.value)}
+          required
+          disabled={loading}
+          placeholder="e.g. Reduce office referrals by building conflict skills"
+          className="os-textarea"
+          rows={3}
+        />
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="target-reduction-pct">
+          Target reduction (%)
+        </label>
+        <p className="os-caption mb-1">
+          Goal for how much to <strong>lower</strong> incidents compared to baseline, expressed as a percent.
+          Range: <strong>0–100</strong> (e.g. 50 means aim for half as many incidents as baseline).
+        </p>
+        <input
+          id="target-reduction-pct"
+          type="number"
+          min={0}
+          max={100}
+          value={targetReductionPct}
+          onChange={e => setTargetReductionPct(e.target.value)}
+          required
+          disabled={loading}
+          className="os-input"
+        />
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="plan-duration-weeks">
+          Plan duration (weeks)
+        </label>
+        <p className="os-caption mb-1">
+          How long this plan should run before review. Minimum <strong>1</strong> week; use whole numbers.
+        </p>
+        <input
+          id="plan-duration-weeks"
+          type="number"
+          min={1}
+          step={1}
+          value={planDurationWeeks}
+          onChange={e => setPlanDurationWeeks(e.target.value)}
+          required
+          disabled={loading}
+          className="os-input"
+        />
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="focus-behaviors">
+          Focus behaviors
+        </label>
+        <p className="os-caption mb-1">One behavior per line (e.g. arguing, leaving class).</p>
+        <textarea
+          id="focus-behaviors"
+          value={focusBehaviorsText}
+          onChange={e => setFocusBehaviorsText(e.target.value)}
+          required
+          disabled={loading}
+          placeholder={'One per line\ne.g. verbal conflict\nleaving class without permission'}
+          className="os-textarea"
+          rows={4}
+        />
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="session-frequency">
+          Session cadence
+        </label>
+        <p className="os-caption mb-1">How often counseling sessions are expected while the plan is active.</p>
+        <select
+          id="session-frequency"
+          value={sessionFrequency}
+          onChange={e =>
+            setSessionFrequency(e.target.value as (typeof frequencyOptions)[number])
+          }
+          disabled={loading}
+          className="os-select"
+        >
+          {frequencyOptions.map(option => (
+            <option key={option} value={option}>
+              {FREQUENCY_LABEL[option]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="plan-notes">
+          Plan notes (optional)
+        </label>
+        <p className="os-caption mb-1">Internal notes for the team (not shown to students).</p>
+        <textarea
+          id="plan-notes"
+          value={planNotes}
+          onChange={e => setPlanNotes(e.target.value)}
+          disabled={loading}
+          className="os-textarea"
+          rows={3}
+        />
+      </div>
+
       {error && <p className="os-caption text-[var(--color-error)]">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="os-btn-primary"
-      >
+      <button type="submit" disabled={loading} className="os-btn-primary">
         {loading ? 'Saving...' : 'Create plan'}
       </button>
     </form>

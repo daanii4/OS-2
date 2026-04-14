@@ -129,6 +129,13 @@ enum CounselorAction {
   pending
 }
 
+enum MeetingStatus {
+  scheduled
+  completed
+  cancelled
+  rescheduled
+}
+
 // ─────────────────────────────────────────────
 // PROFILES
 // Extends Supabase auth.users — id matches auth.users.id exactly
@@ -150,8 +157,10 @@ model Tenant {
   consent_records ConsentRecord[]
   incidents       BehavioralIncident[]
   sessions        Session[]
-  success_plans   SuccessPlan[]
-  ai_analyses     AiAnalysis[]
+  success_plans       SuccessPlan[]
+  ai_analyses         AiAnalysis[]
+  meetings            Meeting[]
+  student_status_logs StudentStatusLog[]
 
   @@map("tenants")
 }
@@ -175,6 +184,9 @@ model Profile {
   assigned_referrals   Referral[]            @relation("AssignedReferrals")
   created_referrals    Referral[]            @relation("CreatedReferrals")
   consent_records      ConsentRecord[]
+  counselor_meetings   Meeting[]             @relation("CounselorMeetings")
+  created_meetings     Meeting[]             @relation("CreatedMeetings")
+  student_status_logs  StudentStatusLog[]    @relation("StudentStatusChanges")
 
   @@index([tenant_id])
   @@map("profiles")
@@ -204,6 +216,7 @@ model Student {
   school_year             String?
   general_notes           String?       @db.Text // NOT AI-analyzed per spec
   escalation_active       Boolean       @default(false)
+  intake_files            Json? // Array of { name, url, uploaded_at, referred_by?, brief_description?, referral_date? } — Vercel Blob; optional at intake; doc/PDF only
   created_at              DateTime      @default(now())
   updated_at              DateTime      @updatedAt
 
@@ -216,6 +229,8 @@ model Student {
   ai_analyses        AiAnalysis[]
   referrals          Referral[]
   consent_records    ConsentRecord[]
+  meetings           Meeting[]
+  status_logs        StudentStatusLog[]
 
   @@index([tenant_id])
   @@index([tenant_id, assigned_counselor_id])
@@ -398,4 +413,57 @@ model AiAnalysis {
   @@index([tenant_id])
   @@index([tenant_id, student_id])
   @@map("ai_analyses")
+}
+
+// ─────────────────────────────────────────────
+// MEETINGS — scheduled counseling / site blocks
+// ─────────────────────────────────────────────
+
+model Meeting {
+  id               String         @id @default(uuid())
+  tenant_id        String
+  student_id       String?
+  counselor_id     String
+  title            String
+  meeting_date     DateTime
+  duration_minutes Int            @default(30)
+  location         String?
+  meeting_type     String // student_session | site_block | check_in | group
+  status           MeetingStatus  @default(scheduled)
+  notes            String?        @db.Text
+  created_by       String
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+
+  tenant             Tenant   @relation(fields: [tenant_id], references: [id])
+  student            Student? @relation(fields: [student_id], references: [id])
+  counselor          Profile  @relation("CounselorMeetings", fields: [counselor_id], references: [id])
+  created_by_profile Profile  @relation("CreatedMeetings", fields: [created_by], references: [id])
+
+  @@index([tenant_id])
+  @@index([tenant_id, counselor_id])
+  @@index([tenant_id, meeting_date])
+  @@map("meetings")
+}
+
+// ─────────────────────────────────────────────
+// STUDENT STATUS AUDIT LOG
+// ─────────────────────────────────────────────
+
+model StudentStatusLog {
+  id          String        @id @default(uuid())
+  tenant_id   String
+  student_id  String
+  changed_by  String
+  old_status  StudentStatus
+  new_status  StudentStatus
+  note        String?       @db.Text
+  created_at  DateTime      @default(now())
+
+  tenant             Tenant   @relation(fields: [tenant_id], references: [id])
+  student            Student  @relation(fields: [student_id], references: [id])
+  changed_by_profile Profile  @relation("StudentStatusChanges", fields: [changed_by], references: [id])
+
+  @@index([tenant_id, student_id])
+  @@map("student_status_logs")
 }

@@ -3,6 +3,10 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import {
+  DashboardUpcomingMeetings,
+  type UpcomingMeetingItem,
+} from './dashboard-upcoming-meetings'
 
 const DashboardIncidentChart = dynamic(
   () => import('./dashboard-incident-chart'),
@@ -40,6 +44,7 @@ type DashboardShellProps = {
   chartMax: number
   escalatedStudentName: string | null
   topOffset: number
+  upcomingMeetings: UpcomingMeetingItem[]
 }
 
 type StudentFilter = 'all' | 'regression' | 'escalated'
@@ -73,6 +78,7 @@ function getStatusBadgeClass(status: string): string {
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard', abbr: 'D', section: 'Main' },
   { href: '/dashboard/students', label: 'Students', abbr: 'S', section: 'Main' },
+  { href: '/dashboard/schedule', label: 'Schedule', abbr: 'M', section: 'Main' },
   { href: '/dashboard/analytics', label: 'Analytics', abbr: 'A', section: 'Reports' },
   { href: '/dashboard/settings/users', label: 'Team', abbr: 'T', section: 'Settings' },
 ]
@@ -144,6 +150,7 @@ export function DashboardShell({
   chartMax,
   escalatedStudentName,
   topOffset,
+  upcomingMeetings,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -513,6 +520,8 @@ export function DashboardShell({
               </div>
             </section>
 
+            <DashboardUpcomingMeetings meetings={upcomingMeetings} />
+
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
             <div className="grid gap-[14px] lg:grid-cols-[1fr_320px]">
               {/* Left — incident frequency chart */}
@@ -770,6 +779,8 @@ export function DashboardShell({
               <p className="os-data-hero mt-1">{sessionsCurrent}</p>
             </div>
           </section>
+
+          <DashboardUpcomingMeetings meetings={upcomingMeetings} />
 
           {/* Chart */}
           <section className="os-card">

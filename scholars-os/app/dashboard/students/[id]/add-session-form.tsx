@@ -15,6 +15,29 @@ const sessionTypes = [
 ] as const
 const sessionFormats = ['individual', 'group'] as const
 
+const SESSION_TYPE_LABEL: Record<(typeof sessionTypes)[number], string> = {
+  intake_assessment: 'Intake assessment',
+  behavioral_observation: 'Behavioral observation',
+  classroom_support: 'Classroom support',
+  emotional_regulation: 'Emotional regulation',
+  group_behavior_support: 'Group behavior support',
+  peer_conflict_mediation: 'Peer conflict mediation',
+  check_in: 'Check-in',
+  crisis: 'Crisis',
+}
+
+const FORMAT_LABEL: Record<(typeof sessionFormats)[number], string> = {
+  individual: 'Individual (1:1)',
+  group: 'Group',
+}
+
+const ATTENDANCE_LABEL: Record<(typeof attendanceOptions)[number], string> = {
+  attended: 'Attended',
+  no_show: 'No-show',
+  rescheduled: 'Rescheduled',
+  cancelled: 'Cancelled',
+}
+
 type Goal = { goal: string; met: boolean }
 
 type AddSessionFormProps = {
@@ -82,78 +105,136 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
   return (
     <form onSubmit={handleSubmit} className="os-card grid gap-3">
       <h3 className="os-heading">Log session</h3>
-      <input
-        type="date"
-        value={sessionDate}
-        onChange={e => setSessionDate(e.target.value)}
-        required
-        disabled={loading}
-        className="os-input"
-      />
-      <select
-        value={sessionType}
-        onChange={e =>
-          setSessionType(e.target.value as (typeof sessionTypes)[number])
-        }
-        disabled={loading}
-        className="os-select"
-      >
-        {sessionTypes.map(option => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <select
-        value={sessionFormat}
-        onChange={e =>
-          setSessionFormat(e.target.value as (typeof sessionFormats)[number])
-        }
-        disabled={loading}
-        className="os-select"
-      >
-        {sessionFormats.map(option => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <input
-        type="number"
-        min="1"
-        max="240"
-        value={durationMinutes}
-        onChange={e => setDurationMinutes(e.target.value)}
-        disabled={loading}
-        className="os-input"
-      />
-      <select
-        value={attendanceStatus}
-        onChange={e =>
-          setAttendanceStatus(e.target.value as (typeof attendanceOptions)[number])
-        }
-        disabled={loading}
-        className="os-select"
-      >
-        {attendanceOptions.map(option => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <textarea
-        value={sessionSummary}
-        onChange={e => setSessionSummary(e.target.value)}
-        required={summaryRequired}
-        disabled={loading}
-        placeholder={
-          summaryRequired ? 'Session summary (required)' : 'Session summary'
-        }
-        className="os-textarea"
-      />
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="session-date">
+          Session date
+        </label>
+        <p className="os-caption mb-1">Calendar day this session occurred.</p>
+        <input
+          id="session-date"
+          type="date"
+          value={sessionDate}
+          onChange={e => setSessionDate(e.target.value)}
+          required
+          disabled={loading}
+          className="os-input"
+        />
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="session-type">
+          Session type
+        </label>
+        <p className="os-caption mb-1">What kind of counseling activity this was.</p>
+        <select
+          id="session-type"
+          value={sessionType}
+          onChange={e =>
+            setSessionType(e.target.value as (typeof sessionTypes)[number])
+          }
+          disabled={loading}
+          className="os-select"
+        >
+          {sessionTypes.map(option => (
+            <option key={option} value={option}>
+              {SESSION_TYPE_LABEL[option]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="session-format">
+          Session format
+        </label>
+        <p className="os-caption mb-1">One student vs a group.</p>
+        <select
+          id="session-format"
+          value={sessionFormat}
+          onChange={e =>
+            setSessionFormat(e.target.value as (typeof sessionFormats)[number])
+          }
+          disabled={loading}
+          className="os-select"
+        >
+          {sessionFormats.map(option => (
+            <option key={option} value={option}>
+              {FORMAT_LABEL[option]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="duration-minutes">
+          Duration (minutes)
+        </label>
+        <p className="os-caption mb-1">
+          Length of the scheduled block. Typical school sessions are 30–50 minutes. Allowed range:{' '}
+          <strong>1–240</strong> minutes.
+        </p>
+        <input
+          id="duration-minutes"
+          type="number"
+          min={1}
+          max={240}
+          value={durationMinutes}
+          onChange={e => setDurationMinutes(e.target.value)}
+          disabled={loading}
+          className="os-input"
+        />
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="attendance-status">
+          Attendance outcome
+        </label>
+        <p className="os-caption mb-1">Whether the student attended, missed, or the session moved.</p>
+        <select
+          id="attendance-status"
+          value={attendanceStatus}
+          onChange={e =>
+            setAttendanceStatus(e.target.value as (typeof attendanceOptions)[number])
+          }
+          disabled={loading}
+          className="os-select"
+        >
+          {attendanceOptions.map(option => (
+            <option key={option} value={option}>
+              {ATTENDANCE_LABEL[option]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="os-label mb-1 block" htmlFor="session-summary">
+          Session summary
+        </label>
+        <p className="os-caption mb-1">
+          {summaryRequired
+            ? 'Required when attendance is Attended (brief narrative of what happened).'
+            : 'Optional if the student did not attend.'}
+        </p>
+        <textarea
+          id="session-summary"
+          value={sessionSummary}
+          onChange={e => setSessionSummary(e.target.value)}
+          required={summaryRequired}
+          disabled={loading}
+          placeholder="What was covered, student response, follow-ups"
+          className="os-textarea"
+          rows={4}
+        />
+      </div>
 
       <div className="rounded-md bg-[var(--surface-inner)] p-3">
-        <p className="os-subhead mb-2">Session goals (optional)</p>
+        <p className="os-subhead mb-1">Session goals (optional)</p>
+        <p className="os-caption mb-2">
+          Add one or more goals for this session and mark if the student met each one. Used to compute
+          goal completion rate.
+        </p>
         <div className="mb-2 grid gap-2">
           <input
             value={newGoal}
@@ -203,11 +284,7 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
       </div>
 
       {error && <p className="os-caption text-[var(--color-error)]">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="os-btn-primary"
-      >
+      <button type="submit" disabled={loading} className="os-btn-primary">
         {loading ? 'Saving...' : 'Save session'}
       </button>
     </form>

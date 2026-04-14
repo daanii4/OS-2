@@ -6,7 +6,9 @@ import { AIPanel } from './ai-panel'
 import { AssignCounselorForm } from './assign-counselor-form'
 import { BaselineForm } from './baseline-form'
 import { CreatePlanForm } from './create-plan-form'
+import { parseIntakeFiles } from '@/lib/types/intake-file'
 import { ProfileHeader } from './profile-header'
+import { StudentStatusControl } from './student-status-control'
 import { StudentCharts } from './student-charts'
 import { StudentSectionsClient } from './student-sections-client'
 import { createClient } from '@/lib/supabase/server'
@@ -42,7 +44,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const [student, counselors, progressResponse] = await Promise.all([
+  const [student, counselors, progressResponse, statusLogs] = await Promise.all([
     prisma.student.findFirst({
       where: { id: studentId, tenant_id: tenant.id },
       select: {
@@ -63,6 +65,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
         baseline_window_end: true,
         general_notes: true,
         escalation_active: true,
+        intake_files: true,
         success_plans: {
           orderBy: { created_at: 'desc' },
           select: {
@@ -124,9 +127,26 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
         incident_date: { gte: thirtyDaysAgo },
       },
     }),
+    isOrgAdmin
+      ? prisma.studentStatusLog.findMany({
+          where: { tenant_id: tenant.id, student_id: studentId },
+          orderBy: { created_at: 'desc' },
+          take: 50,
+          select: {
+            id: true,
+            old_status: true,
+            new_status: true,
+            note: true,
+            created_at: true,
+            changed_by_profile: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]),
   ])
 
   if (!student) notFound()
+
+  const intakeFiles = parseIntakeFiles(student.intake_files)
 
   const currentIncidentCount = progressResponse
   const baseline = student.baseline_incident_count
@@ -189,6 +209,11 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
         school={student.school}
         district={student.district}
         status={student.status}
+        statusSlot={
+          isOrgAdmin ? (
+            <StudentStatusControl studentId={student.id} currentStatus={student.status} />
+          ) : undefined
+        }
         referralSource={student.referral_source}
         intakeDate={student.intake_date.toISOString()}
         baselineIncidents={student.baseline_incident_count}
@@ -198,6 +223,111 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
       />
 
       <StudentSectionsClient
+        sessions={
+          <div className="grid gap-4 lg:grid-cols-2">
+            <AddSessionForm studentId={student.id} />
+            <div className="os-card">
+              <h3 className="os-heading mb-3">Session history</h3>
+              {student.sessions.length === 0 ? (
+                <p className="os-body">No sessions logged yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {student.sessions.map(session => (
+                    <li key={session.id} className="rounded-md bg-[var(--surface-inner)] p-3">
+                      <p className="os-subhead capitalize">
+                        {session.session_type.replace(/_/g, ' ')} ·{' '}
+                        <span
+                          className={
+                            session.attendance_status === 'attended'
+                              ? 'text-[var(--color-success)]'
+                              : session.attendance_status === 'no_show'
+                                ? 'text-[var(--color-regression)]'
+                                : 'text-[var(--text-secondary)]'
+                          }
+                        >
+                          {session.attendance_status.replace(/_/g, ' ')}
+                        </span>
+                      </p>
+                      <p className="os-caption">
+                        <span className="os-data-sm">
+                          {new Date(session.session_date).toLocaleDateString()}
+                        </span>{' '}
+                        · <span className="os-data-sm">{session.duration_minutes}</span>m ·{' '}
+                        {session.session_format}
+                      </p>
+                      {session.goals_attempted !== null &&
+                        session.goals_met !== null &&
+                        session.goal_completion_rate !== null && (
+                          <p className="os-caption">
+                            Goals:{' '}
+                            <span className="os-data-sm">
+                              {session.goals_met}/{session.goals_attempted}
+                            </span>{' '}
+                            (
+                            <span
+                              className={
+                                session.goal_completion_rate >= 70
+                                  ? 'os-data-sm text-[var(--color-success)]'
+                                  : 'os-data-sm'
+                              }
+                            >
+                              {session.goal_completion_rate.toFixed(0)}%
+                            </span>
+                            )
+                          </p>
+                        )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        }
+        incidents={
+          <div className="grid gap-4 lg:grid-cols-2">
+            <AddIncidentForm studentId={student.id} />
+            <div className="os-card">
+              <h3 className="os-heading mb-3">Incident history</h3>
+              {student.incidents.length === 0 ? (
+                <p className="os-body">No incidents logged yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {student.incidents.map(incident => (
+                    <li key={incident.id} className="rounded-md bg-[var(--surface-inner)] p-3">
+                      <p className="os-subhead capitalize">
+                        {incident.incident_type.replace(/_/g, ' ')} ·{' '}
+                        <span
+                          className={
+                            incident.severity === 'high'
+                              ? 'text-[var(--color-error)]'
+                              : incident.severity === 'medium'
+                                ? 'text-[var(--color-regression)]'
+                                : 'text-[var(--color-success)]'
+                          }
+                        >
+                          {incident.severity}
+                        </span>
+                      </p>
+                      <p className="os-caption">
+                        <span className="os-data-sm">
+                          {new Date(incident.incident_date).toLocaleDateString()}
+                        </span>{' '}
+                        · {incident.reported_by}
+                      </p>
+                      {incident.suspension_days !== null && (
+                        <p className="os-caption">
+                          Suspension:{' '}
+                          <span className="os-data-sm">{incident.suspension_days}d</span>
+                        </p>
+                      )}
+                      <p className="os-body mt-1">{incident.description}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        }
         overview={
           <>
             {/* Progress KPI row */}
@@ -297,6 +427,87 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               </div>
             </div>
 
+            {intakeFiles.length > 0 && (
+              <div className="os-card">
+                <h2 className="os-heading mb-3">Intake documents</h2>
+                <p className="os-caption mb-4">
+                  Prior referrals, assessments, or school records (PDF/Word). Optional fields below
+                  mirror the referral form for each file.
+                </p>
+                <ul className="space-y-4">
+                  {intakeFiles.map(file => (
+                    <li
+                      key={file.url}
+                      className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inner)] p-4"
+                    >
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="os-subhead text-[var(--olive-700)] underline"
+                      >
+                        {file.name}
+                      </a>
+                      <p className="os-caption mt-1">
+                        Uploaded {new Date(file.uploaded_at).toLocaleString()}
+                      </p>
+                      {(file.referred_by ||
+                        file.brief_description ||
+                        file.referral_date) && (
+                        <dl className="mt-3 space-y-2 border-t border-[var(--border-subtle)] pt-3">
+                          {file.referred_by && (
+                            <div>
+                              <dt className="os-label">Referred by</dt>
+                              <dd className="os-body">{file.referred_by}</dd>
+                            </div>
+                          )}
+                          {file.brief_description && (
+                            <div>
+                              <dt className="os-label">Brief description</dt>
+                              <dd className="os-body">{file.brief_description}</dd>
+                            </div>
+                          )}
+                          {file.referral_date && (
+                            <div>
+                              <dt className="os-label">Referral date</dt>
+                              <dd className="os-body">
+                                {new Date(file.referral_date).toLocaleDateString()}
+                              </dd>
+                            </div>
+                          )}
+                        </dl>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {isOrgAdmin && statusLogs.length > 0 && (
+              <div className="os-card">
+                <h2 className="os-heading mb-3">Status history</h2>
+                <ul className="space-y-3">
+                  {statusLogs.map(log => (
+                    <li
+                      key={log.id}
+                      className="border-b border-[var(--border-subtle)] pb-3 last:border-0 last:pb-0"
+                    >
+                      <p className="os-body">
+                        <span className="capitalize">{log.old_status}</span>
+                        {' → '}
+                        <span className="capitalize">{log.new_status}</span>
+                      </p>
+                      <p className="os-caption">
+                        {log.changed_by_profile.name} ·{' '}
+                        {new Date(log.created_at).toLocaleString()}
+                      </p>
+                      {log.note && <p className="os-body mt-1">{log.note}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Counselor assignment + Baseline (owner/assistant only) */}
             {isOrgAdmin && (
               <div className="grid gap-4 lg:grid-cols-2">
@@ -334,111 +545,6 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
         }
         charts={<StudentCharts studentId={student.id} />}
         ai={<AIPanel studentId={student.id} escalationActive={student.escalation_active} />}
-        incidents={
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AddIncidentForm studentId={student.id} />
-            <div className="os-card">
-              <h3 className="os-heading mb-3">Incident history</h3>
-              {student.incidents.length === 0 ? (
-                <p className="os-body">No incidents logged yet.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {student.incidents.map(incident => (
-                    <li key={incident.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <p className="os-subhead capitalize">
-                        {incident.incident_type.replace(/_/g, ' ')} ·{' '}
-                        <span
-                          className={
-                            incident.severity === 'high'
-                              ? 'text-[var(--color-error)]'
-                              : incident.severity === 'medium'
-                                ? 'text-[var(--color-regression)]'
-                                : 'text-[var(--color-success)]'
-                          }
-                        >
-                          {incident.severity}
-                        </span>
-                      </p>
-                      <p className="os-caption">
-                        <span className="os-data-sm">
-                          {new Date(incident.incident_date).toLocaleDateString()}
-                        </span>{' '}
-                        · {incident.reported_by}
-                      </p>
-                      {incident.suspension_days !== null && (
-                        <p className="os-caption">
-                          Suspension:{' '}
-                          <span className="os-data-sm">{incident.suspension_days}d</span>
-                        </p>
-                      )}
-                      <p className="os-body mt-1">{incident.description}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        }
-        sessions={
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AddSessionForm studentId={student.id} />
-            <div className="os-card">
-              <h3 className="os-heading mb-3">Session history</h3>
-              {student.sessions.length === 0 ? (
-                <p className="os-body">No sessions logged yet.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {student.sessions.map(session => (
-                    <li key={session.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <p className="os-subhead capitalize">
-                        {session.session_type.replace(/_/g, ' ')} ·{' '}
-                        <span
-                          className={
-                            session.attendance_status === 'attended'
-                              ? 'text-[var(--color-success)]'
-                              : session.attendance_status === 'no_show'
-                                ? 'text-[var(--color-regression)]'
-                                : 'text-[var(--text-secondary)]'
-                          }
-                        >
-                          {session.attendance_status.replace(/_/g, ' ')}
-                        </span>
-                      </p>
-                      <p className="os-caption">
-                        <span className="os-data-sm">
-                          {new Date(session.session_date).toLocaleDateString()}
-                        </span>{' '}
-                        · <span className="os-data-sm">{session.duration_minutes}</span>m ·{' '}
-                        {session.session_format}
-                      </p>
-                      {session.goals_attempted !== null &&
-                        session.goals_met !== null &&
-                        session.goal_completion_rate !== null && (
-                          <p className="os-caption">
-                            Goals:{' '}
-                            <span className="os-data-sm">
-                              {session.goals_met}/{session.goals_attempted}
-                            </span>{' '}
-                            (
-                            <span
-                              className={
-                                session.goal_completion_rate >= 70
-                                  ? 'os-data-sm text-[var(--color-success)]'
-                                  : 'os-data-sm'
-                              }
-                            >
-                              {session.goal_completion_rate.toFixed(0)}%
-                            </span>
-                            )
-                          </p>
-                        )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        }
         plans={
           <div className="grid gap-4 lg:grid-cols-2">
             <CreatePlanForm studentId={student.id} />

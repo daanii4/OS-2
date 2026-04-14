@@ -62,13 +62,21 @@ export function AssignCounselorForm({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      <div>
+        <label className="os-label mb-1 block" htmlFor="assign-counselor">
+          Primary counselor
+        </label>
+        <p className="os-caption mb-2">
+          Staff member responsible for this student&apos;s caseload. Choose Unassigned if not yet placed.
+        </p>
+        <div className="flex items-center gap-2">
         <select
+          id="assign-counselor"
           className="os-input flex-1"
           value={selected}
           onChange={e => setSelected(e.target.value)}
         >
-          <option value="">-- Unassigned --</option>
+          <option value="">Unassigned</option>
           {counselors.map(c => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.role})
@@ -83,6 +91,7 @@ export function AssignCounselorForm({
         >
           {loading ? 'Saving...' : 'Save'}
         </button>
+        </div>
       </div>
     </div>
   )

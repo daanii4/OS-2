@@ -1,5 +1,7 @@
 import type { Prisma } from '@prisma/client'
+import { MeetingStatus } from '@prisma/client'
 import { createClient } from '@/lib/supabase/server'
+import { safeMeetingFindMany } from '@/lib/meetings-db'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { redirect } from 'next/navigation'
@@ -193,6 +195,46 @@ export default async function DashboardPage() {
     ? `${escalatedStudent.first_name} ${escalatedStudent.last_name}`
     : null
 
+  const weekEnd = new Date(now)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const upcomingMeetingsRaw = await safeMeetingFindMany({
+    where: {
+      tenant_id: tenant.id,
+      ...(isOrgView ? {} : { counselor_id: profile.id }),
+      meeting_date: { gte: now, lte: weekEnd },
+      status: { in: [MeetingStatus.scheduled, MeetingStatus.rescheduled] },
+    },
+    orderBy: { meeting_date: 'asc' },
+    select: {
+      id: true,
+      title: true,
+      meeting_date: true,
+      duration_minutes: true,
+      location: true,
+      meeting_type: true,
+      status: true,
+      counselor: { select: { name: true } },
+      student: { select: { first_name: true, last_name: true } },
+    },
+  })
+
+  const upcomingMeetings = upcomingMeetingsRaw.map(m => ({
+    id: m.id,
+    title: m.title,
+    meeting_date: m.meeting_date.toISOString(),
+    duration_minutes: m.duration_minutes,
+    location: m.location,
+    meeting_type: m.meeting_type,
+    status: m.status,
+    counselorName: m.counselor.name,
+    studentLabel: m.student
+      ? `${m.student.first_name} ${m.student.last_name}`
+      : null,
+    showCounselorName: isOrgView,
+  }))
+
   return (
     <DashboardShell
       profileName={profile.name}
@@ -210,6 +252,7 @@ export default async function DashboardPage() {
       chartMax={chartMax}
       escalatedStudentName={escalatedStudentName}
       topOffset={topOffset}
+      upcomingMeetings={upcomingMeetings}
     />
   )
 }

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 type ProfileHeaderProps = {
   firstName: string
@@ -7,6 +7,8 @@ type ProfileHeaderProps = {
   school: string
   district: string
   status: string
+  /** When set, replaces the default status badge (e.g. owner status editor). */
+  statusSlot?: ReactNode
   referralSource: string
   intakeDate: string
   baselineIncidents: number | null
@@ -21,6 +23,10 @@ function getStatusBadgeStyle(status: string): CSSProperties {
       return { background: 'rgba(92,107,70,0.18)', color: '#c8d6aa', border: '1px solid rgba(200,214,170,0.25)' }
     case 'graduated':
       return { background: 'rgba(214,160,51,0.18)', color: '#f0d898', border: '1px solid rgba(240,216,152,0.25)' }
+    case 'transferred':
+      return { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.12)' }
+    case 'inactive':
+      return { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.10)' }
     case 'escalated':
       return { background: 'rgba(220,38,38,0.18)', color: '#fca5a5', border: '1px solid rgba(252,165,165,0.25)' }
     default:
@@ -35,6 +41,7 @@ export function ProfileHeader({
   school,
   district,
   status,
+  statusSlot,
   referralSource,
   intakeDate,
   baselineIncidents,
@@ -112,12 +119,14 @@ export function ProfileHeader({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="rounded-[var(--radius-sm)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.07em]"
-              style={getStatusBadgeStyle(status)}
-            >
-              {status}
-            </span>
+            {statusSlot ?? (
+              <span
+                className="rounded-[var(--radius-sm)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.07em]"
+                style={getStatusBadgeStyle(status)}
+              >
+                {status}
+              </span>
+            )}
             <span
               className="rounded-[var(--radius-sm)] px-2.5 py-1 text-[10px] font-medium"
               style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}

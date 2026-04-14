@@ -2,23 +2,30 @@
 
 import { useEffect, useState } from 'react'
 
-const TABS = ['Overview', 'Charts', 'AI', 'Incidents', 'Sessions', 'Plans'] as const
+/** Order: Sessions → Incidents → Overview → Charts → AI → Plans (last). */
+const TABS = ['Sessions', 'Incidents', 'Overview', 'Charts', 'AI', 'Plans'] as const
 
 type Props = {
+  sessions: React.ReactNode
+  incidents: React.ReactNode
   overview: React.ReactNode
   charts: React.ReactNode
   ai: React.ReactNode
-  incidents: React.ReactNode
-  sessions: React.ReactNode
   plans: React.ReactNode
 }
 
-export function StudentSectionsClient({ overview, charts, ai, incidents, sessions, plans }: Props) {
+export function StudentSectionsClient({
+  sessions,
+  incidents,
+  overview,
+  charts,
+  ai,
+  plans,
+}: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
-  // Always default true (SSR-safe). useEffect corrects to actual viewport post-hydration.
   const [isDesktop, setIsDesktop] = useState(true)
 
-  const sections = [overview, charts, ai, incidents, sessions, plans]
+  const sections = [sessions, incidents, overview, charts, ai, plans]
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024)
@@ -29,7 +36,6 @@ export function StudentSectionsClient({ overview, charts, ai, incidents, session
 
   return (
     <>
-      {/* Mobile-only tab strip — hidden on lg+ */}
       <div
         className="sticky z-10 flex gap-1 overflow-x-auto py-2 px-4 lg:hidden"
         style={{
@@ -42,6 +48,7 @@ export function StudentSectionsClient({ overview, charts, ai, incidents, session
         {TABS.map((tab, i) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveIdx(i)}
             className="flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors"
             style={
@@ -55,7 +62,6 @@ export function StudentSectionsClient({ overview, charts, ai, incidents, session
         ))}
       </div>
 
-      {/* Mount exactly one branch to prevent hidden chart 0x0 renders */}
       {isDesktop ? (
         <div>
           {sections.map((section, i) => (
