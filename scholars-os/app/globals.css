@@ -66,6 +66,8 @@
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-both: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --hover-lift-soft: -1px;
+  --hover-lift-card: -2px;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
@@ -177,6 +179,20 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Global interactive baseline for smoother hover motion across the app */
+:where([class*='hover:']:not([class*='transition'])) {
+  transition-property:
+    color,
+    background-color,
+    border-color,
+    box-shadow,
+    transform,
+    opacity,
+    text-decoration-color;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: var(--ease-out);
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -204,6 +220,10 @@ body {
   border-radius: var(--radius-default);
   box-shadow: 0 1px 3px rgba(30, 37, 23, 0.06), 0 1px 2px rgba(30, 37, 23, 0.04);
   padding: 20px;
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
 }
 
 .os-card-tight {
@@ -212,6 +232,17 @@ body {
   border-radius: var(--radius-default);
   box-shadow: 0 1px 3px rgba(30, 37, 23, 0.06), 0 1px 2px rgba(30, 37, 23, 0.04);
   padding: 16px;
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+
+.os-card:hover,
+.os-card-tight:hover {
+  transform: translateY(var(--hover-lift-card));
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .os-title {
@@ -380,7 +411,8 @@ body {
 .os-input:hover:not(:disabled),
 .os-select:hover:not(:disabled),
 .os-textarea:hover:not(:disabled) {
-  border-color: rgba(100, 116, 139, 0.35);
+  border-color: var(--border-hover);
+  box-shadow: 0 1px 2px rgb(30 37 23 / 0.08);
 }
 
 .os-input:focus,
@@ -467,15 +499,25 @@ body {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
   transition:
     background-color var(--duration-fast) var(--ease-both),
     border-color var(--duration-fast) var(--ease-both),
-    color var(--duration-fast) var(--ease-both);
+    color var(--duration-fast) var(--ease-both),
+    box-shadow var(--duration-fast) var(--ease-both),
+    transform var(--duration-fast) var(--ease-both);
 }
 
 .os-btn-secondary:hover:not(:disabled) {
   background: var(--olive-50);
   border-color: rgba(92, 107, 70, 0.28);
+  transform: translateY(var(--hover-lift-soft));
+  box-shadow: var(--shadow-md);
+}
+
+.os-btn-secondary:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+  box-shadow: var(--shadow-sm);
 }
 
 .os-btn-secondary:focus-visible {
@@ -492,9 +534,38 @@ body {
   min-height: 40px;
   border-radius: var(--radius-md);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   color: currentColor;
+  transition:
+    background-color var(--duration-fast) var(--ease-both),
+    border-color var(--duration-fast) var(--ease-both),
+    color var(--duration-fast) var(--ease-both),
+    box-shadow var(--duration-fast) var(--ease-both),
+    transform var(--duration-fast) var(--ease-both);
+}
+
+.os-btn-icon:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface-inner) 70%, transparent);
+  border-color: var(--border-default);
+  transform: translateY(var(--hover-lift-soft));
+  box-shadow: var(--shadow-sm);
+}
+
+.os-btn-icon:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+a:not(.os-btn-primary):not(.os-btn-secondary):not(.os-btn-icon) {
+  transition:
+    color var(--duration-fast) var(--ease-both),
+    opacity var(--duration-fast) var(--ease-both),
+    text-decoration-color var(--duration-fast) var(--ease-both);
+}
+
+a:not(.os-btn-primary):not(.os-btn-secondary):not(.os-btn-icon):hover {
+  text-decoration-color: currentColor;
 }
 
 .os-kpi-grid {
@@ -506,6 +577,16 @@ body {
 @media (max-width: 1200px) {
   .os-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .os-card:hover,
+  .os-card-tight:hover,
+  .os-btn-primary:hover:not(:disabled),
+  .os-btn-secondary:hover:not(:disabled),
+  .os-btn-icon:hover:not(:disabled) {
+    transform: none;
   }
 }
 
