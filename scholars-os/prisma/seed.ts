@@ -1,11 +1,14 @@
 /**
  * Operation Scholars OS — full test data seed (70 students, Tracy USD, 2024–2025).
+ * Incident/session dates anchor to real "today" so dashboard charts (last 7d / 30d / 12mo) populate.
  * Uses existing tenant + profiles only (no new Supabase Auth users).
  *
  * Prerequisites: tenant slug exists (default `demarieya`), at least one counselor profile
  * for that tenant, and an owner or assistant for referral `created_by`.
  *
- * Not idempotent: run against an empty DB or reset first.
+ * Not idempotent: each run inserts another full cohort (70 students + related rows).
+ * If students already exist for the tenant, the seed aborts unless SEED_ALLOW_DUPLICATE=1.
+ * Prefer: npx prisma migrate reset --force (dev) before seeding.
  *
  * Run: npx prisma db seed
  */
@@ -13,6 +16,7 @@ import 'dotenv/config'
 
 import {
   PrismaClient,
+  type Prisma,
   type Grade,
   type IncidentType,
   type SessionType,
@@ -29,6 +33,64 @@ import {
 import { STUDENTS, STUDENT_COUNT, type SeedStudentRow } from './seed-students-data'
 
 const prisma = new PrismaClient()
+
+/**
+ * After `db push --force-reset`, `profiles` is empty but `auth.users` still exists.
+ * Create/update Profile rows so ids match Supabase Auth (required for login).
+ */
+async function ensureProfilesFromAuthUsers(tenantId: string): Promise<void> {
+  type AuthRow = { id: string; email: string }
+  let rows: AuthRow[]
+  try {
+    rows = await prisma.$queryRaw<AuthRow[]>`
+      SELECT id, email::text AS email
+      FROM auth.users
+      ORDER BY created_at ASC
+      LIMIT 24
+    `
+  } catch (e) {
+    console.error('Could not read auth.users (grant access or create profiles manually):', e)
+    throw new Error(
+      'No counselor profiles and could not sync from auth.users. Add profiles in Supabase SQL or grant SELECT on auth.users.'
+    )
+  }
+
+  if (rows.length === 0) {
+    throw new Error(
+      'auth.users is empty. Create at least one Supabase Auth user, then re-run the seed.'
+    )
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const u = rows[i]!
+    const role = i === 0 ? 'owner' : 'counselor'
+    const name =
+      u.email
+        .split('@')[0]
+        ?.replace(/[._]/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase()) ?? 'Team member'
+
+    await prisma.profile.upsert({
+      where: { id: u.id },
+      create: {
+        id: u.id,
+        email: u.email,
+        name,
+        role,
+        tenant_id: tenantId,
+        active: true,
+      },
+      update: {
+        tenant_id: tenantId,
+        active: true,
+      },
+    })
+  }
+
+  console.log(
+    `Synced ${rows.length} profile(s) from auth.users (first = owner, rest = counselors).`
+  )
+}
 
 /** One entry per seeded student — used for plans, supplemental sessions, sample AI. */
 type SeededStudentEntry = {
@@ -54,6 +116,28 @@ function addDays(date: Date, days: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + days)
   return d
+}
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d)
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+
+function endOfDay(d: Date): Date {
+  const x = new Date(d)
+  x.setHours(23, 59, 59, 999)
+  return x
+}
+
+/** Incident timestamps must stay ≤ seed "today" and inside the month bucket (charts use real calendar now). */
+function randomIncidentDateInMonth(monthStart: Date, ceiling: Date): Date {
+  const lastOfMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+  const periodEnd = lastOfMonth < ceiling ? lastOfMonth : ceiling
+  const lo = startOfDay(monthStart).getTime()
+  const hi = endOfDay(periodEnd).getTime()
+  if (lo > hi) return new Date(Math.min(ceiling.getTime(), hi))
+  return new Date(lo + Math.random() * (hi - lo))
 }
 
 function randomInt(min: number, max: number): number {
@@ -86,6 +170,12 @@ function approximateDateOfBirth(grade: Grade): Date {
   return new Date(birthYear, 3, 15)
 }
 
+/**
+ * Monthly incident counts from intake → today. Tuned so charts show clear stories:
+ * - Tier A/B: improvement (counts trend down toward recent months).
+ * - Tier C: plateau (narrow band).
+ * - Tier D: regression (counts trend up toward recent months).
+ */
 function generateIncidentTimeline(
   tier: SeedStudentRow['tier'],
   baseline: number,
@@ -97,6 +187,16 @@ function generateIncidentTimeline(
   const cursor = new Date(intakeDate)
   cursor.setDate(1)
 
+  const start = new Date(intakeDate)
+  start.setDate(1)
+  const end = new Date(today)
+  end.setDate(1)
+  const totalMonths =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth()) +
+    1
+  const span = Math.max(totalMonths - 1, 1)
+
   let monthIndex = 0
   while (cursor <= today) {
     let count: number
@@ -104,23 +204,24 @@ function generateIncidentTimeline(
     if (monthIndex === 0) {
       count = baseline
     } else {
-      const progress = monthIndex / 6
-      if (tier === 'A') {
-        count = Math.max(
-          currentMonthCount,
-          Math.round(baseline - (baseline - currentMonthCount) * progress)
-        )
-      } else if (tier === 'B') {
-        const base = Math.round(baseline - (baseline - currentMonthCount) * progress * 0.7)
-        count = Math.max(currentMonthCount, base + randomInt(-1, 1))
+      const t = monthIndex / span
+
+      if (tier === 'A' || tier === 'B') {
+        const floor = Math.max(currentMonthCount, tier === 'A' ? 0 : 1)
+        const eased = Math.pow(t, 0.82)
+        count = Math.round(baseline - (baseline - floor) * eased)
+        count = Math.max(floor, count + randomInt(-1, 1))
       } else if (tier === 'C') {
-        count = baseline - randomInt(0, 1)
+        const wobble = randomInt(-1, 1)
+        count = Math.max(1, baseline + wobble)
       } else {
-        if (monthIndex <= 2) {
-          count = Math.max(1, baseline - randomInt(1, 2))
-        } else {
-          count = currentMonthCount + randomInt(-1, 2)
-        }
+        const peak = Math.max(
+          currentMonthCount,
+          Math.round(baseline * 1.15) + randomInt(0, 2)
+        )
+        const eased = Math.pow(t, 1.08)
+        count = Math.round(baseline + (peak - baseline) * eased)
+        count = Math.max(1, count + randomInt(-1, 1))
       }
     }
 
@@ -261,7 +362,8 @@ async function seedSuccessPlans(
 
 async function seedDetailedSessions(
   entries: SeededStudentEntry[],
-  tenantId: string
+  tenantId: string,
+  anchorNow: Date
 ): Promise<void> {
   console.log('\n🌱 Seeding supplemental session detail...')
 
@@ -270,6 +372,13 @@ async function seedDetailedSessions(
       (e.tier === 'A' || e.tier === 'B') &&
       new Date(e.student.intake_date) < new Date('2024-11-01')
   )
+
+  const d0 = new Date(anchorNow)
+  d0.setDate(d0.getDate() - 14)
+  d0.setHours(10, 30, 0, 0)
+  const d1 = new Date(anchorNow)
+  d1.setDate(d1.getDate() - 7)
+  d1.setHours(14, 0, 0, 0)
 
   const detailedSummaries: Record<'A' | 'B', [string, string]> = {
     A: [
@@ -285,7 +394,7 @@ async function seedDetailedSessions(
   for (const { student, tier, counselorProfile } of eligibleStudents) {
     if (tier !== 'A' && tier !== 'B') continue
 
-    const recentDates = [new Date('2025-03-01'), new Date('2025-03-08')]
+    const recentDates = [d0, d1]
 
     for (let i = 0; i < recentDates.length; i++) {
       const numGoals = 3
@@ -323,7 +432,10 @@ async function seedDetailedSessions(
   )
 }
 
-async function seedSampleAIAnalyses(entries: SeededStudentEntry[]): Promise<void> {
+async function seedSampleAIAnalyses(
+  entries: SeededStudentEntry[],
+  _tenantId: string
+): Promise<void> {
   if (!process.env.OPENAI_API_KEY) {
     console.log(
       '\n⚠️  OPENAI_API_KEY not set — skipping sample AI analyses (set key to enable).'
@@ -385,13 +497,38 @@ async function main() {
     console.log('Tenant found:', tenant.slug)
   }
 
-  const counselors = await prisma.profile.findMany({
+  const existingStudents = await prisma.student.count({
+    where: { tenant_id: tenant.id },
+  })
+  if (existingStudents > 0 && process.env.SEED_ALLOW_DUPLICATE !== '1') {
+    throw new Error(
+      `Refusing to seed: ${existingStudents} student(s) already exist for tenant "${tenant.slug}". ` +
+        `This script always creates ${STUDENT_COUNT} new students plus referrals, incidents, success plans, etc. ` +
+        `Running it again duplicates everything (e.g. ~${STUDENT_COUNT * 2} students if you ran seed twice). ` +
+        `Fix (dev): npx prisma migrate reset --force then npx prisma db seed. ` +
+        `Override (not recommended): SEED_ALLOW_DUPLICATE=1 npx prisma db seed`
+    )
+  }
+  if (existingStudents > 0 && process.env.SEED_ALLOW_DUPLICATE === '1') {
+    console.warn(
+      `\n⚠️  SEED_ALLOW_DUPLICATE=1 — appending another full seed on top of ${existingStudents} existing student(s).\n`
+    )
+  }
+
+  let counselors = await prisma.profile.findMany({
     where: { tenant_id: tenant.id, role: 'counselor', active: true },
     orderBy: { created_at: 'asc' },
   })
   if (counselors.length === 0) {
+    await ensureProfilesFromAuthUsers(tenant.id)
+    counselors = await prisma.profile.findMany({
+      where: { tenant_id: tenant.id, role: 'counselor', active: true },
+      orderBy: { created_at: 'asc' },
+    })
+  }
+  if (counselors.length === 0) {
     throw new Error(
-      'No counselor profiles for this tenant. Create your test counselor(s) in Supabase Auth + profiles first; this seed does not add users.'
+      'No counselor profiles after auth sync. Add counselor role users in Supabase Auth or check auth.users access.'
     )
   }
 
@@ -412,7 +549,8 @@ async function main() {
     `Using ${counselors.length} counselor(s); referrals created_by: ${creatorProfile.role} (${creatorProfile.email})`
   )
 
-  const today = new Date('2025-03-15')
+  // Anchor all synthetic dates to real "now" so dashboard / student charts (last 7d, 30d, 12mo) show data.
+  const today = endOfDay(new Date())
   let studentCount = 0
   const seededStudents: SeededStudentEntry[] = []
 
@@ -494,10 +632,11 @@ async function main() {
       today
     )
 
+    const incidentRows: Prisma.BehavioralIncidentCreateManyInput[] = []
     for (let mi = 0; mi < incidentTimeline.length; mi++) {
       const { month, count } = incidentTimeline[mi]!
       for (let i = 0; i < count; i++) {
-        const incidentDate = addDays(month, randomInt(0, 27))
+        const incidentDate = randomIncidentDateInMonth(month, today)
         const incidentType = randomItem(INCIDENT_TYPES)
         const isSuspension =
           incidentType === 'suspension_iss' || incidentType === 'suspension_oss'
@@ -507,20 +646,24 @@ async function main() {
             ? 'low'
             : randomItem(['low', 'medium', 'medium', 'high'] as const)
 
-        await prisma.behavioralIncident.create({
-          data: {
-            tenant_id: tenant.id,
-            student_id: student.id,
-            incident_date: incidentDate,
-            incident_type: incidentType,
-            suspension_days: isSuspension ? randomItem([0.5, 1, 1, 2, 3]) : null,
-            severity,
-            description: `Behavioral incident recorded on ${incidentDate.toLocaleDateString()}. ${s.presenting.substring(0, 80)}.`,
-            reported_by: s.referredBy,
-            logged_by: counselorProfile.id,
-          },
+        incidentRows.push({
+          tenant_id: tenant.id,
+          student_id: student.id,
+          incident_date: incidentDate,
+          incident_type: incidentType,
+          suspension_days: isSuspension ? randomItem([0.5, 1, 1, 2, 3]) : null,
+          severity,
+          description: `Behavioral incident recorded on ${incidentDate.toLocaleDateString()}. ${s.presenting.substring(0, 80)}.`,
+          reported_by: s.referredBy,
+          logged_by: counselorProfile.id,
         })
       }
+    }
+    const INCIDENT_CHUNK = 300
+    for (let c = 0; c < incidentRows.length; c += INCIDENT_CHUNK) {
+      await prisma.behavioralIncident.createMany({
+        data: incidentRows.slice(c, c + INCIDENT_CHUNK),
+      })
     }
 
     const sessionDates: Date[] = []
@@ -610,8 +753,8 @@ async function main() {
   ).length
 
   await seedSuccessPlans(seededStudents, tenant.id)
-  await seedDetailedSessions(seededStudents, tenant.id)
-  await seedSampleAIAnalyses(seededStudents)
+  await seedDetailedSessions(seededStudents, tenant.id, today)
+  await seedSampleAIAnalyses(seededStudents, tenant.id)
 
   console.log('')
   console.log('Seed complete.')
@@ -626,17 +769,23 @@ async function main() {
   console.log(
     `   Supplemental sessions: ~${supplementalEligibleCount * 2} (Tier A + B with 4+ months history)`
   )
-  console.log(
-    `   AI analyses generated: ${process.env.OPENAI_API_KEY ? '5 (representative sample)' : '0 (OPENAI_API_KEY not set)'}`
-  )
-  console.log(
-    `   AI analyses pending:   ${process.env.OPENAI_API_KEY ? '65 (trigger on first profile view in production)' : '70 (set OPENAI_API_KEY and re-run seed for sample AI)'}`
-  )
-  console.log('')
-  console.log('   Token usage: minimal — AI called for 5 students only when OPENAI_API_KEY is set.')
-  console.log('   Remaining students will get AI analysis automatically')
-  console.log('   when their first session is logged or profile is viewed.')
-  console.log('')
+  if (process.env.OPENAI_API_KEY) {
+    console.log(`   AI analyses generated: 5 (representative sample)`)
+    console.log(
+      `   AI analyses pending:   ${STUDENT_COUNT - 5} (trigger on first profile view in production)`
+    )
+    console.log(`\n   Token usage: minimal — AI called for 5 students only.`)
+    console.log(`   Remaining ${STUDENT_COUNT - 5} students will get AI analysis automatically`)
+    console.log(
+      `   when their first session is logged or profile is viewed.\n`
+    )
+  } else {
+    console.log(`   AI analyses generated: 0 (set OPENAI_API_KEY to run 5 sample analyses)`)
+    console.log(
+      `   AI analyses pending:   ${STUDENT_COUNT} (trigger on first profile view in production)`
+    )
+    console.log(`\n   Token usage: none — no OpenAI calls during seed.\n`)
+  }
   console.log('Sign in with your existing test owner, counselor, and assistant accounts.')
 }
 

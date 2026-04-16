@@ -136,10 +136,24 @@ export function StudentsPageClient({
               <li key={student.id}>
                 <Link
                   href={`/dashboard/students/${student.id}`}
-                  className="card-enter group relative block rounded-md bg-[var(--surface-inner)] p-3 no-underline transition-colors duration-150 hover:bg-[var(--surface-page)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--olive-600)] focus-visible:ring-offset-2"
+                  className="card-enter os-student-card"
                   style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
-                  <p className="os-heading transition-colors duration-150 group-hover:text-[var(--olive-700)]">
+                  <svg
+                    className="os-student-card__chevron"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    aria-hidden
+                  >
+                    <path
+                      d="M6 4l4 4-4 4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <p className="os-heading">
                     {student.first_name} {student.last_name}
                   </p>
                   <p className="os-body">

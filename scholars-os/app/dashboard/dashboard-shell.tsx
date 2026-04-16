@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 const DashboardIncidentChart = dynamic(
   () => import('./dashboard-incident-chart'),
   {
@@ -36,9 +36,6 @@ type DashboardShellProps = {
   avgGoalCompletion: number | null
   recentStudents: RecentStudent[]
   incidentCountByStudent: Record<string, number>
-  monthLabels: string[]
-  monthlyIncidentCounts: number[]
-  chartMax: number
   escalatedStudentName: string | null
   topOffset: number
   caseloadExport?: ReactNode
@@ -185,9 +182,6 @@ export function DashboardShell({
   avgGoalCompletion,
   recentStudents,
   incidentCountByStudent,
-  monthLabels,
-  monthlyIncidentCounts,
-  chartMax,
   escalatedStudentName,
   topOffset,
   caseloadExport,
@@ -207,6 +201,41 @@ export function DashboardShell({
   const [studentFilter, setStudentFilter] = useState<StudentFilter>('all')
   const [escalationAcknowledged, setEscalationAcknowledged] = useState(false)
 
+  type ChartPeriod = 'week' | 'month' | 'year'
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month')
+  const [chartData, setChartData] = useState<{ label: string; incidents: number }[]>([])
+  const [chartMax, setChartMax] = useState(1)
+  const [chartLoading, setChartLoading] = useState(true)
+  const [chartError, setChartError] = useState<string | null>(null)
+
+  const fetchIncidentChart = useCallback(async (p: ChartPeriod) => {
+    setChartLoading(true)
+    setChartError(null)
+    try {
+      const res = await fetch(`/api/dashboard/incident-frequency?period=${p}`)
+      if (!res.ok) throw new Error('Failed to load chart')
+      const json = (await res.json()) as {
+        data: { labels: string[]; incidents: number[]; chartMax: number }
+      }
+      const d = json.data
+      setChartData(
+        d.labels.map((label, i) => ({
+          label,
+          incidents: d.incidents[i] ?? 0,
+        }))
+      )
+      setChartMax(d.chartMax ?? 1)
+    } catch {
+      setChartError('Could not load incident chart')
+    } finally {
+      setChartLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchIncidentChart(chartPeriod)
+  }, [chartPeriod, fetchIncidentChart])
+
   useEffect(() => {
     window.localStorage.setItem('os2.sidebar.open', sidebarOpen ? '1' : '0')
   }, [sidebarOpen])
@@ -221,15 +250,6 @@ export function DashboardShell({
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
-  const chartData = useMemo(
-    () =>
-      monthLabels.map((label, index) => ({
-        label,
-        incidents: monthlyIncidentCounts[index] ?? 0,
-      })),
-    [monthLabels, monthlyIncidentCounts]
-  )
 
   const filteredStudents = useMemo(() => {
     const query = studentSearch.trim().toLowerCase()
@@ -276,6 +296,33 @@ export function DashboardShell({
   )
 
   const closeMobileMenu = () => setMobileMenuOpen(false)
+
+  const chartPeriodToggle = (
+    <div
+      className="flex items-center rounded-full p-1"
+      style={{ background: 'var(--surface-inner)' }}
+      role="group"
+      aria-label="Incident chart time range"
+    >
+      {(['week', 'month', 'year'] as ChartPeriod[]).map(p => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setChartPeriod(p)}
+          className={`rounded-full px-3 py-1 text-[10px] transition-colors ${
+            chartPeriod === p ? 'font-semibold' : 'font-medium'
+          }`}
+          style={
+            chartPeriod === p
+              ? { background: 'var(--surface-card)' }
+              : { background: 'transparent' }
+          }
+        >
+          {p === 'week' ? 'Wk' : p === 'month' ? 'Mo' : 'Yr'}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[var(--surface-page)]">
@@ -571,23 +618,17 @@ export function DashboardShell({
                     <h2 className="os-heading">Incident Frequency — All Students</h2>
                     <p className="os-body">Office referrals, suspensions, and behavioral incidents</p>
                   </div>
-                  <div
-                    className="flex items-center rounded-full p-1"
-                    style={{ background: 'var(--surface-inner)' }}
-                  >
-                    <button className="rounded-full px-3 py-1 text-[10px] font-medium">Wk</button>
-                    <button
-                      className="rounded-full px-3 py-1 text-[10px] font-semibold"
-                      style={{ background: 'var(--surface-card)' }}
-                    >
-                      Mo
-                    </button>
-                    <button className="rounded-full px-3 py-1 text-[10px] font-medium">Yr</button>
-                  </div>
+                  {chartPeriodToggle}
                 </div>
 
                 <div className="h-[240px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
-                  <DashboardIncidentChart data={chartData} chartMax={chartMax} />
+                  {chartError ? (
+                    <p className="os-body text-[var(--color-regression)]">{chartError}</p>
+                  ) : chartLoading ? (
+                    <div className="h-full w-full animate-pulse rounded-sm bg-[var(--surface-page)]" />
+                  ) : (
+                    <DashboardIncidentChart data={chartData} chartMax={chartMax} />
+                  )}
                 </div>
               </section>
 
@@ -693,8 +734,8 @@ export function DashboardShell({
                     : 'No students match this filter/search.'}
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {filteredStudents.map(student => {
+                <ul className="space-y-2">
+                  {filteredStudents.map((student, i) => {
                     const currentCount = incidentCountByStudent[student.id] ?? 0
                     const baseline = student.baseline_incident_count
                     const reductionPct =
@@ -704,45 +745,62 @@ export function DashboardShell({
                     const trend = trendMeta(reductionPct)
 
                     return (
-                      <div
-                        key={student.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[var(--surface-inner)] p-3 transition-colors hover:bg-[var(--surface-page)]"
-                      >
-                        <div>
-                          <Link
-                            href={`/dashboard/students/${student.id}`}
-                            className="os-heading hover:underline"
+                      <li key={student.id}>
+                        <Link
+                          href={`/dashboard/students/${student.id}`}
+                          className="card-enter os-student-card"
+                          style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                        >
+                          <svg
+                            className="os-student-card__chevron"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            aria-hidden
                           >
-                            {student.first_name} {student.last_name}
-                          </Link>
-                          <p className="os-caption">
-                            Grade {student.grade} · {student.school}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 text-right">
-                          <span
-                            className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}
-                          >
-                            {student.status}
-                          </span>
-                          <div>
-                            <p className="os-caption">Incidents (30d)</p>
-                            <p className="os-data text-right">{currentCount}</p>
+                            <path
+                              d="M6 4l4 4-4 4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="os-heading">
+                                {student.first_name} {student.last_name}
+                              </p>
+                              <p className="os-caption">
+                                Grade {student.grade} · {student.school}
+                              </p>
+                            </div>
+                            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-3 text-right">
+                              <span
+                                className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}
+                              >
+                                {student.status}
+                              </span>
+                              <div>
+                                <p className="os-caption">Incidents (30d)</p>
+                                <p className="os-data text-right">{currentCount}</p>
+                              </div>
+                              <div className="min-w-[7rem] text-right">
+                                <p className="os-caption">vs baseline</p>
+                                {trend ? (
+                                  <span className={`${trend.className} mt-0.5 inline-flex max-w-[12rem] justify-end`}>
+                                    {trend.label}
+                                  </span>
+                                ) : (
+                                  <p className="os-data">—</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="os-caption">vs baseline</p>
-                            {trend ? (
-                              <span className={`${trend.className} mt-0.5`}>{trend.label}</span>
-                            ) : (
-                              <p className="os-data">—</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        </Link>
+                      </li>
                     )
                   })}
-                </div>
+                </ul>
               )}
             </section>
           </div>
@@ -816,9 +874,18 @@ export function DashboardShell({
 
           {/* Chart */}
           <section className="os-card">
-            <h2 className="os-subhead mb-3">Incident Frequency</h2>
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <h2 className="os-subhead">Incident Frequency</h2>
+              {chartPeriodToggle}
+            </div>
             <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-2">
-              <DashboardIncidentChart data={chartData} chartMax={chartMax} />
+              {chartError ? (
+                <p className="os-body text-[var(--color-regression)]">{chartError}</p>
+              ) : chartLoading ? (
+                <div className="h-full w-full animate-pulse rounded-sm bg-[var(--surface-page)]" />
+              ) : (
+                <DashboardIncidentChart data={chartData} chartMax={chartMax} />
+              )}
             </div>
           </section>
 
@@ -838,8 +905,8 @@ export function DashboardShell({
                 {recentStudents.length === 0 ? 'No students yet.' : 'No students match this search.'}
               </p>
             ) : (
-              <div className="space-y-2">
-                {filteredStudents.map(student => {
+              <ul className="space-y-2">
+                {filteredStudents.map((student, i) => {
                   const currentCount = incidentCountByStudent[student.id] ?? 0
                   const baseline = student.baseline_incident_count
                   const reductionPct =
@@ -848,23 +915,50 @@ export function DashboardShell({
                       : null
                   const trend = trendMeta(reductionPct)
                   return (
-                    <div key={student.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <Link href={`/dashboard/students/${student.id}`} className="os-heading block hover:underline">
-                        {student.first_name} {student.last_name}
+                    <li key={student.id}>
+                      <Link
+                        href={`/dashboard/students/${student.id}`}
+                        className="card-enter os-student-card"
+                        style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                      >
+                        <svg
+                          className="os-student-card__chevron"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          aria-hidden
+                        >
+                          <path
+                            d="M6 4l4 4-4 4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <p className="os-heading">
+                          {student.first_name} {student.last_name}
+                        </p>
+                        <p className="os-caption">
+                          Gr {student.grade} · {student.school}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}
+                          >
+                            {student.status}
+                          </span>
+                          <span className="os-caption">
+                            {currentCount} inc. (30d)
+                            {trend && (
+                              <span className={`ml-2 ${trend.className}`}>{trend.label}</span>
+                            )}
+                          </span>
+                        </div>
                       </Link>
-                      <p className="os-caption">
-                        Gr {student.grade} · {student.school}
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                        <span className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}>
-                          {student.status}
-                        </span>
-                        {trend && <span className={trend.className}>{trend.label}</span>}
-                      </div>
-                    </div>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
             )}
           </section>
         </div>

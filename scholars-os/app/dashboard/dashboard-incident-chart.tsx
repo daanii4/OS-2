@@ -15,10 +15,27 @@ type Props = {
   chartMax: number
 }
 
+function formatTickLabel(raw: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [, m, d] = raw.split('-')
+    return `${Number(m)}/${Number(d)}`
+  }
+  if (/^\d{4}-\d{2}$/.test(raw)) {
+    const [y, m] = raw.split('-')
+    return `${Number(m)}/${y.slice(2)}`
+  }
+  return raw
+}
+
 export default function DashboardIncidentChart({ data, chartMax }: Props) {
+  const dense = data.length > 14
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+      <BarChart
+        data={data}
+        margin={{ top: 8, right: 8, left: 0, bottom: dense ? 8 : 0 }}
+      >
         <CartesianGrid vertical={false} stroke="rgba(92,107,70,0.08)" />
         <XAxis
           dataKey="label"
@@ -29,6 +46,12 @@ export default function DashboardIncidentChart({ data, chartMax }: Props) {
           }}
           axisLine={false}
           tickLine={false}
+          angle={dense ? -38 : 0}
+          textAnchor={dense ? 'end' : 'middle'}
+          height={dense ? 56 : 28}
+          interval={0}
+          minTickGap={dense ? 4 : 8}
+          tickFormatter={formatTickLabel}
         />
         <YAxis
           allowDecimals={false}

@@ -70,9 +70,61 @@ export function StudentCharts({ studentId }: StudentChartsProps) {
     fetchCharts(period)
   }, [period, fetchCharts])
 
-  const incidentData = useMemo(() => data?.incidentFrequency ?? [], [data])
-  const goalData = useMemo(() => data?.goalCompletion ?? [], [data])
-  const suspensionData = useMemo(() => data?.suspensionDays ?? [], [data])
+  const incidentData = useMemo(() => {
+    if (!data) return []
+    const raw =
+      (data as { incidentFrequency?: ChartData['incidentFrequency'] }).incidentFrequency ??
+      (data as { incident_frequency?: { label: string; incident_count?: number }[] })
+        .incident_frequency ??
+      []
+    return raw.map(row => ({
+      label: row.label,
+      total:
+        'total' in row && typeof row.total === 'number'
+          ? row.total
+          : 'incident_count' in row && typeof row.incident_count === 'number'
+            ? row.incident_count
+            : 0,
+    }))
+  }, [data])
+
+  const goalData = useMemo(() => {
+    if (!data) return []
+    const raw =
+      (data as { goalCompletion?: ChartData['goalCompletion'] }).goalCompletion ??
+      (data as {
+        goal_completion?: { label: string; avg_goal_completion_rate?: number | null }[]
+      }).goal_completion ??
+      []
+    return raw.map(row => ({
+      label: row.label,
+      rate:
+        'rate' in row && typeof row.rate === 'number'
+          ? row.rate
+          : 'avg_goal_completion_rate' in row &&
+              typeof row.avg_goal_completion_rate === 'number'
+            ? row.avg_goal_completion_rate
+            : 0,
+    }))
+  }, [data])
+
+  const suspensionData = useMemo(() => {
+    if (!data) return []
+    const raw =
+      (data as { suspensionDays?: ChartData['suspensionDays'] }).suspensionDays ??
+      (data as { suspension_days?: { label: string; suspension_days?: number }[] })
+        .suspension_days ??
+      []
+    return raw.map(row => ({
+      label: row.label,
+      days:
+        'days' in row && typeof row.days === 'number'
+          ? row.days
+          : 'suspension_days' in row && typeof row.suspension_days === 'number'
+            ? row.suspension_days
+            : 0,
+    }))
+  }, [data])
 
   const PeriodToggle = (
     <div className="rounded-md bg-[var(--surface-inner)] p-1">

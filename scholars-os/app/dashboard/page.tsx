@@ -47,18 +47,6 @@ export default async function DashboardPage() {
     AND: [{ escalation_active: true }, ...studentScopeClauses],
   }
 
-  const months = Array.from({ length: 4 }, (_, index) => {
-    const monthDate = new Date(now.getFullYear(), now.getMonth() - (3 - index), 1)
-    const monthStart = new Date(monthDate)
-    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0)
-    monthEnd.setHours(23, 59, 59, 999)
-    return {
-      label: monthDate.toLocaleString('en-US', { month: 'short' }),
-      start: monthStart,
-      end: monthEnd,
-    }
-  })
-
   const [
     activeStudents,
     incidentsCurrent,
@@ -70,7 +58,6 @@ export default async function DashboardPage() {
     incidentsCurrentRows,
     recentStudents,
     caseloadSchoolRows,
-    monthlyIncidentCounts,
   ] = await Promise.all([
     prisma.student.count({
       where: {
@@ -163,19 +150,6 @@ export default async function DashboardPage() {
           orderBy: { school: 'asc' },
         })
       : Promise.resolve([]),
-    Promise.all(
-      months.map(month =>
-        prisma.behavioralIncident.count({
-          where: {
-            ...(studentScopeClauses.length > 0 ? { student: studentScope } : {}),
-            incident_date: {
-              gte: month.start,
-              lte: month.end,
-            },
-          },
-        })
-      )
-    ),
   ])
 
   const incidentTrendPct =
@@ -197,7 +171,6 @@ export default async function DashboardPage() {
     {}
   )
 
-  const chartMax = Math.max(...monthlyIncidentCounts, 1)
   const topOffset = isOrgView ? 120 : 64
   const caseloadSchools = caseloadSchoolRows.map(row => row.school)
 
@@ -219,9 +192,6 @@ export default async function DashboardPage() {
       avgGoalCompletion={avgGoalCompletion}
       recentStudents={recentStudents}
       incidentCountByStudent={incidentCountByStudent}
-      monthLabels={months.map(month => month.label)}
-      monthlyIncidentCounts={monthlyIncidentCounts}
-      chartMax={chartMax}
       escalatedStudentName={escalatedStudentName}
       topOffset={topOffset}
       caseloadExport={
