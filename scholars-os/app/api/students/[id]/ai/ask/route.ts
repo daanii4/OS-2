@@ -59,7 +59,7 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
-      max_tokens: 2048,
+      max_tokens: 4096,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
@@ -83,7 +83,7 @@ export async function POST(req: Request, ctx: RouteContext) {
     }
 
     if (!validateAIResponse(aiResponse)) {
-      throw new Error('Response rejected: intervention missing trusted source URL')
+      throw new Error('Response rejected: invalid interventions or plan_of_action')
     }
 
     const saved = await prisma.aiAnalysis.create({
@@ -93,6 +93,10 @@ export async function POST(req: Request, ctx: RouteContext) {
         problem_analysis: aiResponse.problem_analysis,
         next_session_guide: aiResponse.next_session_guide,
         recommended_interventions: aiResponse.recommended_interventions as object[],
+        plan_of_action:
+          aiResponse.escalation_flag || aiResponse.plan_of_action == null
+            ? undefined
+            : (aiResponse.plan_of_action as object),
         escalation_flag: aiResponse.escalation_flag,
         escalation_reason: aiResponse.escalation_reason ?? null,
         counselor_action: 'pending',
@@ -103,6 +107,7 @@ export async function POST(req: Request, ctx: RouteContext) {
         problem_analysis: true,
         next_session_guide: true,
         recommended_interventions: true,
+        plan_of_action: true,
         escalation_flag: true,
         escalation_reason: true,
         counselor_action: true,

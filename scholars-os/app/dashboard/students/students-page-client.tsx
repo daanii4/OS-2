@@ -1,9 +1,17 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { CreateStudentIntakeModal } from './create-student-intake-modal'
+import { useMemo, useState } from 'react'
+
+const CreateStudentIntakeModal = dynamic(
+  () =>
+    import('./create-student-intake-modal').then(m => ({
+      default: m.CreateStudentIntakeModal,
+    })),
+  { ssr: false }
+)
 
 type StudentRow = {
   id: string
@@ -50,6 +58,16 @@ export function StudentsPageClient({
 }: Props) {
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const filteredStudents = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return students
+    return students.filter(student =>
+      `${student.first_name} ${student.last_name}`.toLowerCase().includes(q) ||
+      student.school.toLowerCase().includes(q)
+    )
+  }, [query, students])
 
   function onCreated() {
     router.refresh()
@@ -87,37 +105,60 @@ export function StudentsPageClient({
 
       <div className="os-card">
         <h2 className="os-heading mb-3">Student list</h2>
+
+        <div className="relative mb-4 md:hidden">
+          <input
+            type="search"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search students..."
+            className="os-input w-full pr-10"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)]"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         {students.length === 0 ? (
           <p className="os-body">No students found yet.</p>
+        ) : filteredStudents.length === 0 ? (
+          <p className="os-body">No students match that search.</p>
         ) : (
           <ul className="space-y-2">
-            {students.map(student => (
-              <li
-                key={student.id}
-                className="rounded-md bg-[var(--surface-inner)] p-3"
-              >
+            {filteredStudents.map((student, i) => (
+              <li key={student.id}>
                 <Link
                   href={`/dashboard/students/${student.id}`}
-                  className="os-heading underline"
+                  className="card-enter group relative block rounded-md bg-[var(--surface-inner)] p-3 no-underline transition-colors duration-150 hover:bg-[var(--surface-page)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--olive-600)] focus-visible:ring-offset-2"
+                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
-                  {student.first_name} {student.last_name}
-                </Link>
-                <p className="os-body">
-                  Grade {student.grade} · {student.school} · {student.district}
-                </p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-[var(--radius-sm)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.07em] ${statusBadgeClass(student.status)}`}
-                  >
-                    {student.status}
-                  </span>
-                  <span className="os-caption">
-                    Intake:{' '}
-                    <span className="os-data-sm">
-                      {new Date(student.intake_date).toLocaleDateString()}
+                  <p className="os-heading transition-colors duration-150 group-hover:text-[var(--olive-700)]">
+                    {student.first_name} {student.last_name}
+                  </p>
+                  <p className="os-body">
+                    Grade {student.grade} · {student.school} · {student.district}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-[var(--radius-sm)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.07em] ${statusBadgeClass(student.status)}`}
+                    >
+                      {student.status}
                     </span>
-                  </span>
-                </div>
+                    <span className="os-caption">
+                      Intake:{' '}
+                      <span className="os-data-sm">
+                        {new Date(student.intake_date).toLocaleDateString()}
+                      </span>
+                    </span>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>

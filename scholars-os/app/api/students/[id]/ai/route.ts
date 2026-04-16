@@ -43,6 +43,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
       problem_analysis: true,
       next_session_guide: true,
       recommended_interventions: true,
+      plan_of_action: true,
       escalation_flag: true,
       escalation_reason: true,
       counselor_action: true,

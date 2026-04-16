@@ -3,6 +3,7 @@
 import { SessionType } from '@prisma/client'
 import type { DragEvent } from 'react'
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 const GRADES = [
   'K',
@@ -225,6 +226,7 @@ export function CreateStudentIntakeModal({
   async function saveStudent() {
     setLoading(true)
     setError(null)
+    const loadingToast = toast.loading('Creating student...')
 
     const intakeIso = intakeDate ? new Date(`${intakeDate}T12:00:00`).toISOString() : ''
 
@@ -274,7 +276,7 @@ export function CreateStudentIntakeModal({
 
       if (!res.ok) {
         setError('Could not create student. Check required fields.')
-        setLoading(false)
+        toast.error('Failed to create student')
         return
       }
 
@@ -288,18 +290,22 @@ export function CreateStudentIntakeModal({
           await uploadIntakeFiles(studentId)
         } catch {
           setError('Student was created but one or more files failed to upload.')
-          setLoading(false)
+          toast.error('Student created, but a file upload failed')
           onCreated()
           return
         }
       }
 
+      toast.success('Student created')
       onCreated()
       onClose()
     } catch {
       setError('Something went wrong.')
+      toast.error('Failed to create student')
+    } finally {
+      toast.dismiss(loadingToast)
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (!open) return null

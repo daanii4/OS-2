@@ -12,6 +12,7 @@ import { StudentStatusControl } from './student-status-control'
 import { StudentCharts } from './student-charts'
 import { normalizeStudentSection } from './student-section-ids'
 import { StudentSectionTabs } from './student-section-tabs'
+import { ScrollReveal } from './scroll-reveal'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessStudent, getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
@@ -180,21 +181,19 @@ export default async function StudentDetailPage({
       {/* Breadcrumb + actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="os-label text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
-          >
+          <Link href="/dashboard" className="os-label os-breadcrumb-crumb">
             Dashboard
           </Link>
-          <span className="os-label text-[var(--text-quaternary)]">/</span>
-          <Link
-            href="/dashboard/students"
-            className="os-label text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]"
-          >
+          <span className="os-label text-[var(--text-quaternary)]" aria-hidden>
+            /
+          </span>
+          <Link href="/dashboard/students" className="os-label os-breadcrumb-crumb">
             Students
           </Link>
-          <span className="os-label text-[var(--text-quaternary)]">/</span>
-          <span className="os-label text-[var(--text-secondary)]">
+          <span className="os-label text-[var(--text-quaternary)]" aria-hidden>
+            /
+          </span>
+          <span className="os-label os-breadcrumb-crumb os-breadcrumb-crumb--current">
             {student.first_name} {student.last_name}
           </span>
         </div>
@@ -550,9 +549,15 @@ export default async function StudentDetailPage({
             )}
           </>
       )}
-      {section === 'charts' && <StudentCharts studentId={student.id} />}
+      {section === 'charts' && (
+        <ScrollReveal>
+          <StudentCharts studentId={student.id} />
+        </ScrollReveal>
+      )}
       {section === 'ai' && (
-        <AIPanel studentId={student.id} escalationActive={student.escalation_active} />
+        <ScrollReveal>
+          <AIPanel studentId={student.id} escalationActive={student.escalation_active} />
+        </ScrollReveal>
       )}
       {section === 'plans' && (
           <div className="grid gap-4 lg:grid-cols-2">

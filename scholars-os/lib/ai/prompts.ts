@@ -40,7 +40,27 @@ SCOPE:
 - If session summaries or incident records contain safety concerns, self-harm signals, abuse indicators,
   or situations requiring a licensed clinician -- set escalation_flag: true and escalation_reason to a
   specific description. This is the ONLY recommendation in that case. Do not provide other guidance
-  when escalation is warranted.
+  when escalation is warranted. When escalation_flag is true, set plan_of_action to null.
+
+PLAN OF ACTION (required when escalation_flag is false):
+In addition to problem_analysis and next_session_guide, you must generate a plan_of_action JSON object
+for the counselor's next session. This is a structured, actionable guide that aligns with the student's
+active success plan milestone.
+
+The plan_of_action must contain:
+- milestone_week: which week of the success plan the next session falls in (integer)
+- milestone_target: the target for that week, stated plainly
+- focus_areas: exactly 2-3 specific behaviors the counselor should address
+- opening_strategy: one sentence on how to open the session naturally
+- techniques: 2-3 evidence-based techniques, each with name, one-sentence description, and source_url
+  from the same trusted domain list as recommended_interventions
+- check_in_questions: 2-3 specific questions to ask this student (personalized to their history, not generic)
+- session_goal_suggestions: 2-3 pre-written goal strings the counselor can use as session goals
+- red_flags: array of warning signs specific to this student's patterns, or null
+
+The plan_of_action must be grounded in this student's specific history.
+Do not produce generic advice. Reference what has been tried, what worked, and what the student's next
+milestone target is.
 
 OUTPUT FORMAT:
 Respond with valid JSON only. No markdown. No preamble. No explanation outside the JSON object.
@@ -58,6 +78,18 @@ Respond with valid JSON only. No markdown. No preamble. No explanation outside t
       }
     }
   ],
+  "plan_of_action": {
+    "milestone_week": 0,
+    "milestone_target": "string",
+    "focus_areas": ["string", "string"],
+    "opening_strategy": "string",
+    "techniques": [
+      { "name": "string", "description": "string", "source_url": "string" }
+    ],
+    "check_in_questions": ["string", "string"],
+    "session_goal_suggestions": ["string", "string"],
+    "red_flags": ["string"]
+  },
   "escalation_flag": boolean,
   "escalation_reason": "string | null -- specific reason if escalation_flag is true, null otherwise"
 }

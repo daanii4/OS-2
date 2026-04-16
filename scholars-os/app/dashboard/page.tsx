@@ -1,11 +1,10 @@
 import type { Prisma } from '@prisma/client'
-import { MeetingStatus } from '@prisma/client'
 import { createClient } from '@/lib/supabase/server'
-import { safeMeetingFindMany } from '@/lib/meetings-db'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import { CaseloadExport } from './caseload-export'
 import { DashboardShell } from './dashboard-shell'
 
 export default async function DashboardPage() {
@@ -70,6 +69,7 @@ export default async function DashboardPage() {
     escalatedStudent,
     incidentsCurrentRows,
     recentStudents,
+    caseloadSchoolRows,
     monthlyIncidentCounts,
   ] = await Promise.all([
     prisma.student.count({
@@ -155,6 +155,14 @@ export default async function DashboardPage() {
         baseline_incident_count: true,
       },
     }),
+    isOrgView
+      ? prisma.student.findMany({
+          where: { tenant_id: tenant.id },
+          select: { school: true },
+          distinct: ['school'],
+          orderBy: { school: 'asc' },
+        })
+      : Promise.resolve([]),
     Promise.all(
       months.map(month =>
         prisma.behavioralIncident.count({
@@ -191,49 +199,13 @@ export default async function DashboardPage() {
 
   const chartMax = Math.max(...monthlyIncidentCounts, 1)
   const topOffset = isOrgView ? 120 : 64
+  const caseloadSchools = caseloadSchoolRows.map(row => row.school)
+
+  // meetings table — UI removed per client request April 2026, table retained for data safety
   const escalatedStudentName = escalatedStudent
     ? `${escalatedStudent.first_name} ${escalatedStudent.last_name}`
     : null
 
-  const weekEnd = new Date(now)
-  weekEnd.setDate(weekEnd.getDate() + 7)
-  weekEnd.setHours(23, 59, 59, 999)
-
-  const upcomingMeetingsRaw = await safeMeetingFindMany({
-    where: {
-      tenant_id: tenant.id,
-      ...(isOrgView ? {} : { counselor_id: profile.id }),
-      meeting_date: { gte: now, lte: weekEnd },
-      status: { in: [MeetingStatus.scheduled, MeetingStatus.rescheduled] },
-    },
-    orderBy: { meeting_date: 'asc' },
-    select: {
-      id: true,
-      title: true,
-      meeting_date: true,
-      duration_minutes: true,
-      location: true,
-      meeting_type: true,
-      status: true,
-      counselor: { select: { name: true } },
-      student: { select: { first_name: true, last_name: true } },
-    },
-  })
-
-  const upcomingMeetings = upcomingMeetingsRaw.map(m => ({
-    id: m.id,
-    title: m.title,
-    meeting_date: m.meeting_date.toISOString(),
-    duration_minutes: m.duration_minutes,
-    location: m.location,
-    meeting_type: m.meeting_type,
-    status: m.status,
-    counselorName: m.counselor.name,
-    studentLabel: m.student
-      ? `${m.student.first_name} ${m.student.last_name}`
-      : null,
-    showCounselorName: isOrgView,
-  }))
 
   return (
     <DashboardShell
@@ -252,7 +224,9 @@ export default async function DashboardPage() {
       chartMax={chartMax}
       escalatedStudentName={escalatedStudentName}
       topOffset={topOffset}
-      upcomingMeetings={upcomingMeetings}
+      caseloadExport={
+        isOrgView ? <CaseloadExport schools={caseloadSchools} /> : undefined
+      }
     />
   )
 }

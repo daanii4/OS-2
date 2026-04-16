@@ -32,7 +32,7 @@ export async function triggerAIAnalysis(
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
-    max_tokens: 2048,
+    max_tokens: 4096,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
@@ -53,7 +53,9 @@ export async function triggerAIAnalysis(
   }
 
   if (!validateAIResponse(parsed)) {
-    throw new Error('[ai/analyze] Response rejected: intervention missing trusted source URL')
+    throw new Error(
+      '[ai/analyze] Response rejected: invalid interventions or plan_of_action (trusted URLs required)'
+    )
   }
 
   await prisma.aiAnalysis.create({
@@ -63,10 +65,14 @@ export async function triggerAIAnalysis(
       problem_analysis: parsed.problem_analysis,
       next_session_guide: parsed.next_session_guide,
       recommended_interventions: parsed.recommended_interventions as object[],
+      plan_of_action:
+        parsed.escalation_flag || parsed.plan_of_action == null
+          ? undefined
+          : (parsed.plan_of_action as object),
       escalation_flag: parsed.escalation_flag,
       escalation_reason: parsed.escalation_reason ?? null,
       counselor_action: 'pending',
-      ...(linkedSessionId ? { sessions: { connect: { id: linkedSessionId } } } : {}),
+      linked_session_id: linkedSessionId ?? undefined,
     },
   })
 

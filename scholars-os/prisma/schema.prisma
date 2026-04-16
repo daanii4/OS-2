@@ -159,8 +159,9 @@ model Tenant {
   sessions        Session[]
   success_plans       SuccessPlan[]
   ai_analyses         AiAnalysis[]
-  meetings            Meeting[]
-  student_status_logs StudentStatusLog[]
+  meetings             Meeting[]
+  student_status_logs  StudentStatusLog[]
+  mental_health_notes  MentalHealthNote[]
 
   @@map("tenants")
 }
@@ -187,6 +188,7 @@ model Profile {
   counselor_meetings   Meeting[]             @relation("CounselorMeetings")
   created_meetings     Meeting[]             @relation("CreatedMeetings")
   student_status_logs  StudentStatusLog[]    @relation("StudentStatusChanges")
+  mental_health_notes  MentalHealthNote[]
 
   @@index([tenant_id])
   @@map("profiles")
@@ -201,6 +203,7 @@ model Student {
   tenant_id               String?
   first_name              String
   last_name               String
+  date_of_birth           DateTime? // FERPA — detail views only when authorized
   grade                   Grade
   school                  String
   district                String
@@ -230,7 +233,8 @@ model Student {
   referrals          Referral[]
   consent_records    ConsentRecord[]
   meetings           Meeting[]
-  status_logs        StudentStatusLog[]
+  status_logs         StudentStatusLog[]
+  mental_health_notes MentalHealthNote[]
 
   @@index([tenant_id])
   @@index([tenant_id, assigned_counselor_id])
@@ -294,8 +298,9 @@ model Session {
   tenant           Tenant?               @relation(fields: [tenant_id], references: [id])
   student          Student              @relation(fields: [student_id], references: [id])
   counselor        Profile              @relation(fields: [counselor_id], references: [id])
-  linked_incidents BehavioralIncident[]
-  ai_analyses      AiAnalysis[]
+  linked_incidents     BehavioralIncident[]
+  ai_analyses          AiAnalysis[]
+  mental_health_note   MentalHealthNote?
 
   @@index([tenant_id])
   @@index([tenant_id, student_id])
@@ -396,6 +401,7 @@ model AiAnalysis {
   problem_analysis          String          @db.Text
   next_session_guide        String          @db.Text
   recommended_interventions Json            // [{ intervention, rationale, source: { name, url } }]
+  plan_of_action            Json? // milestone-aware next-session guide — see uienhance.md §4.1
   escalation_flag           Boolean         @default(false)
   escalation_reason         String?         @db.Text
   counselor_action          CounselorAction @default(pending)
@@ -413,6 +419,36 @@ model AiAnalysis {
   @@index([tenant_id])
   @@index([tenant_id, student_id])
   @@map("ai_analyses")
+}
+
+// ─────────────────────────────────────────────
+// MENTAL HEALTH NOTES — district caseload export (monthly sheet)
+// ─────────────────────────────────────────────
+
+model MentalHealthNote {
+  id                  String        @id @default(uuid())
+  tenant_id           String
+  student_id          String
+  session_id          String?       @unique
+  counselor_id        String
+  report_month        String
+  school              String
+  date_seen           DateTime
+  session_number      Int
+  presenting_problems String[]
+  session_format      SessionFormat
+  case_closed         Boolean       @default(false)
+  notes               String?
+  created_at          DateTime      @default(now())
+
+  tenant    Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  session   Session? @relation(fields: [session_id], references: [id], onDelete: SetNull)
+  counselor Profile  @relation(fields: [counselor_id], references: [id], onDelete: Restrict)
+
+  @@index([tenant_id, report_month])
+  @@index([student_id])
+  @@map("mental_health_notes")
 }
 
 // ─────────────────────────────────────────────

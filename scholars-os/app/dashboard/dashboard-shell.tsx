@@ -2,12 +2,9 @@
 
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import {
-  DashboardUpcomingMeetings,
-  type UpcomingMeetingItem,
-} from './dashboard-upcoming-meetings'
-
 const DashboardIncidentChart = dynamic(
   () => import('./dashboard-incident-chart'),
   {
@@ -44,7 +41,7 @@ type DashboardShellProps = {
   chartMax: number
   escalatedStudentName: string | null
   topOffset: number
-  upcomingMeetings: UpcomingMeetingItem[]
+  caseloadExport?: ReactNode
 }
 
 type StudentFilter = 'all' | 'regression' | 'escalated'
@@ -78,12 +75,47 @@ function getStatusBadgeClass(status: string): string {
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard', abbr: 'D', section: 'Main' },
   { href: '/dashboard/students', label: 'Students', abbr: 'S', section: 'Main' },
-  { href: '/dashboard/schedule', label: 'Schedule', abbr: 'M', section: 'Main' },
   { href: '/dashboard/analytics', label: 'Analytics', abbr: 'A', section: 'Reports' },
   { href: '/dashboard/settings/users', label: 'Team', abbr: 'T', section: 'Settings' },
 ]
 
 const NAV_SECTIONS = ['Main', 'Reports', 'Settings'] as const
+
+/** Incident trend pill — only regression uses `badge-regression` pulse (uienhance §1.3). */
+function trendMeta(reductionPct: number | null): { label: string; className: string } | null {
+  if (reductionPct === null) return null
+  if (reductionPct > 0) {
+    return {
+      label: `↓ Improving · ${Math.abs(reductionPct)}%`,
+      className:
+        'inline-flex max-w-[12rem] justify-end rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700',
+    }
+  }
+  if (reductionPct < 0) {
+    return {
+      label: `↑ Needs attention · ${Math.abs(reductionPct)}%`,
+      className:
+        'inline-flex max-w-[12rem] justify-end rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 badge-regression',
+    }
+  }
+  return {
+    label: '→ Stable',
+    className:
+      'inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600',
+  }
+}
+
+function normalizePath(pathname: string | null): string {
+  if (!pathname) return ''
+  return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+}
+
+function isNavActive(pathname: string | null, href: string): boolean {
+  const p = normalizePath(pathname)
+  if (!p) return false
+  if (href === '/dashboard') return p === '/dashboard'
+  return p === href || p.startsWith(`${href}/`)
+}
 
 function NavLinks({
   collapsed,
@@ -92,42 +124,50 @@ function NavLinks({
   collapsed: boolean
   onLinkClick: () => void
 }) {
+  const pathname = usePathname()
+
   return (
     <>
       {NAV_SECTIONS.map(section => (
         <div key={section} className="mb-1">
           <p
-            className={`mb-1.5 mt-4 px-3 text-[8px] font-medium uppercase tracking-[0.08em] transition-opacity duration-200 ${
+            className={`mb-1.5 mt-4 px-3 text-[8px] font-medium uppercase tracking-[0.08em] transition-opacity duration-75 ${
               collapsed ? 'opacity-0' : 'opacity-100'
             }`}
             style={{ color: 'rgba(255,255,255,0.22)' }}
           >
             {section}
           </p>
-          {NAV_LINKS.filter(l => l.section === section).map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={onLinkClick}
-              className="mb-0.5 flex h-9 items-center rounded-md px-3 transition-all duration-[120ms]"
-              style={{ color: 'rgba(255,255,255,0.45)' }}
-              onMouseEnter={e => {
-                ;(e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.80)'
-                ;(e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'
-              }}
-              onMouseLeave={e => {
-                ;(e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.45)'
-                ;(e.currentTarget as HTMLElement).style.background = 'transparent'
-              }}
-            >
-              <span
-                className="text-[12px] font-[500] transition-all duration-200"
-                style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}
+          {NAV_LINKS.filter(l => l.section === section).map(link => {
+            const active = isNavActive(pathname, link.href)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={onLinkClick}
+                className={`relative mb-0.5 flex h-9 items-center gap-3 rounded-lg px-3 transition-all duration-[var(--duration-fast)] ${
+                  active
+                    ? 'bg-white/[0.12] text-white'
+                    : 'text-white/45 hover:bg-white/[0.06] hover:text-white/90'
+                }`}
               >
-                {collapsed ? link.abbr : link.label}
-              </span>
-            </Link>
-          ))}
+                {active && (
+                  <span
+                    className="nav-active-indicator absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-teal-400"
+                    aria-hidden
+                  />
+                )}
+                <span
+                  className={`text-[12px] font-[500] transition-opacity duration-75 ${
+                    active ? 'pl-0.5' : ''
+                  }`}
+                  style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}
+                >
+                  {collapsed ? link.abbr : link.label}
+                </span>
+              </Link>
+            )
+          })}
         </div>
       ))}
     </>
@@ -150,7 +190,7 @@ export function DashboardShell({
   chartMax,
   escalatedStudentName,
   topOffset,
-  upcomingMeetings,
+  caseloadExport,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -280,7 +320,7 @@ export function DashboardShell({
           />
           {/* Drawer */}
           <aside
-            className="absolute left-0 top-0 flex h-full w-[260px] flex-col bg-[var(--olive-800)] transition-transform duration-300"
+            className="absolute left-0 top-0 flex h-full w-[260px] flex-col bg-[var(--olive-800)] transition-transform duration-100"
             style={{ transform: 'translateX(0)' }}
           >
             <div className="border-b border-white/10 px-4 py-5">
@@ -335,7 +375,7 @@ export function DashboardShell({
       {isDesktop && <div className="lg:flex lg:min-h-screen">
         {/* Desktop sidebar */}
         <aside
-          className={`flex flex-col bg-[var(--olive-800)] transition-[width] duration-300 ease-out ${
+          className={`flex flex-col bg-[var(--olive-800)] transition-[width] duration-100 ease-out ${
             sidebarOpen ? 'w-[260px]' : 'w-[76px]'
           }`}
         >
@@ -349,7 +389,7 @@ export function DashboardShell({
                 />
               </div>
               <div
-                className={`overflow-hidden transition-all duration-300 ${
+                className={`overflow-hidden transition-all duration-100 ${
                   sidebarOpen ? 'max-w-[180px] opacity-100' : 'max-w-0 opacity-0'
                 }`}
               >
@@ -371,7 +411,7 @@ export function DashboardShell({
                 {getInitials(profileName)}
               </div>
               <div
-                className={`overflow-hidden transition-all duration-300 ${
+                className={`overflow-hidden transition-all duration-100 ${
                   sidebarOpen ? 'max-w-[140px] opacity-100' : 'max-w-0 opacity-0'
                 }`}
               >
@@ -420,7 +460,7 @@ export function DashboardShell({
                 >
                   <svg
                     viewBox="0 0 16 16"
-                    className={`h-4 w-4 transition-transform duration-300 ${sidebarOpen ? '' : 'rotate-180'}`}
+                    className={`h-4 w-4 transition-transform duration-100 ${sidebarOpen ? '' : 'rotate-180'}`}
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.75"
@@ -520,7 +560,7 @@ export function DashboardShell({
               </div>
             </section>
 
-            <DashboardUpcomingMeetings meetings={upcomingMeetings} />
+            {caseloadExport}
 
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
             <div className="grid gap-[14px] lg:grid-cols-[1fr_320px]">
@@ -661,6 +701,7 @@ export function DashboardShell({
                       baseline && baseline > 0
                         ? Number((((baseline - currentCount) / baseline) * 100).toFixed(0))
                         : null
+                    const trend = trendMeta(reductionPct)
 
                     return (
                       <div
@@ -689,21 +730,13 @@ export function DashboardShell({
                             <p className="os-caption">Incidents (30d)</p>
                             <p className="os-data text-right">{currentCount}</p>
                           </div>
-                          <div>
+                          <div className="text-right">
                             <p className="os-caption">vs baseline</p>
-                            <p
-                              className={`os-data text-right ${
-                                reductionPct === null
-                                  ? ''
-                                  : reductionPct >= 0
-                                    ? 'text-[var(--color-success)]'
-                                    : 'text-[var(--color-regression)]'
-                              }`}
-                            >
-                              {reductionPct === null
-                                ? '—'
-                                : `${reductionPct >= 0 ? '↓' : '↑'} ${Math.abs(reductionPct)}%`}
-                            </p>
+                            {trend ? (
+                              <span className={`${trend.className} mt-0.5`}>{trend.label}</span>
+                            ) : (
+                              <p className="os-data">—</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -780,7 +813,6 @@ export function DashboardShell({
             </div>
           </section>
 
-          <DashboardUpcomingMeetings meetings={upcomingMeetings} />
 
           {/* Chart */}
           <section className="os-card">
@@ -814,6 +846,7 @@ export function DashboardShell({
                     baseline && baseline > 0
                       ? Number((((baseline - currentCount) / baseline) * 100).toFixed(0))
                       : null
+                  const trend = trendMeta(reductionPct)
                   return (
                     <div key={student.id} className="rounded-md bg-[var(--surface-inner)] p-3">
                       <Link href={`/dashboard/students/${student.id}`} className="os-heading block hover:underline">
@@ -822,15 +855,11 @@ export function DashboardShell({
                       <p className="os-caption">
                         Gr {student.grade} · {student.school}
                       </p>
-                      <div className="mt-1.5 flex items-center gap-2">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
                         <span className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}>
                           {student.status}
                         </span>
-                        {reductionPct !== null && (
-                          <span className={`os-caption font-medium ${reductionPct >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-regression)]'}`}>
-                            {reductionPct >= 0 ? '↓' : '↑'} {Math.abs(reductionPct)}% vs baseline
-                          </span>
-                        )}
+                        {trend && <span className={trend.className}>{trend.label}</span>}
                       </div>
                     </div>
                   )

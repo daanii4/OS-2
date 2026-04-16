@@ -10,6 +10,7 @@ const StudentCreateSchema = z
   .object({
     first_name: z.string().trim().min(1),
     last_name: z.string().trim().min(1),
+    date_of_birth: z.string().datetime().optional().nullable(),
     grade: z.nativeEnum(Grade),
     school: z.string().trim().min(1),
     district: z.string().trim().min(1),
@@ -184,6 +185,9 @@ export async function POST(req: NextRequest) {
           tenant_id: tenant.id,
           first_name: parsed.data.first_name,
           last_name: parsed.data.last_name,
+          date_of_birth: parsed.data.date_of_birth
+            ? new Date(parsed.data.date_of_birth)
+            : null,
           grade: parsed.data.grade,
           school: parsed.data.school,
           district: parsed.data.district,

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Serif_Display, Geist, IBM_Plex_Mono } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 const geistSans = Geist({
@@ -44,7 +45,20 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${dmSerif.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'white',
+              border: '1px solid #e2e8f0',
+              color: '#0f172a',
+              fontFamily: 'inherit',
+            },
+          }}
+        />
+      </body>
     </html>
   )
 }

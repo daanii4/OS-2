@@ -13,17 +13,30 @@ import 'dotenv/config'
 
 import {
   PrismaClient,
+  type Grade,
   type IncidentType,
   type SessionType,
   SessionFormat,
   ReferralStatus,
   StudentStatus,
   type Severity,
+  PlanStatus,
+  SessionFrequency,
+  type Profile,
+  type Student,
 } from '@prisma/client'
 
 import { STUDENTS, STUDENT_COUNT, type SeedStudentRow } from './seed-students-data'
 
 const prisma = new PrismaClient()
+
+/** One entry per seeded student — used for plans, supplemental sessions, sample AI. */
+type SeededStudentEntry = {
+  student: Student
+  tier: SeedStudentRow['tier']
+  counselorProfile: Profile
+  currentMonthIncidents: number
+}
 
 const TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? 'demarieya'
 
@@ -51,6 +64,28 @@ function randomItem<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!
 }
 
+/** Typical age on Sept 1, 2024 (CA-style) for seed realism — mid-April birthday. */
+function approximateDateOfBirth(grade: Grade): Date {
+  const ageOnSept2024: Record<Grade, number> = {
+    K: 5,
+    G1: 6,
+    G2: 7,
+    G3: 8,
+    G4: 9,
+    G5: 10,
+    G6: 11,
+    G7: 12,
+    G8: 13,
+    G9: 14,
+    G10: 15,
+    G11: 16,
+    G12: 17,
+  }
+  const age = ageOnSept2024[grade]
+  const birthYear = 2024 - age
+  return new Date(birthYear, 3, 15)
+}
+
 function generateIncidentTimeline(
   tier: SeedStudentRow['tier'],
   baseline: number,
@@ -59,7 +94,7 @@ function generateIncidentTimeline(
   today: Date
 ): { month: Date; count: number }[] {
   const months: { month: Date; count: number }[] = []
-  let cursor = new Date(intakeDate)
+  const cursor = new Date(intakeDate)
   cursor.setDate(1)
 
   let monthIndex = 0
@@ -139,6 +174,197 @@ const SESSION_TYPES_NON_INTAKE: SessionType[] = [
   'classroom_support',
 ]
 
+async function seedSuccessPlans(
+  entries: SeededStudentEntry[],
+  tenantId: string
+): Promise<void> {
+  console.log('\n🌱 Seeding success plans...')
+
+  const focusBehaviors: Record<SeedStudentRow['tier'], string[]> = {
+    A: [
+      'Reduce office referrals to 0–1 per month',
+      'Develop 2 coping strategies for frustration',
+      'Complete full class periods without incident',
+    ],
+    B: [
+      'Reduce office referrals by 60%',
+      'Practice peer conflict resolution weekly',
+      'Improve goal completion rate to 75%+',
+    ],
+    C: [
+      'Stabilize incident rate',
+      'Identify and address plateau barriers',
+      'Re-engage with counseling goals',
+    ],
+    D: [
+      'Establish counseling relationship',
+      'Complete intake assessment goals',
+      'Reduce incidents by 30% from current rate',
+    ],
+  }
+
+  for (const { student, tier, counselorProfile, currentMonthIncidents } of entries) {
+    const targetReduction =
+      tier === 'A' ? 80 : tier === 'B' ? 60 : tier === 'C' ? 40 : 30
+
+    const baseline = student.baseline_incident_count ?? 0
+
+    const milestones = [1, 2, 3, 4].map(week => ({
+      week_number: week,
+      target_incident_count: Math.max(
+        0,
+        Math.round(baseline * (1 - (targetReduction / 100) * (week / 4)))
+      ),
+      target_goal_completion_pct: 50 + week * 10,
+      specific_goals: focusBehaviors[tier].slice(0, 2),
+      counselor_strategy: [
+        'CBT-based trigger identification and coping plan development',
+        'Structured de-escalation practice with role play',
+        'Positive reinforcement schedule with weekly check-in',
+        'Peer conflict mediation and social skills building',
+      ][week - 1],
+      status: week === 1 ? 'met' : week === 2 ? 'in_progress' : 'upcoming',
+      actual_incident_count:
+        week === 1 ? Math.max(0, baseline - 2) : null,
+      actual_goal_completion_pct: week === 1 ? 55.0 : null,
+      notes: week === 1 ? 'Initial milestone. Baseline established.' : null,
+    }))
+
+    const planCompleted =
+      tier === 'A' && baseline - currentMonthIncidents > 8
+
+    await prisma.successPlan.create({
+      data: {
+        tenant_id: tenantId,
+        student_id: student.id,
+        created_by: counselorProfile.id,
+        status: planCompleted ? PlanStatus.completed : PlanStatus.active,
+        goal_statement: `${student.first_name} will reduce office referrals by ${targetReduction}% from baseline and develop ${tier === 'A' ? '3' : '2'} evidence-based coping strategies by end of school year.`,
+        target_reduction_pct: targetReduction,
+        plan_duration_weeks: tier === 'D' ? 8 : 16,
+        focus_behaviors: focusBehaviors[tier],
+        session_frequency:
+          tier === 'D'
+            ? SessionFrequency.weekly
+            : tier === 'C'
+              ? SessionFrequency.weekly
+              : SessionFrequency.biweekly,
+        milestones,
+        ai_counselor_guide: 'PENDING — AI guide will generate on first profile view.',
+        plan_notes: `Success plan created at intake. Tier ${tier} trajectory. Baseline: ${baseline} incidents in first 30 days.`,
+      },
+    })
+  }
+
+  console.log(`✅ Success plans seeded: ${entries.length}`)
+}
+
+async function seedDetailedSessions(
+  entries: SeededStudentEntry[],
+  tenantId: string
+): Promise<void> {
+  console.log('\n🌱 Seeding supplemental session detail...')
+
+  const eligibleStudents = entries.filter(
+    e =>
+      (e.tier === 'A' || e.tier === 'B') &&
+      new Date(e.student.intake_date) < new Date('2024-11-01')
+  )
+
+  const detailedSummaries: Record<'A' | 'B', [string, string]> = {
+    A: [
+      "Student arrived early and initiated conversation about last week's peer conflict in PE. Demonstrated clear application of the STOP technique — stopped, thought, observed, proceeded — before responding. Peer conflict resolved without staff involvement. Reviewed success plan: 4 of 4 goals met this week. Discussed transition plan for reduced session frequency. Student confident and motivated.",
+      'Final session before spring break. Conducted a full retrospective review with the student present — showed them their incident chart from September to now. Student visibly moved by the visual progress. Set 3 goals for the break period. Discussed what to do if a conflict arises without access to counselor. Student named 2 trusted adults at home. Strong close to a strong month.',
+    ],
+    B: [
+      'Productive session with some regression to address. Student had two incidents this week, both in the lunchroom. Analyzed the pattern — hunger and unstructured time are consistent triggers. Proposed a structured lunch check-in with Ms. Torres. Student agreed. Goal completion rate this week was 60% — slightly below target but student showed good self-awareness about what got in the way.',
+      'Session focused on upcoming CAASPP testing period — historically a high-incident window for this student. Developed a specific test-week plan: morning check-in, quiet space access, permission to request a break. Student engaged well. Reviewed coping card created in session 4. Student still carries it. Positive indicator of internalization.',
+    ],
+  }
+
+  for (const { student, tier, counselorProfile } of eligibleStudents) {
+    if (tier !== 'A' && tier !== 'B') continue
+
+    const recentDates = [new Date('2025-03-01'), new Date('2025-03-08')]
+
+    for (let i = 0; i < recentDates.length; i++) {
+      const numGoals = 3
+      const goalsMet = tier === 'A' ? 3 : 2
+
+      await prisma.session.create({
+        data: {
+          tenant_id: tenantId,
+          student_id: student.id,
+          counselor_id: counselorProfile.id,
+          session_date: recentDates[i]!,
+          session_type: 'check_in',
+          session_format: SessionFormat.individual,
+          duration_minutes: 45,
+          attendance_status: 'attended',
+          session_summary: detailedSummaries[tier][i],
+          session_goals: [
+            { goal: 'Apply STOP technique when triggered', met: true },
+            { goal: 'Complete full class period without referral', met: tier === 'A' },
+            {
+              goal: 'Report proactively to counselor if conflict arises',
+              met: goalsMet === 3,
+            },
+          ],
+          goals_attempted: numGoals,
+          goals_met: goalsMet,
+          goal_completion_rate: Math.round((goalsMet / numGoals) * 100 * 100) / 100,
+        },
+      })
+    }
+  }
+
+  console.log(
+    `✅ Supplemental sessions seeded for ${eligibleStudents.length} students`
+  )
+}
+
+async function seedSampleAIAnalyses(entries: SeededStudentEntry[]): Promise<void> {
+  if (!process.env.OPENAI_API_KEY) {
+    console.log(
+      '\n⚠️  OPENAI_API_KEY not set — skipping sample AI analyses (set key to enable).'
+    )
+    return
+  }
+
+  console.log('\n🌱 Running AI analysis for 5 representative students...')
+  console.log(
+    '   (Full AI analysis will trigger automatically as sessions are logged in production)'
+  )
+
+  const sampleStudents = [
+    entries.filter(e => e.tier === 'A')[0],
+    entries.filter(e => e.tier === 'A')[1],
+    entries.filter(e => e.tier === 'B')[0],
+    entries.filter(e => e.tier === 'C')[0],
+    entries.filter(e => e.tier === 'D')[0],
+  ].filter(Boolean) as SeededStudentEntry[]
+
+  const { triggerAIAnalysis } = await import('../lib/ai/analyze')
+
+  for (const { student } of sampleStudents) {
+    try {
+      console.log(`   → Analyzing ${student.first_name} ${student.last_name}...`)
+      await triggerAIAnalysis(student.id, 'plan_creation')
+      await new Promise(resolve => setTimeout(resolve, 3000))
+    } catch (err) {
+      console.error(
+        `   ⚠️  AI analysis failed for ${student.first_name} ${student.last_name}:`,
+        err
+      )
+      console.error(
+        '   Skipping — student data is seeded, AI will retry on first profile view.'
+      )
+    }
+  }
+
+  console.log('✅ Sample AI analyses complete')
+}
+
 async function main() {
   console.log('Starting Operation Scholars OS seed...')
 
@@ -188,6 +414,7 @@ async function main() {
 
   const today = new Date('2025-03-15')
   let studentCount = 0
+  const seededStudents: SeededStudentEntry[] = []
 
   for (const s of STUDENTS) {
     if (!SCHOOLS.some(sc => sc.name === s.school)) {
@@ -202,6 +429,7 @@ async function main() {
         tenant_id: tenant.id,
         first_name: s.firstName,
         last_name: s.lastName,
+        date_of_birth: approximateDateOfBirth(s.grade),
         grade: s.grade,
         school: s.school,
         district: DISTRICT,
@@ -362,11 +590,28 @@ async function main() {
       })
     }
 
+    seededStudents.push({
+      student,
+      tier: s.tier,
+      counselorProfile,
+      currentMonthIncidents: s.currentMonthIncidents,
+    })
+
     studentCount++
     if (studentCount % 10 === 0) {
       console.log(`  ${studentCount}/${STUDENT_COUNT} students seeded...`)
     }
   }
+
+  const supplementalEligibleCount = seededStudents.filter(
+    e =>
+      (e.tier === 'A' || e.tier === 'B') &&
+      new Date(e.student.intake_date) < new Date('2024-11-01')
+  ).length
+
+  await seedSuccessPlans(seededStudents, tenant.id)
+  await seedDetailedSessions(seededStudents, tenant.id)
+  await seedSampleAIAnalyses(seededStudents)
 
   console.log('')
   console.log('Seed complete.')
@@ -375,6 +620,22 @@ async function main() {
   console.log('  Tier B (moderate progress): 25')
   console.log('  Tier C (plateau): 10')
   console.log('  Tier D (regression/recent): 10')
+  console.log('')
+  console.log('📊 Seed summary:')
+  console.log(`   Success plans:         ${STUDENT_COUNT} (one per student)`)
+  console.log(
+    `   Supplemental sessions: ~${supplementalEligibleCount * 2} (Tier A + B with 4+ months history)`
+  )
+  console.log(
+    `   AI analyses generated: ${process.env.OPENAI_API_KEY ? '5 (representative sample)' : '0 (OPENAI_API_KEY not set)'}`
+  )
+  console.log(
+    `   AI analyses pending:   ${process.env.OPENAI_API_KEY ? '65 (trigger on first profile view in production)' : '70 (set OPENAI_API_KEY and re-run seed for sample AI)'}`
+  )
+  console.log('')
+  console.log('   Token usage: minimal — AI called for 5 students only when OPENAI_API_KEY is set.')
+  console.log('   Remaining students will get AI analysis automatically')
+  console.log('   when their first session is logged or profile is viewed.')
   console.log('')
   console.log('Sign in with your existing test owner, counselor, and assistant accounts.')
 }

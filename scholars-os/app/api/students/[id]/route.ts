@@ -11,6 +11,7 @@ const UpdateStudentSchema = z.object({
   school: z.string().min(1).max(200).optional(),
   district: z.string().min(1).max(200).optional(),
   grade: z.enum(['K', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12']).optional(),
+  date_of_birth: z.string().datetime().nullable().optional(),
   session_format: z.enum(['individual', 'group']).optional(),
   referral_source: z.string().min(1).max(200).optional(),
   general_notes: z.string().max(5000).optional(),
@@ -66,6 +67,7 @@ export async function GET(_: Request, ctx: RouteContext) {
       id: true,
       first_name: true,
       last_name: true,
+      date_of_birth: true,
       grade: true,
       school: true,
       district: true,
@@ -156,9 +158,15 @@ export async function PATCH(req: Request, ctx: RouteContext) {
   }
 
   try {
+    const { date_of_birth, ...rest } = parsed.data
     await prisma.student.update({
       where: { id: studentId },
-      data: parsed.data,
+      data: {
+        ...rest,
+        ...(date_of_birth !== undefined && {
+          date_of_birth: date_of_birth === null ? null : new Date(date_of_birth),
+        }),
+      },
     })
     const updated = await prisma.student.findFirst({
       where: { id: studentId, tenant_id: tenant.id },

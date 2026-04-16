@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { parsePlanOfAction } from '@/lib/ai/validation'
+import { PlanOfActionPanel } from './plan-of-action'
 
 type Intervention = {
   intervention: string
@@ -14,6 +16,7 @@ type Analysis = {
   problem_analysis: string
   next_session_guide: string
   recommended_interventions: Intervention[]
+  plan_of_action: unknown
   escalation_flag: boolean
   escalation_reason: string | null
   counselor_action: string
@@ -68,6 +71,9 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
   useEffect(() => {
     fetchAnalyses()
   }, [fetchAnalyses])
+
+  const latestPlan =
+    analyses.length > 0 ? parsePlanOfAction(analyses[0].plan_of_action) : null
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault()
@@ -269,6 +275,8 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
           </div>
         )}
       </div>
+
+      {latestPlan && <PlanOfActionPanel studentId={studentId} plan={latestPlan} />}
 
       {/* Ask AI */}
       <div className="os-card">

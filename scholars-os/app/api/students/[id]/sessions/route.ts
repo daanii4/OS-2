@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { canAccessStudent, getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { triggerAIAnalysis } from '@/lib/ai/analyze'
+import { createMentalHealthNoteForSession } from '@/lib/mental-health-notes'
 import { getTenantFromRequest } from '@/lib/tenant'
 
 const SessionGoalSchema = z.object({
@@ -27,6 +28,7 @@ const SessionCreateSchema = z
     session_summary: z.string().trim().optional().nullable(),
     session_goals: z.array(SessionGoalSchema).optional().nullable(),
     linked_incident_ids: z.array(z.string().uuid()).optional().nullable(),
+    district_notes: z.string().trim().max(2000).optional().nullable(),
   })
   .strip()
 
@@ -204,6 +206,25 @@ export async function POST(req: Request, ctx: RouteContext) {
     }
   }
 
+  const studentForCaseload = await prisma.student.findFirst({
+    where: { id: studentId, tenant_id: tenant.id },
+    select: {
+      school: true,
+      referrals: {
+        orderBy: { referral_date: 'desc' },
+        take: 1,
+        select: { intervention_types: true },
+      },
+    },
+  })
+
+  if (!studentForCaseload) {
+    return NextResponse.json(
+      { error: 'Student not found', code: 'NOT_FOUND' },
+      { status: 404 }
+    )
+  }
+
   try {
     const session = await prisma.$transaction(async tx => {
       const createdSession = await tx.session.create({
@@ -247,6 +268,20 @@ export async function POST(req: Request, ctx: RouteContext) {
             student_id: studentId,
           },
           data: { linked_session_id: createdSession.id },
+        })
+      }
+
+      if (parsed.data.attendance_status === AttendanceStatus.attended) {
+        await createMentalHealthNoteForSession(tx, {
+          tenantId: tenant.id,
+          studentId,
+          sessionId: createdSession.id,
+          counselorId: profile.id,
+          sessionDate: new Date(parsed.data.session_date),
+          sessionFormat: parsed.data.session_format ?? SessionFormat.individual,
+          school: studentForCaseload.school,
+          interventionTypes: studentForCaseload.referrals[0]?.intervention_types,
+          districtNotes: parsed.data.district_notes,
         })
       }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import { toast } from 'sonner'
 
 const incidentTypes = [
   'office_referral',
@@ -50,29 +51,39 @@ export function AddIncidentForm({ studentId }: AddIncidentFormProps) {
     event.preventDefault()
     setLoading(true)
     setError(null)
+    const loadingToast = toast.loading('Saving incident...')
 
-    const response = await fetch(`/api/students/${studentId}/incidents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        incident_date: new Date(incidentDate).toISOString(),
-        incident_type: incidentType,
-        suspension_days: requiresSuspensionDays
-          ? Number(suspensionDays || 0)
-          : undefined,
-        severity,
-        description,
-        reported_by: reportedBy,
-      }),
-    })
+    try {
+      const response = await fetch(`/api/students/${studentId}/incidents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          incident_date: new Date(incidentDate).toISOString(),
+          incident_type: incidentType,
+          suspension_days: requiresSuspensionDays
+            ? Number(suspensionDays || 0)
+            : undefined,
+          severity,
+          description,
+          reported_by: reportedBy,
+        }),
+      })
 
-    if (!response.ok) {
+      if (!response.ok) {
+        setError('Unable to save incident right now.')
+        toast.error('Failed to save incident')
+        return
+      }
+
+      toast.success('Incident logged')
+      setTimeout(() => window.location.reload(), 250)
+    } catch {
       setError('Unable to save incident right now.')
+      toast.error('Failed to save incident')
+    } finally {
+      toast.dismiss(loadingToast)
       setLoading(false)
-      return
     }
-
-    window.location.reload()
   }
 
   return (

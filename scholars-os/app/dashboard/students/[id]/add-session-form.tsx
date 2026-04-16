@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
+import { takeQueuedSessionGoals } from '@/lib/session-goals-queue'
+import { toast } from 'sonner'
 
 const attendanceOptions = ['attended', 'no_show', 'rescheduled', 'cancelled'] as const
 const sessionTypes = [
@@ -54,11 +56,29 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
   const [attendanceStatus, setAttendanceStatus] =
     useState<(typeof attendanceOptions)[number]>('attended')
   const [sessionSummary, setSessionSummary] = useState('')
+  const [districtNotes, setDistrictNotes] = useState('')
   const [newGoal, setNewGoal] = useState('')
   const [newGoalMet, setNewGoalMet] = useState(false)
   const [goals, setGoals] = useState<Goal[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const queued = takeQueuedSessionGoals(studentId)
+    if (queued.length === 0) return
+    setGoals(current => {
+      const existing = new Set(current.map(g => g.goal))
+      const merged = [...current]
+      for (const q of queued) {
+        if (!existing.has(q.goal)) {
+          merged.push(q)
+          existing.add(q.goal)
+        }
+      }
+      return merged
+    })
+    toast.info('Suggested goals from your AI plan were added below.')
+  }, [studentId])
 
   const summaryRequired = attendanceStatus === 'attended'
 
@@ -78,28 +98,39 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
     event.preventDefault()
     setLoading(true)
     setError(null)
+    const loadingToast = toast.loading('Saving session...')
 
-    const response = await fetch(`/api/students/${studentId}/sessions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_date: new Date(sessionDate).toISOString(),
-        session_type: sessionType,
-        session_format: sessionFormat,
-        duration_minutes: Number(durationMinutes || 30),
-        attendance_status: attendanceStatus,
-        session_summary: sessionSummary || null,
-        session_goals: goals.length > 0 ? goals : null,
-      }),
-    })
+    try {
+      const response = await fetch(`/api/students/${studentId}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_date: new Date(sessionDate).toISOString(),
+          session_type: sessionType,
+          session_format: sessionFormat,
+          duration_minutes: Number(durationMinutes || 30),
+          attendance_status: attendanceStatus,
+          session_summary: sessionSummary || null,
+          district_notes: districtNotes.trim() || null,
+          session_goals: goals.length > 0 ? goals : null,
+        }),
+      })
 
-    if (!response.ok) {
+      if (!response.ok) {
+        setError('Unable to save session right now.')
+        toast.error('Failed to save session')
+        return
+      }
+
+      toast.success('Session logged')
+      setTimeout(() => window.location.reload(), 250)
+    } catch {
       setError('Unable to save session right now.')
+      toast.error('Failed to save session')
+    } finally {
+      toast.dismiss(loadingToast)
       setLoading(false)
-      return
     }
-
-    window.location.reload()
   }
 
   return (
@@ -226,6 +257,23 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
           placeholder="What was covered, student response, follow-ups"
           className="os-textarea"
           rows={4}
+        />
+      </div>
+
+      <div className="mt-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-inner)] p-4">
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          District notes (optional)
+        </label>
+        <p className="os-caption mb-2">
+          Brief notes for the monthly caseload report (e.g. rapport building, family dynamics).
+        </p>
+        <input
+          type="text"
+          value={districtNotes}
+          onChange={e => setDistrictNotes(e.target.value)}
+          disabled={loading}
+          placeholder="e.g. Rapport building, decision making, grades"
+          className="os-input w-full"
         />
       </div>
 

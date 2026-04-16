@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
+// meetings table — UI removed per client request April 2026, table retained for data safety
 export type MeetingDelegate = PrismaClient['meeting']
 
 /**
