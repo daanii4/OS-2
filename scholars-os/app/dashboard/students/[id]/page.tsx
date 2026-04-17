@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { AddIncidentForm } from './add-incident-form'
 import { AddSessionForm } from './add-session-form'
 import { AIPanel } from './ai-panel'
 import { AssignCounselorForm } from './assign-counselor-form'
 import { BaselineForm } from './baseline-form'
 import { CreatePlanForm } from './create-plan-form'
+import { IncidentsMasterDetail } from './incidents-master-detail'
 import { parseIntakeFiles } from '@/lib/types/intake-file'
 import { ProfileHeader } from './profile-header'
 import { StudentStatusControl } from './student-status-control'
@@ -290,49 +290,10 @@ export default async function StudentDetailPage({
           </div>
       )}
       {section === 'incidents' && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AddIncidentForm studentId={student.id} />
-            <div className="os-card">
-              <h3 className="os-heading mb-3">Incident history</h3>
-              {student.incidents.length === 0 ? (
-                <p className="os-body">No incidents logged yet.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {student.incidents.map(incident => (
-                    <li key={incident.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <p className="os-subhead capitalize">
-                        {incident.incident_type.replace(/_/g, ' ')} ·{' '}
-                        <span
-                          className={
-                            incident.severity === 'high'
-                              ? 'text-[var(--color-error)]'
-                              : incident.severity === 'medium'
-                                ? 'text-[var(--color-regression)]'
-                                : 'text-[var(--color-success)]'
-                          }
-                        >
-                          {incident.severity}
-                        </span>
-                      </p>
-                      <p className="os-caption">
-                        <span className="os-data-sm">
-                          {new Date(incident.incident_date).toLocaleDateString()}
-                        </span>{' '}
-                        · {incident.reported_by}
-                      </p>
-                      {incident.suspension_days !== null && (
-                        <p className="os-caption">
-                          Suspension:{' '}
-                          <span className="os-data-sm">{incident.suspension_days}d</span>
-                        </p>
-                      )}
-                      <p className="os-body mt-1">{incident.description}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        <IncidentsMasterDetail
+          studentId={student.id}
+          incidents={student.incidents}
+        />
       )}
       {section === 'overview' && (
           <>
