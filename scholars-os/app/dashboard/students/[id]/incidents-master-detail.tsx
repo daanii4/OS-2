@@ -91,10 +91,13 @@ export function IncidentsMasterDetail({ studentId, incidents }: IncidentsMasterD
   }, [])
 
   useEffect(() => {
-    measureContainerHeight()
+    const timeoutId = window.setTimeout(() => {
+      measureContainerHeight()
+    }, 0)
     window.addEventListener('resize', measureContainerHeight)
     window.addEventListener('scroll', measureContainerHeight, { passive: true })
     return () => {
+      window.clearTimeout(timeoutId)
       window.removeEventListener('resize', measureContainerHeight)
       window.removeEventListener('scroll', measureContainerHeight)
     }
