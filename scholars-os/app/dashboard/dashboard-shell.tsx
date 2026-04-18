@@ -6,6 +6,10 @@ import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SidebarAccountMenu } from '@/components/layout/sidebar-account-menu'
+import {
+  StudentsHeader,
+  type StudentFilterKey,
+} from '@/components/students/students-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StudentAvatar } from '@/components/ui/student-avatar'
 const DashboardIncidentChart = dynamic(
@@ -26,6 +30,7 @@ type RecentStudent = {
   school: string
   status: string
   baseline_incident_count: number | null
+  escalation_active: boolean
 }
 
 type DashboardShellProps = {
@@ -46,7 +51,23 @@ type DashboardShellProps = {
   caseloadExport?: ReactNode
 }
 
-type StudentFilter = 'all' | 'regression' | 'escalated'
+function reductionPct(
+  baseline: number | null,
+  currentIncidents: number
+): number | null {
+  if (baseline === null || baseline <= 0) return null
+  return Number((((baseline - currentIncidents) / baseline) * 100).toFixed(0))
+}
+
+/** Worsening vs baseline; matches caseload filter (≥ 25%). */
+function regressionDeltaPct(
+  baseline: number | null,
+  currentIncidents: number
+): number | null {
+  const r = reductionPct(baseline, currentIncidents)
+  if (r === null) return null
+  return -r
+}
 
 function splitProfileName(name: string): { first: string; last: string } {
   const parts = name
@@ -226,7 +247,7 @@ export function DashboardShell({
   const [isDesktop, setIsDesktop] = useState(true)
 
   const [studentSearch, setStudentSearch] = useState('')
-  const [studentFilter, setStudentFilter] = useState<StudentFilter>('all')
+  const [studentFilter, setStudentFilter] = useState<StudentFilterKey>('all')
   const [escalationAcknowledged, setEscalationAcknowledged] = useState(false)
 
   type ChartPeriod = 'week' | 'month' | 'year'
@@ -284,10 +305,7 @@ export function DashboardShell({
     return recentStudents.filter(student => {
       const currentCount = incidentCountByStudent[student.id] ?? 0
       const baseline = student.baseline_incident_count
-      const reductionPct =
-        baseline && baseline > 0
-          ? Number((((baseline - currentCount) / baseline) * 100).toFixed(0))
-          : null
+      const delta = regressionDeltaPct(baseline, currentCount)
 
       const matchesQuery =
         !query ||
@@ -296,8 +314,8 @@ export function DashboardShell({
         student.grade.toLowerCase().includes(query)
 
       if (!matchesQuery) return false
-      if (studentFilter === 'regression') return reductionPct !== null && reductionPct < 0
-      if (studentFilter === 'escalated') return student.status === 'escalated'
+      if (studentFilter === 'regression') return delta !== null && delta >= 25
+      if (studentFilter === 'escalated') return student.escalation_active
       return true
     })
   }, [incidentCountByStudent, recentStudents, studentFilter, studentSearch])
@@ -315,10 +333,8 @@ export function DashboardShell({
     () =>
       recentStudents.filter(s => {
         const current = incidentCountByStudent[s.id] ?? 0
-        const b = s.baseline_incident_count
-        if (!b || b === 0) return false
-        const pct = ((b - current) / b) * 100
-        return pct < 0
+        const delta = regressionDeltaPct(s.baseline_incident_count, current)
+        return delta !== null && delta >= 25
       }).length,
     [recentStudents, incidentCountByStudent]
   )
@@ -833,43 +849,15 @@ export function DashboardShell({
 
             {/* Students section */}
             <section className="os-card">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="os-heading">Students</h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    className="os-input w-full sm:w-[220px]"
-                    placeholder="Search student"
-                    value={studentSearch}
-                    onChange={event => setStudentSearch(event.target.value)}
-                  />
-                  <div className="flex flex-wrap gap-1">
-                    <button
-                      className={studentFilter === 'all' ? 'os-btn-primary' : 'os-btn-secondary'}
-                      onClick={() => setStudentFilter('all')}
-                    >
-                      All
-                    </button>
-                    <button
-                      className={studentFilter === 'regression' ? 'os-btn-primary' : 'os-btn-secondary'}
-                      onClick={() => setStudentFilter('regression')}
-                    >
-                      Regression
-                    </button>
-                    <button
-                      className={studentFilter === 'escalated' ? 'os-btn-primary' : 'os-btn-secondary'}
-                      onClick={() => setStudentFilter('escalated')}
-                    >
-                      Escalated
-                    </button>
-                  </div>
-                </div>
+              <div className="px-4 pt-4 md:px-5">
+                <StudentsHeader
+                  totalCount={recentStudents.length}
+                  filteredCount={filteredStudents.length}
+                  activeFilter={studentFilter}
+                  onFilterChange={setStudentFilter}
+                  onSearchChange={setStudentSearch}
+                />
               </div>
-
-              {filteredStudents.length > 0 && (
-                <p className="os-caption mb-3">
-                  Showing {filteredStudents.length} of {recentStudents.length} students
-                </p>
-              )}
 
               {filteredStudents.length === 0 ? (
                 recentStudents.length === 0 ? (
@@ -1053,13 +1041,13 @@ export function DashboardShell({
 
           {/* Students list */}
           <section className="os-card">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="os-heading">Students</h2>
-              <input
-                className="os-input w-full"
-                placeholder="Search student"
-                value={studentSearch}
-                onChange={e => setStudentSearch(e.target.value)}
+            <div className="px-1 pt-1">
+              <StudentsHeader
+                totalCount={recentStudents.length}
+                filteredCount={filteredStudents.length}
+                activeFilter={studentFilter}
+                onFilterChange={setStudentFilter}
+                onSearchChange={setStudentSearch}
               />
             </div>
             {filteredStudents.length === 0 ? (

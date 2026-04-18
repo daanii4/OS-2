@@ -140,6 +140,7 @@ export default async function DashboardPage() {
         school: true,
         status: true,
         baseline_incident_count: true,
+        escalation_active: true,
       },
     }),
     isOrgView
