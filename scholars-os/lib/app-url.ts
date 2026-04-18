@@ -1,13 +1,8 @@
 /**
- * Public base URL for Supabase invite redirectTo and hrefs in transactional email.
- * Omit in Vercel: VERCEL_URL is used (works for *.vercel.app; set NEXT_PUBLIC_APP_URL for custom domain).
- * Not used for page routing — a wrong value does not make the app unreachable.
+ * Base URL for Supabase invite redirectTo and links in transactional email.
+ * Uses VERCEL_URL on Vercel (no custom env). Local dev: http://127.0.0.1:$PORT
  */
 export function getPublicAppUrl(): string {
-  const explicit =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ??
-    process.env.APP_URL?.replace(/\/$/, '')
-  if (explicit) return explicit
   if (process.env.VERCEL_URL) {
     const host = process.env.VERCEL_URL.replace(/^https?:\/\//, '')
     return `https://${host}`
