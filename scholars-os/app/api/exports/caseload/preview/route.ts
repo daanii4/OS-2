@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { buildCaseloadRowsForMonth } from '@/lib/caseload-export-rows'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
@@ -53,21 +54,12 @@ export async function GET(req: NextRequest) {
 
   const { month, school } = parsed.data
 
-  const where = { tenant_id: tenant.id, report_month: month, school }
-
-  const [sessionCount, distinctRows] = await Promise.all([
-    prisma.mentalHealthNote.count({ where }),
-    prisma.mentalHealthNote.findMany({
-      where,
-      distinct: ['student_id'],
-      select: { student_id: true },
-    }),
-  ])
+  const { summary } = await buildCaseloadRowsForMonth(prisma, tenant.id, month, school)
 
   return NextResponse.json({
     data: {
-      sessions: sessionCount,
-      students: distinctRows.length,
+      sessions: summary.totalSessions,
+      students: summary.totalStudents,
     },
   })
 }

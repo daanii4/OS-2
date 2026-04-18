@@ -1,9 +1,6 @@
 import type { Prisma, SessionFormat, SessionType } from '@prisma/client'
+import { reportMonthFromSessionDate } from '@/lib/caseload-month'
 import { sessionTypesToPresentingLabels } from '@/lib/session-type-labels'
-
-function reportMonthFromDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
 
 /**
  * Creates a caseload row for an attended session (district monthly sheet).
@@ -37,7 +34,7 @@ export async function createMentalHealthNoteForSession(
       student_id: input.studentId,
       session_id: input.sessionId,
       counselor_id: input.counselorId,
-      report_month: reportMonthFromDate(input.sessionDate),
+      report_month: reportMonthFromSessionDate(input.sessionDate),
       school: input.school,
       date_seen: input.sessionDate,
       session_number: priorCount + 1,

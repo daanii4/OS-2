@@ -118,7 +118,7 @@ export default async function DashboardPage() {
     }),
     prisma.student.findFirst({
       where: escalationWhere,
-      select: { first_name: true, last_name: true },
+      select: { id: true, first_name: true, last_name: true },
       orderBy: { updated_at: 'desc' },
     }),
     prisma.behavioralIncident.findMany({
@@ -168,6 +168,18 @@ export default async function DashboardPage() {
     }),
   ])
 
+  const escalatedAnalysis = escalatedStudent
+    ? await prisma.aiAnalysis.findFirst({
+        where: {
+          student_id: escalatedStudent.id,
+          escalation_flag: true,
+          student: studentScope,
+        },
+        select: { escalation_reason: true },
+        orderBy: { created_at: 'desc' },
+      })
+    : null
+
   const incidentTrendPct =
     incidentsPrevious > 0
       ? ((incidentsCurrent - incidentsPrevious) / incidentsPrevious) * 100
@@ -197,7 +209,7 @@ export default async function DashboardPage() {
   const escalatedStudentName = escalatedStudent
     ? `${escalatedStudent.first_name} ${escalatedStudent.last_name}`
     : null
-
+  const escalatedStudentId = escalatedStudent?.id ?? null
 
   return (
     <DashboardShell
@@ -213,7 +225,9 @@ export default async function DashboardPage() {
       avgGoalCompletion={avgGoalCompletion}
       recentStudents={recentStudents}
       incidentCountByStudent={incidentCountByStudent}
+      escalatedStudentId={escalatedStudentId}
       escalatedStudentName={escalatedStudentName}
+      escalationReason={escalatedAnalysis?.escalation_reason ?? null}
       caseloadTotalCount={caseloadTotalCount}
       regressionCountFull={regressionCountFull}
       statusMix={statusMix}

@@ -4,9 +4,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { format, parseISO } from 'date-fns'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { formatCaseloadMonthLabel } from '@/lib/caseload-month'
+import { buildCaseloadRowsForMonth } from '@/lib/caseload-export-rows'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
@@ -60,30 +61,14 @@ export async function GET(req: NextRequest) {
 
   const { month, school } = parsed.data
 
-  const notes = await prisma.mentalHealthNote.findMany({
-    where: {
-      tenant_id: tenant.id,
-      report_month: month,
-      school,
-    },
-    include: {
-      student: {
-        select: {
-          first_name: true,
-          last_name: true,
-          grade: true,
-        },
-      },
-    },
-    orderBy: [{ student: { last_name: 'asc' } }, { session_number: 'asc' }],
-  })
+  const { rows: notes, summary } = await buildCaseloadRowsForMonth(
+    prisma,
+    tenant.id,
+    month,
+    school
+  )
 
-  const totalStudents = new Set(notes.map(n => n.student_id)).size
-  const totalSessions = notes.length
-  const totalGroupSessions = notes.filter(n => n.session_format === 'group').length
-  const totalIndivSessions = notes.filter(n => n.session_format === 'individual').length
-
-  const displayMonth = format(parseISO(`${month}-01`), 'MMMM yyyy')
+  const displayMonth = formatCaseloadMonthLabel(month)
 
   const pdfDoc = (
     <CaseloadDocument
@@ -92,10 +77,10 @@ export async function GET(req: NextRequest) {
       tenantName={tenant.name}
       notes={notes}
       summary={{
-        totalStudents,
-        totalSessions,
-        totalIndivSessions,
-        totalGroupSessions,
+        totalStudents: summary.totalStudents,
+        totalSessions: summary.totalSessions,
+        totalIndivSessions: summary.totalIndivSessions,
+        totalGroupSessions: summary.totalGroupSessions,
       }}
     />
   )

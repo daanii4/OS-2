@@ -13,6 +13,7 @@ import {
 import { AnimatedMenuButton } from '@/components/ui/button'
 import { SidebarUserMenu } from '@/components/layout/sidebar-user-menu'
 import { EmptyState } from '@/components/ui/empty-state'
+import { EscalationReviewModal } from '@/components/ui/escalation-review-modal'
 import { StudentAvatar } from '@/components/ui/student-avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useLocalStorageBoolean } from '@/hooks/use-local-storage'
@@ -55,7 +56,9 @@ type DashboardShellProps = {
   /** Initial rows for the student preview (SSR); list refreshes from `/api/dashboard/students-preview`. */
   recentStudents: RecentStudent[]
   incidentCountByStudent: Record<string, number>
+  escalatedStudentId: string | null
   escalatedStudentName: string | null
+  escalationReason: string | null
   /** Total students in scope (matches caseload) for accurate header counts. */
   caseloadTotalCount: number
   /** Regression count across full caseload (30d vs baseline, ≥25%). */
@@ -265,7 +268,9 @@ export function DashboardShell({
   avgGoalCompletion,
   recentStudents,
   incidentCountByStudent,
+  escalatedStudentId,
   escalatedStudentName,
+  escalationReason,
   caseloadTotalCount,
   regressionCountFull,
   statusMix,
@@ -279,6 +284,7 @@ export function DashboardShell({
   const [studentSearch, setStudentSearch] = useState('')
   const [studentFilter, setStudentFilter] = useState<StudentFilterKey>('all')
   const [escalationAcknowledged, setEscalationAcknowledged] = useState(false)
+  const [showEscalationModal, setShowEscalationModal] = useState(false)
 
   const [previewStudents, setPreviewStudents] = useState<RecentStudent[]>(recentStudents)
   const [previewFilteredCount, setPreviewFilteredCount] = useState(caseloadTotalCount)
@@ -634,7 +640,7 @@ export function DashboardShell({
                 <button
                   className="flex-shrink-0 rounded px-4 py-2 text-[12px] font-semibold transition-colors sm:text-[13px]"
                   style={{ background: '#FFFFFF', color: '#DC2626', minHeight: 36 }}
-                  onClick={() => setEscalationAcknowledged(true)}
+                  onClick={() => setShowEscalationModal(true)}
                 >
                   Acknowledge & Take Action
                 </button>
@@ -1000,7 +1006,7 @@ export function DashboardShell({
             <button
               className="flex-shrink-0 rounded px-3 py-1.5 text-[12px] font-semibold"
               style={{ background: '#FFFFFF', color: '#DC2626', minHeight: 32 }}
-              onClick={() => setEscalationAcknowledged(true)}
+              onClick={() => setShowEscalationModal(true)}
             >
               Acknowledge & Take Action
             </button>
@@ -1176,6 +1182,19 @@ export function DashboardShell({
           </section>
         </div>
       </div>}
+
+      {escalatedStudentId && escalatedStudentName ? (
+        <EscalationReviewModal
+          open={showEscalationModal}
+          studentId={escalatedStudentId}
+          studentName={escalatedStudentName}
+          escalationReason={escalationReason}
+          onClose={() => setShowEscalationModal(false)}
+          onEscalationResolved={() => {
+            setEscalationAcknowledged(true)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

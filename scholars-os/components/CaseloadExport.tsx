@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Download, FileX, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatCaseloadMonthLabel } from '@/lib/caseload-month'
 import { cn } from '@/lib/utils'
 
 interface CaseloadExportProps {
@@ -233,12 +234,7 @@ function PreviewPill({
   school: string
   month: string
 }) {
-  const monthLabel = month
-    ? new Date(`${month}-01`).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      })
-    : ''
+  const monthLabel = month ? formatCaseloadMonthLabel(month) : ''
 
   if (preview.status === 'idle') return null
 
