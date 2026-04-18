@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:dedupe-students": "tsx prisma/dedupe-duplicate-students.ts"
+    "db:dedupe-students": "tsx prisma/dedupe-duplicate-students.ts",
+    "db:promote-profile-role": "tsx prisma/promote-profile-role.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
