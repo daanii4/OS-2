@@ -102,6 +102,66 @@
   --space-12:  48px;
 }
 
+/* Operation Scholars 3D logo — animations (use .logo-3d-float / .logo-3d-reveal on img only) */
+@keyframes logo-float {
+  0% {
+    transform: translateY(0px) rotate3d(0, 1, 0, 0deg);
+  }
+  33% {
+    transform: translateY(-5px) rotate3d(0, 1, 0, 3deg);
+  }
+  66% {
+    transform: translateY(-8px) rotate3d(0, 1, 0, -2deg);
+  }
+  100% {
+    transform: translateY(0px) rotate3d(0, 1, 0, 0deg);
+  }
+}
+
+@keyframes logo-glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 8px 24px rgba(214, 160, 51, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 12px 32px rgba(214, 160, 51, 0.55));
+  }
+}
+
+@keyframes logo-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.logo-3d-float {
+  animation:
+    logo-float 3.5s ease-in-out infinite,
+    logo-glow-pulse 3.5s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+.logo-3d-reveal {
+  animation: logo-reveal 500ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-3d-float {
+    animation: none;
+    filter: drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35));
+  }
+
+  .logo-3d-reveal {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 @keyframes pulse-soft {
   0%,
   100% {
@@ -150,8 +210,8 @@
     margin-left: 0;
   }
   50% {
-    width: 60%;
-    margin-left: 20%;
+    width: 55%;
+    margin-left: 22%;
   }
   100% {
     width: 0%;
@@ -354,6 +414,17 @@ body {
 
   .badge-regression {
     animation: none !important;
+  }
+
+  .logo-3d-float {
+    animation: none !important;
+    filter: drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35)) !important;
+  }
+
+  .logo-3d-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 

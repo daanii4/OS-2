@@ -1,34 +1,63 @@
-export function LoadingScreen() {
+'use client'
+
+import Image from 'next/image'
+
+type LoadingScreenProps = {
+  message?: string
+}
+
+export function LoadingScreen({ message = 'Loading your students' }: LoadingScreenProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5"
-      style={{ background: 'var(--olive-800)' }}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6"
+      style={{ background: '#2d3820' }}
+      role="status"
+      aria-label="Loading Operation Scholars"
+      aria-live="polite"
     >
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 50% 50%, rgba(214, 160, 51, 0.12) 0%, transparent 70%)',
+            'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(214, 160, 51, 0.14) 0%, transparent 70%)',
         }}
         aria-hidden
       />
-      <div className="relative z-10 motion-safe:animate-[brand-pulse_2s_ease-in-out_infinite]">
-        <img
-          src="/logo-mark.png"
+
+      <div className="relative z-10">
+        <Image
+          src="/logo-3d.webp"
           alt="Operation Scholars"
-          className="h-16 w-16 object-contain"
+          width={96}
+          height={96}
+          priority
+          className="logo-3d-float object-contain"
+          style={{
+            filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
+          }}
         />
       </div>
+
       <div className="relative z-10 text-center">
-        <p className="font-[family-name:var(--font-dm-serif),Georgia,serif] text-[20px] font-normal tracking-[-0.01em] text-white">
+        <p
+          className="text-[22px] font-normal leading-tight tracking-[-0.01em] text-white"
+          style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+        >
           Operation Scholars
         </p>
-        <p className="mt-1 font-[family-name:var(--font-geist-sans),system-ui,sans-serif] text-[10px] uppercase tracking-[0.1em] text-white/35">
-          Loading your students
+        <p className="mt-1.5 font-sans text-[10px] uppercase tracking-[0.1em] text-white/35">
+          {message}
         </p>
       </div>
-      <div className="relative z-10 h-0.5 w-32 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-[var(--gold-500)] motion-safe:animate-[brand-load_1.5s_ease-in-out_infinite]" />
+
+      <div
+        className="relative z-10 h-[2px] w-28 overflow-hidden rounded-full bg-white/[0.08]"
+        aria-hidden
+      >
+        <div
+          className="absolute left-0 top-0 h-full rounded-full bg-[#d6a033]"
+          style={{ animation: 'brand-load 1.6s ease-in-out infinite' }}
+        />
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -33,70 +34,91 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[var(--surface-page)]">
       <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 lg:grid-cols-[420px_1fr]">
-        <aside
-          className="relative hidden flex-col justify-between overflow-hidden bg-[var(--olive-800)] text-white lg:flex"
-        >
+        <aside className="relative hidden min-h-screen flex-col overflow-hidden bg-[var(--olive-800)] text-white lg:flex">
           <div
             className="pointer-events-none absolute inset-0"
-            style={{ background: 'var(--brand-glow)' }}
+            style={{
+              background:
+                'radial-gradient(ellipse 80% 70% at 65% 35%, rgba(214, 160, 51, 0.14) 0%, transparent 68%)',
+            }}
             aria-hidden
           />
           <div className="absolute left-0 top-0 h-full w-1 bg-[var(--gold-500)]" aria-hidden />
 
-          <div className="relative z-10 p-10">
-            <div className="mb-16 flex items-center gap-3">
-              <img src="/logo-mark.png" alt="" className="h-10 w-10 object-contain" />
+          <div className="relative z-10 flex h-full flex-col justify-between p-10">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/logo-3d.webp"
+                alt="Operation Scholars logo"
+                width={64}
+                height={64}
+                priority
+                className="logo-3d-reveal flex-shrink-0 object-contain"
+                style={{
+                  filter: 'drop-shadow(0 6px 20px rgba(214, 160, 51, 0.4))',
+                }}
+              />
               <div>
                 <p
-                  className="text-[18px] text-white"
+                  className="text-[18px] font-normal leading-tight tracking-[-0.01em] text-white"
                   style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
                 >
                   Operation Scholars
                 </p>
-                <p className="text-[10px] uppercase tracking-[0.08em] text-white/40">
+                <p className="mt-1 text-[9px] uppercase tracking-[0.09em] text-white/35">
                   Behavioral Intelligence Platform
                 </p>
               </div>
             </div>
 
-            <h1
-              className="mb-5 text-[clamp(32px,3.5vw,48px)] font-normal leading-[1.05] tracking-[-0.025em] text-white"
-              style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
-            >
-              Every student&apos;s
-              <br />
-              story,{' '}
-              <em className="italic text-[var(--gold-500)]">clearly told.</em>
-            </h1>
-
-            <p className="max-w-[300px] text-[13px] leading-relaxed text-white/50">
-              A safe environment to discover identity and character — and become lifelong learners.
-            </p>
-          </div>
-
-          <div className="relative z-10 flex gap-0 p-10 pt-0">
-            {[
-              { n: '54%', label: 'Avg incident reduction' },
-              { n: '88%', label: 'Session attendance' },
-              { n: '47', label: 'Active students' },
-            ].map((stat, i) => (
-              <div
-                key={stat.label}
-                className={`flex-1 ${i > 0 ? 'ml-5 border-l border-white/10 pl-5' : ''}`}
+            <div className="py-12">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--gold-500)]">
+                209 Area · Central Valley, CA
+              </p>
+              <h1
+                className="mb-5 font-normal leading-[1.05] tracking-[-0.025em] text-white"
+                style={{
+                  fontFamily: 'var(--font-dm-serif), Georgia, serif',
+                  fontSize: 'clamp(30px, 3.2vw, 46px)',
+                }}
               >
-                <p
-                  className="text-[28px] font-medium leading-none text-white"
-                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-                >
-                  {stat.n}
-                </p>
-                <p className="mt-1 text-[10px] leading-tight text-white/35">{stat.label}</p>
-              </div>
-            ))}
-          </div>
+                Every student&apos;s
+                <br />
+                story,{' '}
+                <em className="italic text-[var(--gold-500)]">clearly told.</em>
+              </h1>
+              <p className="max-w-[300px] text-[13px] leading-relaxed text-white/50">
+                A safe environment to discover identity and character — and become lifelong learners.
+              </p>
+            </div>
 
-          <div className="relative z-10 px-10 pb-8">
-            <p className="text-[10px] text-white/20">FERPA-compliant · QuasarNova LLC · 2026</p>
+            <div>
+              <div className="mb-8 flex gap-0">
+                {[
+                  { value: '54%', label: 'Avg incident\nreduction' },
+                  { value: '88%', label: 'Session\nattendance rate' },
+                  { value: '47', label: 'Active\nstudents' },
+                ].map((stat, i) => (
+                  <div
+                    key={stat.value}
+                    className={`flex-1 ${i > 0 ? 'ml-5 border-l border-white/10 pl-5' : ''}`}
+                  >
+                    <p
+                      className="text-[28px] font-medium leading-none text-white"
+                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+                    >
+                      {stat.value}
+                    </p>
+                    <p className="mt-1.5 whitespace-pre-line text-[10px] leading-tight text-white/35">
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-white/[0.18]">
+                FERPA-compliant infrastructure · QuasarNova LLC · 2026
+              </p>
+            </div>
           </div>
         </aside>
 
