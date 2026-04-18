@@ -525,9 +525,9 @@ export function DashboardShell({
         </div>
       )}
 
-      {/* ── Desktop shell — fixed sidebar + main margin (spec: w-60 / w-14, ml-60 / ml-14) ── */}
+      {/* ── Desktop shell — fixed sidebar + scrollable main (aside must not be a flex sibling or it steals 100dvh height) ── */}
       {isDesktop && (
-        <div className="relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden">
+        <>
         <aside
           className={cn(
             'fixed left-0 top-0 z-40 flex h-full flex-col border-r border-white/[0.06] bg-[#2D3820]',
@@ -617,7 +617,7 @@ export function DashboardShell({
 
         <main
           className={cn(
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            'flex h-[100dvh] min-h-0 min-w-0 w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
             sidebarOpen ? 'ml-60' : 'ml-14'
           )}
         >
@@ -964,7 +964,7 @@ export function DashboardShell({
             </section>
           </div>
         </main>
-      </div>
+        </>
       )}
 
       {/* ── Mobile main content (below mobile topbar) ── */}
