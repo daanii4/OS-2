@@ -184,6 +184,7 @@ export default async function DashboardPage() {
     <DashboardShell
       profileName={profile.name}
       profileRole={profile.role}
+      showOrgNav={isOrgView}
       activeStudents={activeStudents}
       incidentsCurrent={incidentsCurrent}
       incidentTrendPct={incidentTrendPct}

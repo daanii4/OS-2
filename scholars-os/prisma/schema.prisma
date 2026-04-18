@@ -136,22 +136,31 @@ enum MeetingStatus {
   rescheduled
 }
 
+enum InvitationStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
 // ─────────────────────────────────────────────
 // PROFILES
 // Extends Supabase auth.users — id matches auth.users.id exactly
 // ─────────────────────────────────────────────
 
 model Tenant {
-  id          String     @id @default(uuid())
-  name        String
-  slug        String     @unique
-  subdomain   String     @unique
-  owner_email String
-  plan        TenantPlan @default(starter)
-  active      Boolean    @default(true)
-  created_at  DateTime   @default(now())
+  id               String     @id @default(uuid())
+  name             String
+  slug             String     @unique
+  subdomain        String     @unique
+  owner_email      String
+  default_district String?
+  plan             TenantPlan @default(starter)
+  active           Boolean    @default(true)
+  created_at       DateTime   @default(now())
 
   profiles        Profile[]
+  invitations     Invitation[]
   students        Student[]
   referrals       Referral[]
   consent_records ConsentRecord[]
@@ -175,6 +184,14 @@ model Profile {
   active     Boolean  @default(true)
   created_at DateTime @default(now())
 
+  must_reset_password  Boolean  @default(true)
+  onboarding_complete  Boolean  @default(false)
+  onboarding_step      Int      @default(0)
+  default_session_duration Int?
+  default_session_format   SessionFormat?
+  default_grade_filter_min Grade?
+  default_grade_filter_max Grade?
+
   // Relations
   tenant               Tenant?               @relation(fields: [tenant_id], references: [id])
   assigned_students    Student[]            @relation("AssignedCounselor")
@@ -189,9 +206,30 @@ model Profile {
   created_meetings     Meeting[]             @relation("CreatedMeetings")
   student_status_logs  StudentStatusLog[]    @relation("StudentStatusChanges")
   mental_health_notes  MentalHealthNote[]
+  sent_invitations       Invitation[]          @relation("InvitedBy")
 
   @@index([tenant_id])
   @@map("profiles")
+}
+
+model Invitation {
+  id           String           @id @default(uuid())
+  tenant_id    String
+  email        String
+  name         String
+  role         UserRole
+  invited_by   String
+  status       InvitationStatus @default(pending)
+  resend_count Int              @default(0)
+  created_at   DateTime         @default(now())
+  accepted_at  DateTime?
+
+  tenant  Tenant  @relation(fields: [tenant_id], references: [id])
+  inviter Profile @relation("InvitedBy", fields: [invited_by], references: [id])
+
+  @@index([tenant_id])
+  @@index([email, tenant_id])
+  @@map("invitations")
 }
 
 // ─────────────────────────────────────────────

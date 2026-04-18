@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { getTenantFromRequest } from '@/lib/tenant'
+import { sendWelcomeEmailToNewUser } from '@/lib/emails/welcome-user'
 
 const CreateUserSchema = z.object({
   name: z.string().min(2).max(100),
@@ -31,8 +33,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
   }
 
+  const tenant = await getTenantFromRequest()
+  if (profile.tenant_id && profile.tenant_id !== tenant.id) {
+    return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
+  }
+
   const users = await prisma.profile.findMany({
-    where: { active: true },
+    where: { active: true, tenant_id: tenant.id },
     select: {
       id: true,
       name: true,
@@ -67,6 +74,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
   }
 
+  const tenant = await getTenantFromRequest()
+  if (profile.tenant_id && profile.tenant_id !== tenant.id) {
+    return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
+  }
+
   const body = await req.json()
   const parsed = CreateUserSchema.safeParse(body)
   if (!parsed.success) {
@@ -89,6 +101,7 @@ export async function POST(req: NextRequest) {
       user_metadata: {
         name: parsed.data.name,
         role: parsed.data.role,
+        must_reset_password: false,
       },
     })
 
@@ -103,6 +116,24 @@ export async function POST(req: NextRequest) {
       where: { id: newUser.user.id },
       select: { id: true, name: true, email: true, role: true, active: true, created_at: true },
     })
+
+    if (created && profile.tenant_id) {
+      await prisma.profile.update({
+        where: { id: created.id },
+        data: {
+          tenant_id: profile.tenant_id,
+          must_reset_password: false,
+          onboarding_complete: true,
+          onboarding_step: 0,
+        },
+      })
+    }
+
+    if (created) {
+      sendWelcomeEmailToNewUser({ to: created.email, name: created.name }).catch(err => {
+        console.error('[org/users/POST] Welcome email failed:', err instanceof Error ? err.message : 'Unknown')
+      })
+    }
 
     return NextResponse.json({ data: created }, { status: 201 })
   } catch (err) {

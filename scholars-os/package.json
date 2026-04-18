@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:dedupe-students": "tsx prisma/dedupe-duplicate-students.ts"
+    "db:dedupe-students": "tsx prisma/dedupe-duplicate-students.ts",
+    "db:promote-profile-role": "tsx prisma/promote-profile-role.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:baseline-all-applied": "bash scripts/prisma-baseline-all-applied.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -18,12 +21,14 @@
     "@vercel/blob": "^2.3.3",
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
+    "lottie-react": "^2.4.1",
     "next": "16.2.3",
     "openai": "^6.34.0",
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
+    "resend": "^6.12.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "zod": "^4.3.6"

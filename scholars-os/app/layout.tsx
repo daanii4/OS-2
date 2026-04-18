@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   title: 'Operation Scholars OS',
   description: 'Student behavioral intelligence dashboard',
   icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    icon: '/static/logo.svg',
+    shortcut: '/static/logo.svg',
+    apple: '/static/logo.svg',
   },
 }
 

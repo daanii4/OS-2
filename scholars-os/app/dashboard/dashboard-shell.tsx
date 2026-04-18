@@ -30,6 +30,8 @@ type RecentStudent = {
 type DashboardShellProps = {
   profileName: string
   profileRole: string
+  /** Show Analytics + Team nav (owner / assistant). Counselors are redirected if they hit those URLs. */
+  showOrgNav: boolean
   activeStudents: number
   incidentsCurrent: number
   incidentTrendPct: number | null
@@ -70,14 +72,29 @@ function getStatusBadgeClass(status: string): string {
   }
 }
 
-const NAV_LINKS = [
+const NAV_SECTIONS = ['Main', 'Reports', 'Settings'] as const
+
+type NavLinkItem = {
+  href: string
+  label: string
+  abbr: string
+  section: (typeof NAV_SECTIONS)[number]
+  /** If true, only shown when showOrgNav (owner / assistant). */
+  orgOnly?: boolean
+}
+
+const NAV_LINKS: NavLinkItem[] = [
   { href: '/dashboard', label: 'Your Students', abbr: 'D', section: 'Main' },
   { href: '/dashboard/students', label: 'Student Caseload', abbr: 'S', section: 'Main' },
-  { href: '/dashboard/analytics', label: 'Impact Overview', abbr: 'A', section: 'Reports' },
-  { href: '/dashboard/settings/users', label: 'Team', abbr: 'T', section: 'Settings' },
+  { href: '/dashboard/analytics', label: 'Impact Overview', abbr: 'A', section: 'Reports', orgOnly: true },
+  {
+    href: '/settings/team',
+    label: 'Team',
+    abbr: 'T',
+    section: 'Settings',
+    orgOnly: true,
+  },
 ]
-
-const NAV_SECTIONS = ['Main', 'Reports', 'Settings'] as const
 
 /** Incident trend pill — only regression uses `badge-regression` pulse (uienhance §1.3). */
 function trendMeta(reductionPct: number | null): { label: string; className: string } | null {
@@ -112,21 +129,30 @@ function isNavActive(pathname: string | null, href: string): boolean {
   const p = normalizePath(pathname)
   if (!p) return false
   if (href === '/dashboard') return p === '/dashboard'
-  return p === href || p.startsWith(`${href}/`)
+  if (p === href || p.startsWith(`${href}/`)) return true
+  if (href === '/settings/team' && p.startsWith('/settings')) return true
+  return false
 }
 
 function NavLinks({
   collapsed,
   onLinkClick,
+  showOrgNav,
 }: {
   collapsed: boolean
   onLinkClick: () => void
+  /** Owner / assistant only — Analytics + Team redirect counselors away */
+  showOrgNav: boolean
 }) {
   const pathname = usePathname()
+  const visibleLinks = NAV_LINKS.filter(l => !l.orgOnly || showOrgNav)
 
   return (
     <>
-      {NAV_SECTIONS.map(section => (
+      {NAV_SECTIONS.map(section => {
+        const sectionLinks = visibleLinks.filter(l => l.section === section)
+        if (sectionLinks.length === 0) return null
+        return (
         <div key={section} className="mb-1">
           <p
             className={`mb-1.5 mt-4 px-3 text-[8px] font-medium uppercase tracking-[0.08em] transition-opacity duration-75 ${
@@ -136,7 +162,7 @@ function NavLinks({
           >
             {section}
           </p>
-          {NAV_LINKS.filter(l => l.section === section).map(link => {
+          {sectionLinks.map(link => {
             const active = isNavActive(pathname, link.href)
             return (
               <Link
@@ -167,7 +193,8 @@ function NavLinks({
             )
           })}
         </div>
-      ))}
+        )
+      })}
     </>
   )
 }
@@ -175,6 +202,7 @@ function NavLinks({
 export function DashboardShell({
   profileName,
   profileRole,
+  showOrgNav,
   activeStudents,
   incidentsCurrent,
   incidentTrendPct,
@@ -433,7 +461,7 @@ export function DashboardShell({
               </div>
             </div>
             <nav className="flex-1 overflow-y-auto px-3 py-2">
-              <NavLinks collapsed={false} onLinkClick={closeMobileMenu} />
+              <NavLinks collapsed={false} onLinkClick={closeMobileMenu} showOrgNav={showOrgNav} />
             </nav>
             <div className="border-t border-white/10 px-4 py-4">
               <div className="flex items-center gap-3">
@@ -490,7 +518,11 @@ export function DashboardShell({
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-2">
-            <NavLinks collapsed={!sidebarOpen} onLinkClick={closeMobileMenu} />
+            <NavLinks
+              collapsed={!sidebarOpen}
+              onLinkClick={closeMobileMenu}
+              showOrgNav={showOrgNav}
+            />
           </nav>
 
           <div className="border-t border-white/10 px-4 py-4">
