@@ -1,2 +1,2 @@
-Replace logo.png in this folder with the official Operation Scholars mark (same filename).
-The app serves it at /static/logo.png and redirects /logo.png here for older links.
+The app uses logo.svg (and logo-static.svg) in this folder. Replace them with the official Operation Scholars mark, keeping the same filenames.
+Redirects: /logo.png -> /static/logo.svg, /logo-static.png -> /static/logo-static.svg for older links.

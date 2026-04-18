@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: '/logo.png', destination: '/static/logo.png', permanent: false },
-      { source: '/logo-static.png', destination: '/static/logo-static.png', permanent: false },
+      { source: '/logo.png', destination: '/static/logo.svg', permanent: false },
+      { source: '/logo-static.png', destination: '/static/logo-static.svg', permanent: false },
     ]
   },
 }
