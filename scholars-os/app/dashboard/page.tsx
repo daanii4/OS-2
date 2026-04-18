@@ -4,6 +4,7 @@ import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import { countRegressionStudents } from '@/lib/dashboard/regression'
 import { CaseloadExport } from '@/components/CaseloadExport'
 import { DashboardShell } from './dashboard-shell'
 
@@ -31,8 +32,7 @@ export default async function DashboardPage() {
     studentScopeClauses.push({ assigned_counselor_id: profile.id })
   }
 
-  const studentScope: Prisma.StudentWhereInput =
-    studentScopeClauses.length > 0 ? { AND: studentScopeClauses } : {}
+  const studentScope: Prisma.StudentWhereInput = { AND: studentScopeClauses }
 
   const now = new Date()
   const periodStart = new Date(now)
@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   const previousPeriodStart = new Date(previousPeriodEnd)
   previousPeriodStart.setDate(previousPeriodEnd.getDate() - 29)
 
-  const studentWhere = studentScopeClauses.length > 0 ? studentScope : undefined
+  const studentWhere: Prisma.StudentWhereInput = studentScope
   const escalationWhere: Prisma.StudentWhereInput = {
     AND: [{ escalation_active: true }, ...studentScopeClauses],
   }
@@ -58,6 +58,9 @@ export default async function DashboardPage() {
     incidentsCurrentRows,
     recentStudents,
     caseloadSchoolRows,
+    caseloadTotalCount,
+    regressionCountFull,
+    statusMixRows,
   ] = await Promise.all([
     prisma.student.count({
       where: {
@@ -151,6 +154,18 @@ export default async function DashboardPage() {
           orderBy: { school: 'asc' },
         })
       : Promise.resolve([]),
+    prisma.student.count({ where: studentWhere }),
+    countRegressionStudents(prisma, {
+      tenantId: tenant.id,
+      studentWhere,
+      periodStart,
+      now,
+    }),
+    prisma.student.groupBy({
+      by: ['status'],
+      where: studentWhere,
+      _count: { _all: true },
+    }),
   ])
 
   const incidentTrendPct =
@@ -174,6 +189,10 @@ export default async function DashboardPage() {
 
   const topOffset = isOrgView ? 120 : 64
   const caseloadSchools = caseloadSchoolRows.map(row => row.school)
+  const statusMix = statusMixRows.reduce<Record<string, number>>((acc, row) => {
+    acc[row.status] = row._count._all
+    return acc
+  }, {})
 
   // meetings table — UI removed per client request April 2026, table retained for data safety
   const escalatedStudentName = escalatedStudent
@@ -197,6 +216,9 @@ export default async function DashboardPage() {
       incidentCountByStudent={incidentCountByStudent}
       escalatedStudentName={escalatedStudentName}
       topOffset={topOffset}
+      caseloadTotalCount={caseloadTotalCount}
+      regressionCountFull={regressionCountFull}
+      statusMix={statusMix}
       caseloadExport={
         isOrgView ? <CaseloadExport schools={caseloadSchools} /> : undefined
       }

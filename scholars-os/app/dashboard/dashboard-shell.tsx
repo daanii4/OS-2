@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BarChart3, LayoutList, PanelLeftClose, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import {
   StudentsHeader,
@@ -36,6 +36,8 @@ type RecentStudent = {
   status: string
   baseline_incident_count: number | null
   escalation_active: boolean
+  /** Present when row comes from `/api/dashboard/students-preview`. */
+  incidents_30d?: number
 }
 
 type DashboardShellProps = {
@@ -50,29 +52,18 @@ type DashboardShellProps = {
   sessionsCurrent: number
   noShowsCurrent: number
   avgGoalCompletion: number | null
+  /** Initial rows for the student preview (SSR); list refreshes from `/api/dashboard/students-preview`. */
   recentStudents: RecentStudent[]
   incidentCountByStudent: Record<string, number>
   escalatedStudentName: string | null
   topOffset: number
+  /** Total students in scope (matches caseload) for accurate header counts. */
+  caseloadTotalCount: number
+  /** Regression count across full caseload (30d vs baseline, ≥25%). */
+  regressionCountFull: number
+  /** Status tallies for full caseload (not just preview rows). */
+  statusMix: Record<string, number>
   caseloadExport?: ReactNode
-}
-
-function reductionPct(
-  baseline: number | null,
-  currentIncidents: number
-): number | null {
-  if (baseline === null || baseline <= 0) return null
-  return Number((((baseline - currentIncidents) / baseline) * 100).toFixed(0))
-}
-
-/** Worsening vs baseline; matches caseload filter (≥ 25%). */
-function regressionDeltaPct(
-  baseline: number | null,
-  currentIncidents: number
-): number | null {
-  const r = reductionPct(baseline, currentIncidents)
-  if (r === null) return null
-  return -r
 }
 
 function splitProfileName(name: string): { first: string; last: string } {
@@ -277,6 +268,9 @@ export function DashboardShell({
   incidentCountByStudent,
   escalatedStudentName,
   topOffset,
+  caseloadTotalCount,
+  regressionCountFull,
+  statusMix,
   caseloadExport,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useLocalStorageBoolean('scholars-sidebar', true)
@@ -287,6 +281,10 @@ export function DashboardShell({
   const [studentSearch, setStudentSearch] = useState('')
   const [studentFilter, setStudentFilter] = useState<StudentFilterKey>('all')
   const [escalationAcknowledged, setEscalationAcknowledged] = useState(false)
+
+  const [previewStudents, setPreviewStudents] = useState<RecentStudent[]>(recentStudents)
+  const [previewFilteredCount, setPreviewFilteredCount] = useState(caseloadTotalCount)
+  const skipStudentPreviewFetch = useRef(true)
 
   type ChartPeriod = 'week' | 'month' | 'year'
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month')
@@ -334,44 +332,42 @@ export function DashboardShell({
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const filteredStudents = useMemo(() => {
-    const query = studentSearch.trim().toLowerCase()
-    return recentStudents.filter(student => {
-      const currentCount = incidentCountByStudent[student.id] ?? 0
-      const baseline = student.baseline_incident_count
-      const delta = regressionDeltaPct(baseline, currentCount)
+  useEffect(() => {
+    setPreviewStudents(recentStudents)
+    setPreviewFilteredCount(caseloadTotalCount)
+  }, [recentStudents, caseloadTotalCount])
 
-      const matchesQuery =
-        !query ||
-        `${student.first_name} ${student.last_name}`.toLowerCase().includes(query) ||
-        student.school.toLowerCase().includes(query) ||
-        student.grade.toLowerCase().includes(query)
-
-      if (!matchesQuery) return false
-      if (studentFilter === 'regression') return delta !== null && delta >= 25
-      if (studentFilter === 'escalated') return student.escalation_active
-      return true
-    })
-  }, [incidentCountByStudent, recentStudents, studentFilter, studentSearch])
-
-  // Sidebar metrics derived data
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const s of recentStudents) {
-      counts[s.status] = (counts[s.status] ?? 0) + 1
+  useEffect(() => {
+    if (skipStudentPreviewFetch.current) {
+      skipStudentPreviewFetch.current = false
+      return
     }
-    return counts
-  }, [recentStudents])
+    const q = studentSearch.trim()
+    const t = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        filter: studentFilter,
+        ...(q ? { q } : {}),
+      })
+      fetch(`/api/dashboard/students-preview?${params}`)
+        .then(res => {
+          if (!res.ok) throw new Error('preview failed')
+          return res.json() as Promise<{
+            data: { filteredCount: number; students: RecentStudent[] }
+          }>
+        })
+        .then(json => {
+          setPreviewFilteredCount(json.data.filteredCount)
+          setPreviewStudents(json.data.students)
+        })
+        .catch(() => {
+          setPreviewFilteredCount(0)
+          setPreviewStudents([])
+        })
+    }, 280)
+    return () => clearTimeout(t)
+  }, [studentSearch, studentFilter])
 
-  const regressionCount = useMemo(
-    () =>
-      recentStudents.filter(s => {
-        const current = incidentCountByStudent[s.id] ?? 0
-        const delta = regressionDeltaPct(s.baseline_incident_count, current)
-        return delta !== null && delta >= 25
-      }).length,
-    [recentStudents, incidentCountByStudent]
-  )
+  const displayStudents = previewStudents
 
   const ownerWelcomeGreeting = useMemo(() => {
     const hour = new Date().getHours()
@@ -426,7 +422,7 @@ export function DashboardShell({
   )
 
   return (
-    <div className="min-h-screen bg-[var(--surface-page)]">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[var(--surface-page)]">
       {/* ── Mobile top bar (lg:hidden) ── */}
       {!isDesktop && (
         <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3">
@@ -617,26 +613,26 @@ export function DashboardShell({
 
         <main
           className={cn(
-            'flex h-[100dvh] min-h-0 min-w-0 w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            'flex h-[100dvh] min-h-0 min-w-0 w-full max-w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
             sidebarOpen ? 'ml-60' : 'ml-14'
           )}
         >
           {/* Escalation banner §3.8 */}
           {escalatedStudentName && !escalationAcknowledged && (
             <div
-              className="flex w-full items-center justify-between gap-4 px-6 py-3"
+              className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6"
               style={{ background: '#DC2626', borderRadius: 0 }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
                 <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 text-white" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                 </svg>
-                <p className="text-[13px] font-medium text-white">
+                <p className="min-w-0 text-[12px] font-medium leading-snug text-white sm:text-[13px]">
                   Escalation Required — {escalatedStudentName} · AI flagged a safety concern requiring licensed clinician referral
                 </p>
               </div>
                 <button
-                  className="flex-shrink-0 rounded px-4 py-2 text-[13px] font-semibold transition-colors"
+                  className="flex-shrink-0 rounded px-4 py-2 text-[12px] font-semibold transition-colors sm:text-[13px]"
                   style={{ background: '#FFFFFF', color: '#DC2626', minHeight: 36 }}
                   onClick={() => setEscalationAcknowledged(true)}
                 >
@@ -646,7 +642,7 @@ export function DashboardShell({
           )}
 
           {/* Topbar */}
-          <div className="sticky top-0 z-10 border-b border-[var(--border-default)] bg-[var(--surface-card)] px-6 py-3">
+          <div className="sticky top-0 z-10 min-w-0 border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div>
@@ -669,7 +665,7 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="space-y-4 px-6 pb-6" style={{ paddingTop: `${topOffset}px` }}>
+          <div className="min-w-0 space-y-4 px-4 pb-6 sm:px-6" style={{ paddingTop: `${topOffset}px` }}>
             {/* KPI row */}
             <section className="os-kpi-grid">
               {/* Active students — gold top border */}
@@ -767,9 +763,9 @@ export function DashboardShell({
             )}
 
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
-            <div className="grid gap-[14px] lg:grid-cols-[1fr_320px]">
+            <div className="grid min-w-0 gap-[14px] lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
               {/* Left — incident frequency chart */}
-              <section className="os-card">
+              <section className="os-card min-w-0">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="os-heading">Incident Frequency — All Students</h2>
@@ -790,12 +786,12 @@ export function DashboardShell({
               </section>
 
               {/* Right — sidebar metrics panel */}
-              <div className="flex flex-col gap-[14px]">
+              <div className="flex min-w-0 flex-col gap-[14px]">
                 {/* Status mix */}
-                <div className="os-card">
+                <div className="os-card min-w-0">
                   <h3 className="os-subhead mb-3">Student status mix</h3>
                   <div className="space-y-2">
-                    {Object.entries(statusCounts).map(([status, count]) => (
+                    {Object.entries(statusMix).map(([status, count]) => (
                       <div key={status} className="flex items-center justify-between">
                         <span
                           className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(status)}`}
@@ -805,7 +801,7 @@ export function DashboardShell({
                         <span className="os-data text-[var(--text-primary)]">{count}</span>
                       </div>
                     ))}
-                    {Object.keys(statusCounts).length === 0 && (
+                    {Object.keys(statusMix).length === 0 && (
                       <EmptyState
                         icon={
                           <img
@@ -837,17 +833,17 @@ export function DashboardShell({
                 </div>
 
                 {/* Regression alert */}
-                {regressionCount > 0 && (
+                {regressionCountFull > 0 && (
                   <div
-                    className="os-card"
+                    className="os-card min-w-0"
                     style={{ borderTop: '3px solid var(--color-regression)', paddingTop: 17 }}
                   >
                     <h3 className="os-subhead mb-1 text-[var(--color-regression)]">
                       Regression alerts
                     </h3>
-                    <p className="os-data-hero text-[var(--color-regression)]">{regressionCount}</p>
+                    <p className="os-data-hero text-[var(--color-regression)]">{regressionCountFull}</p>
                     <p className="os-caption mt-1">
-                      {regressionCount === 1 ? 'student' : 'students'} above baseline
+                      {regressionCountFull === 1 ? 'student' : 'students'} above baseline
                     </p>
                     <p className="os-caption mt-2 max-w-[14rem] text-[var(--text-tertiary)]">
                       A setback isn&apos;t the story — it&apos;s a chapter.
@@ -858,19 +854,19 @@ export function DashboardShell({
             </div>
 
             {/* Students section */}
-            <section className="os-card">
+            <section className="os-card min-w-0 overflow-x-hidden">
               <div className="px-4 pt-4 md:px-5">
                 <StudentsHeader
-                  totalCount={recentStudents.length}
-                  filteredCount={filteredStudents.length}
+                  totalCount={caseloadTotalCount}
+                  filteredCount={previewFilteredCount}
                   activeFilter={studentFilter}
                   onFilterChange={setStudentFilter}
                   onSearchChange={setStudentSearch}
                 />
               </div>
 
-              {filteredStudents.length === 0 ? (
-                recentStudents.length === 0 ? (
+              {displayStudents.length === 0 ? (
+                caseloadTotalCount === 0 ? (
                   <EmptyState
                     icon={
                       <img
@@ -883,12 +879,21 @@ export function DashboardShell({
                     body="Every student here is someone worth showing up for."
                   />
                 ) : (
-                  <p className="os-body">No students match this filter/search.</p>
+                  <p className="os-body px-4 pb-4 md:px-5">
+                    No students match this filter or search. Try the{' '}
+                    <Link href="/dashboard/students" className="text-[var(--olive-600)] underline">
+                      Student Caseload
+                    </Link>{' '}
+                    for the full list.
+                  </p>
                 )
               ) : (
                 <ul className="space-y-2">
-                  {filteredStudents.map((student, i) => {
-                    const currentCount = incidentCountByStudent[student.id] ?? 0
+                  {displayStudents.map((student, i) => {
+                    const currentCount =
+                      student.incidents_30d !== undefined
+                        ? student.incidents_30d
+                        : (incidentCountByStudent[student.id] ?? 0)
                     const baseline = student.baseline_incident_count
                     const reductionPct =
                       baseline && baseline > 0
@@ -917,8 +922,8 @@ export function DashboardShell({
                               strokeLinejoin="round"
                             />
                           </svg>
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
+                            <div className="flex min-w-0 flex-1 items-start gap-3">
                               <StudentAvatar
                                 firstName={student.first_name}
                                 lastName={student.last_name}
@@ -933,7 +938,7 @@ export function DashboardShell({
                               </p>
                               </div>
                             </div>
-                            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-3 text-right">
+                            <div className="flex min-w-0 flex-shrink-0 flex-wrap items-center gap-3 sm:max-w-[min(100%,22rem)] sm:justify-end sm:text-right">
                               <span
                                 className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}
                               >
@@ -941,12 +946,12 @@ export function DashboardShell({
                               </span>
                               <div>
                                 <p className="os-caption">Incidents (30d)</p>
-                                <p className="os-data text-right">{currentCount}</p>
+                                <p className="os-data text-right sm:text-right">{currentCount}</p>
                               </div>
-                              <div className="min-w-[7rem] text-right">
+                              <div className="min-w-0 max-w-full text-left sm:min-w-[7rem] sm:text-right">
                                 <p className="os-caption">vs baseline</p>
                                 {trend ? (
-                                  <span className={`${trend.className} mt-0.5 inline-flex max-w-[12rem] justify-end`}>
+                                  <span className={`${trend.className} mt-0.5 inline-flex max-w-full flex-wrap justify-start sm:max-w-[12rem] sm:justify-end`}>
                                     {trend.label}
                                   </span>
                                 ) : (
@@ -961,6 +966,15 @@ export function DashboardShell({
                   })}
                 </ul>
               )}
+              {displayStudents.length > 0 && previewFilteredCount > 25 ? (
+                <p className="os-caption border-t border-[var(--border-default)] px-4 py-3 text-[var(--text-tertiary)] md:px-5">
+                  Showing the 25 most recent matches on the dashboard. Open{' '}
+                  <Link href="/dashboard/students" className="text-[var(--olive-600)] underline">
+                    Student Caseload
+                  </Link>{' '}
+                  for all {previewFilteredCount} results.
+                </p>
+              ) : null}
             </section>
           </div>
         </main>
@@ -968,18 +982,18 @@ export function DashboardShell({
       )}
 
       {/* ── Mobile main content (below mobile topbar) ── */}
-      {!isDesktop && <div>
+      {!isDesktop && <div className="min-w-0 overflow-x-hidden">
         {/* Escalation banner on mobile too */}
         {escalatedStudentName && !escalationAcknowledged && (
           <div
-            className="flex w-full items-center justify-between gap-3 px-4 py-3"
+            className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3"
             style={{ background: '#DC2626', borderRadius: 0 }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 text-white" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
-              <p className="text-[12px] font-medium text-white">
+              <p className="min-w-0 text-[12px] font-medium leading-snug text-white">
                 Escalation — {escalatedStudentName}
               </p>
             </div>
@@ -1050,18 +1064,18 @@ export function DashboardShell({
           </section>
 
           {/* Students list */}
-          <section className="os-card">
+          <section className="os-card min-w-0 overflow-x-hidden">
             <div className="px-1 pt-1">
               <StudentsHeader
-                totalCount={recentStudents.length}
-                filteredCount={filteredStudents.length}
+                totalCount={caseloadTotalCount}
+                filteredCount={previewFilteredCount}
                 activeFilter={studentFilter}
                 onFilterChange={setStudentFilter}
                 onSearchChange={setStudentSearch}
               />
             </div>
-            {filteredStudents.length === 0 ? (
-              recentStudents.length === 0 ? (
+            {displayStudents.length === 0 ? (
+              caseloadTotalCount === 0 ? (
                 <EmptyState
                   icon={
                     <img
@@ -1074,12 +1088,21 @@ export function DashboardShell({
                   body="Every student here is someone worth showing up for."
                 />
               ) : (
-                <p className="os-body">No students match this search.</p>
+                <p className="os-body px-4 pb-4">
+                  No students match this filter or search. Try the{' '}
+                  <Link href="/dashboard/students" className="text-[var(--olive-600)] underline">
+                    Student Caseload
+                  </Link>{' '}
+                  for the full list.
+                </p>
               )
             ) : (
               <ul className="space-y-2">
-                {filteredStudents.map((student, i) => {
-                  const currentCount = incidentCountByStudent[student.id] ?? 0
+                {displayStudents.map((student, i) => {
+                  const currentCount =
+                    student.incidents_30d !== undefined
+                      ? student.incidents_30d
+                      : (incidentCountByStudent[student.id] ?? 0)
                   const baseline = student.baseline_incident_count
                   const reductionPct =
                     baseline && baseline > 0
@@ -1141,6 +1164,15 @@ export function DashboardShell({
                 })}
               </ul>
             )}
+            {displayStudents.length > 0 && previewFilteredCount > 25 ? (
+              <p className="os-caption border-t border-[var(--border-default)] px-4 py-3 text-[var(--text-tertiary)]">
+                Showing the 25 most recent matches on the dashboard. Open{' '}
+                <Link href="/dashboard/students" className="text-[var(--olive-600)] underline">
+                  Student Caseload
+                </Link>{' '}
+                for all {previewFilteredCount} results.
+              </p>
+            ) : null}
           </section>
         </div>
       </div>}
