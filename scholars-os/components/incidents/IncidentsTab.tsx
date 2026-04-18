@@ -48,6 +48,7 @@ type Props = {
 export function IncidentsTab({ studentId, initialIncidents, canDeleteIncidents }: Props) {
   const router = useRouter()
   const [incidents, setIncidents] = useState<ApiIncident[]>(initialIncidents)
+  const [showForm, setShowForm] = useState(false)
 
   const viewIncidents = useMemo(
     () => incidents.map(i => toViewIncident(i, studentId)),
@@ -68,15 +69,56 @@ export function IncidentsTab({ studentId, initialIncidents, canDeleteIncidents }
     router.refresh()
   }, [router, studentId])
 
+  function afterSaved() {
+    setShowForm(false)
+    void refresh()
+  }
+
   return (
-    <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-      <IncidentLogForm studentId={studentId} onSaved={refresh} />
-      <IncidentHistoryPanel
-        studentId={studentId}
-        incidents={viewIncidents}
-        onRefresh={refresh}
-        canDelete={canDeleteIncidents}
-      />
+    <div className="flex w-full flex-col gap-4">
+      <div className="md:hidden">
+        <button
+          type="button"
+          onClick={() => setShowForm(v => !v)}
+          className="flex w-full items-center justify-between rounded-xl border border-[rgba(92,107,70,0.12)] bg-[#5C6B46] px-4 py-3 font-sans text-[13px] font-semibold text-white transition-colors hover:bg-[#3d4c2c]"
+        >
+          <span>{showForm ? 'Hide form' : '+ Log Incident'}</span>
+          <svg
+            viewBox="0 0 16 16"
+            className={`h-4 w-4 transition-transform duration-200 ${showForm ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            aria-hidden
+          >
+            <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {showForm ? (
+          <div className="mt-2">
+            <IncidentLogForm studentId={studentId} onSaved={afterSaved} />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="hidden w-full gap-4 md:grid md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+        <IncidentLogForm studentId={studentId} onSaved={refresh} />
+        <IncidentHistoryPanel
+          studentId={studentId}
+          incidents={viewIncidents}
+          onRefresh={refresh}
+          canDelete={canDeleteIncidents}
+        />
+      </div>
+
+      <div className="md:hidden">
+        <IncidentHistoryPanel
+          studentId={studentId}
+          incidents={viewIncidents}
+          onRefresh={refresh}
+          canDelete={canDeleteIncidents}
+        />
+      </div>
     </div>
   )
 }

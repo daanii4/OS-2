@@ -44,9 +44,11 @@ type Goal = { goal: string; met: boolean }
 
 type AddSessionFormProps = {
   studentId: string
+  /** Called after successful save (e.g. close mobile form + refresh without full reload). */
+  onSaved?: () => void
 }
 
-export function AddSessionForm({ studentId }: AddSessionFormProps) {
+export function AddSessionForm({ studentId, onSaved }: AddSessionFormProps) {
   const [sessionDate, setSessionDate] = useState('')
   const [sessionType, setSessionType] =
     useState<(typeof sessionTypes)[number]>('check_in')
@@ -123,7 +125,11 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
       }
 
       toast.success('Session logged')
-      setTimeout(() => window.location.reload(), 250)
+      if (onSaved) {
+        onSaved()
+      } else {
+        setTimeout(() => window.location.reload(), 250)
+      }
     } catch {
       setError('Unable to save session right now.')
       toast.error('Failed to save session')

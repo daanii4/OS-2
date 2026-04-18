@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
     backgroundColor: SLATE_LIGHT,
     borderRadius: 6,
     padding: 10,
+    paddingTop: 12,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: SLATE_BORDER,
@@ -62,13 +63,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   statItemLast: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
-  statNumber: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: OLIVE },
+  statNumber: {
+    fontSize: 22,
+    fontFamily: 'Helvetica-Bold',
+    color: OLIVE,
+    lineHeight: 1,
+    marginBottom: 4,
+  },
   statLabel: {
-    fontSize: 7,
+    fontSize: 8,
     color: SLATE_MID,
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    marginTop: 2,
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
   sectionTitle: {
     fontSize: 10,
@@ -206,18 +213,18 @@ export function StudentHistoryDocument({
 
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{attended}</Text>
             <Text style={styles.statLabel}>Sessions (attended)</Text>
+            <Text style={styles.statNumber}>{attended}</Text>
           </View>
           <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Avg goal completion</Text>
             <Text style={styles.statNumber}>
               {avgGoal !== null ? `${avgGoal.toFixed(0)}%` : '—'}
             </Text>
-            <Text style={styles.statLabel}>Avg goal completion</Text>
           </View>
           <View style={styles.statItemLast}>
-            <Text style={styles.statNumber}>{incidentCount}</Text>
             <Text style={styles.statLabel}>Incidents (period)</Text>
+            <Text style={styles.statNumber}>{incidentCount}</Text>
           </View>
         </View>
 
