@@ -63,6 +63,13 @@ export async function getProfile(userId: string) {
         role: true,
         active: true,
         tenant_id: true,
+        must_reset_password: true,
+        onboarding_complete: true,
+        onboarding_step: true,
+        default_session_duration: true,
+        default_session_format: true,
+        default_grade_filter_min: true,
+        default_grade_filter_max: true,
       },
     })
   } catch (error) {

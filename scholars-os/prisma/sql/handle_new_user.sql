@@ -1,7 +1,5 @@
 -- Auto-create profile when a new Supabase Auth user is created.
--- Version-controlled source of truth — apply with:
---   npx prisma db execute --file prisma/sql/handle_new_user.sql --schema prisma/schema.prisma
--- Never run only in Supabase SQL editor without committing the same SQL here first.
+-- Apply with: npx prisma db execute --file prisma/sql/handle_new_user.sql --schema prisma/schema.prisma
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -9,8 +7,21 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  tid uuid;
 begin
-  insert into public.profiles (id, email, name, role)
+  tid := nullif(trim(coalesce(new.raw_user_meta_data->>'tenant_id', '')), '')::uuid;
+
+  insert into public.profiles (
+    id,
+    email,
+    name,
+    role,
+    tenant_id,
+    must_reset_password,
+    onboarding_complete,
+    onboarding_step
+  )
   values (
     new.id,
     new.email,
@@ -18,7 +29,11 @@ begin
     coalesce(
       (new.raw_user_meta_data->>'role')::"UserRole",
       'counselor'::"UserRole"
-    )
+    ),
+    tid,
+    true,
+    false,
+    0
   );
   return new;
 end;

@@ -87,7 +87,7 @@ const NAV_LINKS: NavLinkItem[] = [
   { href: '/dashboard/students', label: 'Students', abbr: 'S', section: 'Main' },
   { href: '/dashboard/analytics', label: 'Analytics', abbr: 'A', section: 'Reports', orgOnly: true },
   {
-    href: '/dashboard/settings/users',
+    href: '/settings/team',
     label: 'Team',
     abbr: 'T',
     section: 'Settings',

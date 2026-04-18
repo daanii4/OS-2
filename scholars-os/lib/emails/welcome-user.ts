@@ -1,15 +1,5 @@
 import { sendTransactionalEmail, type SendEmailResult } from '@/lib/resend'
-
-function getAppBaseUrl(): string {
-  const explicit = process.env.APP_URL?.replace(/\/$/, '')
-  if (explicit) return explicit
-  if (process.env.VERCEL_URL) {
-    const host = process.env.VERCEL_URL.replace(/^https?:\/\//, '')
-    return `https://${host}`
-  }
-  const port = process.env.PORT ?? '3000'
-  return `http://127.0.0.1:${port}`
-}
+import { getPublicAppUrl } from '@/lib/app-url'
 
 /**
  * Sent when an owner or assistant provisions a new team member.
@@ -19,7 +9,7 @@ export async function sendWelcomeEmailToNewUser(params: {
   to: string
   name: string
 }): Promise<SendEmailResult> {
-  const base = getAppBaseUrl()
+  const base = getPublicAppUrl()
   const loginUrl = `${base}/login`
   const subject = 'Your Operation Scholars OS account'
 
