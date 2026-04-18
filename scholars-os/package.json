@@ -9,7 +9,9 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:dedupe-students": "tsx prisma/dedupe-duplicate-students.ts",
-    "db:promote-profile-role": "tsx prisma/promote-profile-role.ts"
+    "db:promote-profile-role": "tsx prisma/promote-profile-role.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:baseline-all-applied": "bash scripts/prisma-baseline-all-applied.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
