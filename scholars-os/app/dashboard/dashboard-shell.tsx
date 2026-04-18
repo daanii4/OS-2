@@ -613,7 +613,8 @@ export function DashboardShell({
 
         <main
           className={cn(
-            'flex h-[100dvh] min-h-0 min-w-0 w-full max-w-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            'flex h-[100dvh] min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain',
+            'transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
             sidebarOpen ? 'ml-60' : 'ml-14'
           )}
         >
@@ -642,7 +643,7 @@ export function DashboardShell({
           )}
 
           {/* Topbar */}
-          <div className="sticky top-0 z-10 min-w-0 border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3 sm:px-6">
+          <div className="sticky top-0 z-10 min-w-0 overflow-hidden border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div>
@@ -665,12 +666,12 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="min-w-0 space-y-4 px-4 pb-6 sm:px-6" style={{ paddingTop: `${topOffset}px` }}>
+          <div className="min-w-0 space-y-4 px-6 pb-6" style={{ paddingTop: `${topOffset}px` }}>
             {/* KPI row */}
             <section className="os-kpi-grid">
               {/* Active students — gold top border */}
               <div
-                className="os-card-tight"
+                className="os-card-tight os-card-interactive"
                 style={{ borderTop: '3px solid var(--gold-500)', paddingTop: 17 }}
               >
                 <p className="os-label">Active students</p>
@@ -680,7 +681,7 @@ export function DashboardShell({
 
               {/* Incidents — semantic top border */}
               <div
-                className="os-card-tight"
+                className="os-card-tight os-card-interactive"
                 style={{
                   borderTop: `3px solid ${
                     incidentTrendPct !== null && incidentTrendPct > 0
@@ -709,7 +710,7 @@ export function DashboardShell({
 
               {/* Avg goal — success top border */}
               <div
-                className="os-card-tight"
+                className="os-card-tight os-card-interactive"
                 style={{ borderTop: '3px solid var(--color-success)', paddingTop: 17 }}
               >
                 <p className="os-label">Avg goal completion</p>
@@ -732,7 +733,7 @@ export function DashboardShell({
 
               {/* Sessions — neutral top border */}
               <div
-                className="os-card-tight"
+                className="os-card-tight os-card-interactive"
                 style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 17 }}
               >
                 <p className="os-label">Sessions this week</p>
@@ -747,7 +748,7 @@ export function DashboardShell({
             </section>
 
             {caseloadExport && (
-              <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="os-card-interactive relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h3 className="font-sans text-sm font-semibold text-slate-900">
@@ -765,7 +766,7 @@ export function DashboardShell({
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
             <div className="grid min-w-0 gap-[14px] lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
               {/* Left — incident frequency chart */}
-              <section className="os-card min-w-0">
+              <section className="os-card os-card-interactive min-w-0">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="os-heading">Incident Frequency — All Students</h2>
@@ -788,7 +789,7 @@ export function DashboardShell({
               {/* Right — sidebar metrics panel */}
               <div className="flex min-w-0 flex-col gap-[14px]">
                 {/* Status mix */}
-                <div className="os-card min-w-0">
+                <div className="os-card os-card-interactive min-w-0">
                   <h3 className="os-subhead mb-3">Student status mix</h3>
                   <div className="space-y-2">
                     {Object.entries(statusMix).map(([status, count]) => (
@@ -818,7 +819,7 @@ export function DashboardShell({
                 </div>
 
                 {/* Sessions + no-shows */}
-                <div className="os-card">
+                <div className="os-card os-card-interactive">
                   <h3 className="os-subhead mb-3">This week</h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -835,7 +836,7 @@ export function DashboardShell({
                 {/* Regression alert */}
                 {regressionCountFull > 0 && (
                   <div
-                    className="os-card min-w-0"
+                    className="os-card os-card-interactive min-w-0"
                     style={{ borderTop: '3px solid var(--color-regression)', paddingTop: 17 }}
                   >
                     <h3 className="os-subhead mb-1 text-[var(--color-regression)]">
@@ -854,7 +855,7 @@ export function DashboardShell({
             </div>
 
             {/* Students section */}
-            <section className="os-card min-w-0 overflow-x-hidden">
+            <section className="os-card os-card-interactive min-w-0 overflow-x-hidden">
               <div className="px-4 pt-4 md:px-5">
                 <StudentsHeader
                   totalCount={caseloadTotalCount}
@@ -1011,14 +1012,14 @@ export function DashboardShell({
           {/* KPI grid */}
           <section className="os-kpi-grid">
             <div
-              className="os-card-tight"
+              className="os-card-tight os-card-interactive"
               style={{ borderTop: '3px solid var(--gold-500)', paddingTop: 13 }}
             >
               <p className="os-label">Active students</p>
               <p className="os-data-hero mt-1">{activeStudents}</p>
             </div>
             <div
-              className="os-card-tight"
+              className="os-card-tight os-card-interactive"
               style={{
                 borderTop: `3px solid ${incidentTrendPct !== null && incidentTrendPct > 0 ? 'var(--color-regression)' : 'var(--color-success)'}`,
                 paddingTop: 13,
@@ -1028,7 +1029,7 @@ export function DashboardShell({
               <p className="os-data-hero mt-1">{incidentsCurrent}</p>
             </div>
             <div
-              className="os-card-tight"
+              className="os-card-tight os-card-interactive"
               style={{ borderTop: '3px solid var(--color-success)', paddingTop: 13 }}
             >
               <p className="os-label">Avg goal</p>
@@ -1037,7 +1038,7 @@ export function DashboardShell({
               </p>
             </div>
             <div
-              className="os-card-tight"
+              className="os-card-tight os-card-interactive"
               style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 13 }}
             >
               <p className="os-label">Sessions</p>
@@ -1047,7 +1048,7 @@ export function DashboardShell({
 
 
           {/* Chart */}
-          <section className="os-card">
+          <section className="os-card os-card-interactive">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
               <h2 className="os-subhead">Incident Frequency</h2>
               {chartPeriodToggle}
@@ -1064,7 +1065,7 @@ export function DashboardShell({
           </section>
 
           {/* Students list */}
-          <section className="os-card min-w-0 overflow-x-hidden">
+          <section className="os-card os-card-interactive min-w-0 overflow-x-hidden">
             <div className="px-1 pt-1">
               <StudentsHeader
                 totalCount={caseloadTotalCount}

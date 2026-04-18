@@ -461,6 +461,7 @@ body {
   border-radius: var(--radius-default);
   box-shadow: 0 1px 3px rgba(30, 37, 23, 0.06), 0 1px 2px rgba(30, 37, 23, 0.04);
   padding: 20px;
+  min-width: 0;
 }
 
 .os-card-tight {
@@ -469,6 +470,33 @@ body {
   border-radius: var(--radius-default);
   box-shadow: 0 1px 3px rgba(30, 37, 23, 0.06), 0 1px 2px rgba(30, 37, 23, 0.04);
   padding: 16px;
+  min-width: 0;
+}
+
+/* Dashboard cards — subtle lift on hover (respects reduced motion) */
+.os-card-interactive {
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-both);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .os-card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(92, 107, 70, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .os-card-interactive {
+    transition: border-color var(--duration-fast) var(--ease-both);
+  }
+
+  .os-card-interactive:hover {
+    transform: none;
+  }
 }
 
 /* Student profile sections — align with incidents panel (log + history) */
@@ -829,6 +857,8 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+  min-width: 0;
+  width: 100%;
 }
 
 @media (max-width: 1200px) {

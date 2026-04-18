@@ -46,6 +46,8 @@ export function SidebarUserMenu({
           ? 'Counselor'
           : profileRole
 
+  const avatarLetter = profileName.trim().charAt(0).toUpperCase() || '?'
+
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
       <div
@@ -54,41 +56,55 @@ export function SidebarUserMenu({
           !expanded && 'justify-center px-0'
         )}
       >
-        <div
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white"
-          style={{ borderRadius: 6 }}
-          aria-hidden
-        >
-          {profileName.trim().charAt(0).toUpperCase() || '?'}
-        </div>
-
         {expanded ? (
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-sans text-[12px] font-medium leading-tight text-white">{profileName}</p>
-            <p
-              className="truncate font-sans text-[10px] uppercase leading-tight tracking-[0.08em]"
-              style={{ color: 'rgba(255,255,255,0.4)' }}
+          <>
+            <div
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white"
+              style={{ borderRadius: 6 }}
+              aria-hidden
             >
-              {roleLabel}
-            </p>
-          </div>
-        ) : null}
+              {avatarLetter}
+            </div>
 
-        <DropdownMenu.Trigger asChild>
-          <button
-            type="button"
-            className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors',
-              'hover:bg-white/[0.08] hover:text-[#D6A033]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A033]',
-              open && 'bg-white/[0.08] text-[#D6A033]'
-            )}
-            aria-label="Account menu"
-            aria-expanded={open}
-          >
-            <MenuToggleIcon open={open} className="h-[18px] w-[18px]" duration={320} />
-          </button>
-        </DropdownMenu.Trigger>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-sans text-[12px] font-medium leading-tight text-white">{profileName}</p>
+              <p
+                className="truncate font-sans text-[10px] uppercase leading-tight tracking-[0.08em]"
+                style={{ color: 'rgba(255,255,255,0.4)' }}
+              >
+                {roleLabel}
+              </p>
+            </div>
+
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors',
+                  'hover:bg-white/[0.08] hover:text-[#D6A033]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A033]',
+                  open && 'bg-white/[0.08] text-[#D6A033]'
+                )}
+                aria-label="Account menu"
+                aria-expanded={open}
+              >
+                <MenuToggleIcon open={open} className="h-[18px] w-[18px]" duration={320} />
+              </button>
+            </DropdownMenu.Trigger>
+          </>
+        ) : (
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white hover:ring-2 hover:ring-[#D6A033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A033]"
+              style={{ borderRadius: 6 }}
+              aria-label="Account menu"
+              aria-expanded={open}
+            >
+              {avatarLetter}
+            </button>
+          </DropdownMenu.Trigger>
+        )}
       </div>
 
       <DropdownMenu.Portal>
