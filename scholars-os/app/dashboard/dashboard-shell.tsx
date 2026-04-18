@@ -11,6 +11,7 @@ import {
   type StudentFilterKey,
 } from '@/components/students/students-header'
 import { AnimatedMenuButton } from '@/components/ui/button'
+import { SidebarUserMenu } from '@/components/layout/sidebar-user-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StudentAvatar } from '@/components/ui/student-avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -39,6 +40,7 @@ type RecentStudent = {
 
 type DashboardShellProps = {
   profileName: string
+  profileEmail: string
   profileRole: string
   /** Show Analytics + Team nav (owner / assistant). Counselors are redirected if they hit those URLs. */
   showOrgNav: boolean
@@ -262,6 +264,7 @@ function NavLinks({
 
 export function DashboardShell({
   profileName,
+  profileEmail,
   profileRole,
   showOrgNav,
   activeStudents,
@@ -510,24 +513,13 @@ export function DashboardShell({
               />
             </nav>
             <div className="border-t border-white/[0.06] px-2 py-3">
-              <div className="flex items-center gap-3 rounded-lg px-2.5 py-1">
-                <div
-                  className="flex shrink-0 items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white"
-                  style={{ width: 28, height: 28 }}
-                  aria-hidden
-                >
-                  {profileName.trim().charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-medium leading-tight text-white">{profileName}</p>
-                  <p
-                    className="truncate text-[10px] font-medium uppercase leading-tight tracking-[0.08em]"
-                    style={{ color: 'rgba(255,255,255,0.4)' }}
-                  >
-                    {profileRole}
-                  </p>
-                </div>
-              </div>
+              <SidebarUserMenu
+                profileName={profileName}
+                profileEmail={profileEmail}
+                profileRole={profileRole}
+                showOrgSettings={showOrgNav}
+                expanded
+              />
             </div>
           </aside>
         </div>
@@ -613,36 +605,13 @@ export function DashboardShell({
               </span>
             </button>
 
-            <div
-              className={cn(
-                'flex h-10 cursor-default select-none items-center gap-3 rounded-lg px-2.5',
-                !sidebarOpen && 'mx-auto w-10 justify-center px-0'
-              )}
-            >
-              <div
-                className="flex shrink-0 items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white"
-                style={{ width: 28, height: 28, borderRadius: 6 }}
-                aria-hidden
-              >
-                {profileName.trim().charAt(0).toUpperCase() || '?'}
-              </div>
-              <div
-                className={cn(
-                  'flex min-w-0 flex-col transition-all duration-200',
-                  sidebarOpen ? 'opacity-100' : 'pointer-events-none w-0 overflow-hidden opacity-0'
-                )}
-              >
-                <span className="truncate font-sans text-[12px] font-medium leading-tight text-white">
-                  {profileName}
-                </span>
-                <span
-                  className="truncate font-sans text-[10px] uppercase leading-tight tracking-[0.08em]"
-                  style={{ color: 'rgba(255,255,255,0.4)' }}
-                >
-                  {profileRole}
-                </span>
-              </div>
-            </div>
+            <SidebarUserMenu
+              profileName={profileName}
+              profileEmail={profileEmail}
+              profileRole={profileRole}
+              showOrgSettings={showOrgNav}
+              expanded={sidebarOpen}
+            />
           </div>
         </aside>
 
