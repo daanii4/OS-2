@@ -21,6 +21,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(tenantUrl, { request: { headers: requestHeaders } })
   }
 
+  const path = request.nextUrl.pathname
+  /** Public files from /public — must not redirect to /login or favicons and <img> break. */
+  const isPublicAsset =
+    path.startsWith('/static/') ||
+    path.startsWith('/animations/') ||
+    path.startsWith('/icon') ||
+    path === '/favicon.ico' ||
+    path === '/apple-icon.png' ||
+    path === '/logo-mark.png' ||
+    path === '/logo.png' ||
+    path === '/logo-3d.webp' ||
+    path === '/logo-3d.png'
+
+  if (isPublicAsset) {
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  }
+
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
@@ -46,7 +63,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
   const isLogin = path.startsWith('/login')
   const isApiAuth = path.startsWith('/api/auth')
 
