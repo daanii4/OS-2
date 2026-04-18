@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Search } from 'lucide-react'
 
 export type StudentFilterKey = 'all' | 'regression' | 'escalated'
 
@@ -56,8 +57,8 @@ export function StudentsHeader({
       <div className="flex flex-col gap-0.5">
         <h1
           className="
-          font-[family-name:var(--font-dm-serif)] text-[22px] font-normal leading-tight tracking-[-0.01em]
-          text-[#1e2517]
+          text-[22px] font-normal leading-tight tracking-[-0.01em] text-[#1e2517]
+          font-[family-name:var(--font-dm-serif)]
         "
         >
           Students
@@ -72,22 +73,16 @@ export function StudentsHeader({
         </p>
       </div>
 
-      <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+      <div className="flex w-full items-center gap-2 md:w-auto">
         <div className="relative flex flex-1 items-center md:flex-none">
-          <svg
+          <Search
+            size={14}
             className="
-              pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 flex-shrink-0 -translate-y-1/2
-              text-[#8a9e69]
+              pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
+              flex-shrink-0 text-[#8a9e69]
             "
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3-3" strokeLinecap="round" />
-          </svg>
+            aria-hidden="true"
+          />
           <input
             type="search"
             value={searchValue}
@@ -95,12 +90,15 @@ export function StudentsHeader({
             placeholder="Search students…"
             aria-label="Search students by name or school"
             className="
-              h-[36px] w-full rounded-full border border-[rgba(92,107,70,0.18)] bg-[#eef0e8] pl-8 pr-8
+              h-[36px] w-full pl-8 pr-8
+              rounded-full border border-[rgba(92,107,70,0.18)] bg-[#eef0e8]
               font-sans text-[16px] text-[#1e2517] placeholder:text-[#8a9e69] outline-none
               transition-[width,border-color,box-shadow,background-color]
-              duration-[var(--duration-normal,220ms)] ease-[cubic-bezier(0.4,0,0.2,1)]
+              duration-[var(--duration-normal,220ms)]
+              ease-[cubic-bezier(0.4,0,0.2,1)]
               hover:border-[rgba(92,107,70,0.35)]
-              focus:border-[#5C6B46] focus:bg-white focus:shadow-[0_0_0_3px_rgba(92,107,70,0.12)]
+              focus:w-full focus:border-[#5C6B46] focus:bg-white
+              focus:shadow-[0_0_0_3px_rgba(92,107,70,0.12)]
               md:w-[200px] md:text-[13px] md:focus:w-[240px]
             "
           />
@@ -111,9 +109,10 @@ export function StudentsHeader({
               aria-label="Clear search"
               className="
                 absolute right-3 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center
-                rounded-full text-[#8a9e69] transition-colors duration-[var(--duration-fast,150ms)]
+                text-[#8a9e69] transition-colors duration-[var(--duration-fast,150ms)]
                 hover:text-[#5C6B46] focus-visible:outline-none focus-visible:ring-2
                 focus-visible:ring-[#5C6B46] focus-visible:ring-offset-1
+                rounded-full
               "
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
@@ -130,10 +129,14 @@ export function StudentsHeader({
 
         <div
           className="hidden h-5 w-px flex-shrink-0 bg-[rgba(92,107,70,0.15)] md:block"
-          aria-hidden
+          aria-hidden="true"
         />
 
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5" role="group" aria-label="Filter students">
+        <div
+          className="flex flex-shrink-0 flex-wrap items-center gap-1.5"
+          role="group"
+          aria-label="Filter students"
+        >
           {FILTERS.map(filter => {
             const isActive = activeFilter === filter.key
             return (
@@ -162,7 +165,7 @@ export function StudentsHeader({
                     style={{
                       background: isActive ? 'rgba(255,255,255,0.75)' : filter.dot,
                     }}
-                    aria-hidden
+                    aria-hidden="true"
                   />
                 ) : null}
                 {filter.label}

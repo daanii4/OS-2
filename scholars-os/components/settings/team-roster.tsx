@@ -26,14 +26,23 @@ type InvitationRow = {
 type Props = {
   initialProfiles: ProfileRow[]
   initialInvitations: InvitationRow[]
+  viewerRole: 'owner' | 'assistant'
+  viewerId: string
 }
 
-export function TeamRoster({ initialProfiles, initialInvitations }: Props) {
+export function TeamRoster({
+  initialProfiles,
+  initialInvitations,
+  viewerRole,
+  viewerId,
+}: Props) {
   const router = useRouter()
   const [profiles, setProfiles] = useState(initialProfiles)
   const [invitations, setInvitations] = useState(initialInvitations)
   const [loading, setLoading] = useState(false)
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null)
+  const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -57,6 +66,58 @@ export function TeamRoster({ initialProfiles, initialInvitations }: Props) {
     setProfiles(initialProfiles)
     setInvitations(initialInvitations)
   }, [initialProfiles, initialInvitations])
+
+  function canRemoveProfile(p: ProfileRow): boolean {
+    if (p.id === viewerId) return false
+    if (viewerRole === 'assistant') return p.role === 'counselor'
+    return true
+  }
+
+  async function removeProfile(profileId: string) {
+    if (
+      !window.confirm(
+        'Remove this user from the team? They will lose access and their account will be deleted.'
+      )
+    ) {
+      return
+    }
+    setDeletingProfileId(profileId)
+    try {
+      const res = await fetch(`/api/settings/team/${profileId}`, { method: 'DELETE' })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        toast.error(json.error ?? 'Remove failed')
+        return
+      }
+      toast.success('User removed')
+      await refresh()
+      router.refresh()
+    } finally {
+      setDeletingProfileId(null)
+    }
+  }
+
+  async function cancelInvite(invitationId: string) {
+    if (!window.confirm('Cancel this invitation and remove the setup account?')) {
+      return
+    }
+    setDeletingInviteId(invitationId)
+    try {
+      const res = await fetch(`/api/settings/team/invitations/${invitationId}`, {
+        method: 'DELETE',
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        toast.error(json.error ?? 'Could not cancel invite')
+        return
+      }
+      toast.success('Invitation canceled')
+      await refresh()
+      router.refresh()
+    } finally {
+      setDeletingInviteId(null)
+    }
+  }
 
   async function resend(invitationId: string) {
     setResendingId(invitationId)
@@ -105,6 +166,16 @@ export function TeamRoster({ initialProfiles, initialInvitations }: Props) {
                   {!p.onboarding_complete ? (
                     <span className="text-[11px] text-amber-700">Onboarding</span>
                   ) : null}
+                  {canRemoveProfile(p) ? (
+                    <button
+                      type="button"
+                      className="text-sm text-[var(--color-error)] underline-offset-2 hover:underline"
+                      disabled={deletingProfileId === p.id}
+                      onClick={() => void removeProfile(p.id)}
+                    >
+                      {deletingProfileId === p.id ? 'Removing…' : 'Remove'}
+                    </button>
+                  ) : null}
                 </div>
               </li>
             ))}
@@ -124,7 +195,7 @@ export function TeamRoster({ initialProfiles, initialInvitations }: Props) {
                   <p className="os-body font-medium text-[var(--text-primary)]">{inv.name}</p>
                   <p className="os-caption truncate">{inv.email}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-md bg-[var(--surface-inner)] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-secondary)]">
                     {inv.role}
                   </span>
@@ -136,6 +207,16 @@ export function TeamRoster({ initialProfiles, initialInvitations }: Props) {
                   >
                     {resendingId === inv.id ? 'Sending…' : 'Resend password email'}
                   </button>
+                  {viewerRole === 'owner' || (viewerRole === 'assistant' && inv.role === 'counselor') ? (
+                    <button
+                      type="button"
+                      className="text-sm text-[var(--color-error)] underline-offset-2 hover:underline"
+                      disabled={deletingInviteId === inv.id}
+                      onClick={() => void cancelInvite(inv.id)}
+                    >
+                      {deletingInviteId === inv.id ? 'Canceling…' : 'Cancel invite'}
+                    </button>
+                  ) : null}
                 </div>
               </li>
             ))}

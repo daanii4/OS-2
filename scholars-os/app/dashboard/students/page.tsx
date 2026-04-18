@@ -78,7 +78,7 @@ export default async function StudentsPage() {
     : []
 
   return (
-    <div className="os-page">
+    <div className="os-page min-h-0">
       <StudentsPageClient
         students={students}
         incidents30dByStudent={incidents30dByStudent}

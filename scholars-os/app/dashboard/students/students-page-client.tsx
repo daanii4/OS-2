@@ -65,6 +65,16 @@ function reductionPct(
   return Number((((baseline - currentIncidents) / baseline) * 100).toFixed(0))
 }
 
+/** Positive when incidents worsened vs baseline (matches “delta_pct” in spec). */
+function regressionDeltaPct(
+  baseline: number | null,
+  currentIncidents: number
+): number | null {
+  const r = reductionPct(baseline, currentIncidents)
+  if (r === null) return null
+  return -r
+}
+
 export function StudentsPageClient({
   students,
   incidents30dByStudent,
@@ -91,8 +101,8 @@ export function StudentsPageClient({
     if (activeFilter === 'regression') {
       list = list.filter(s => {
         const current = incidents30dByStudent[s.id] ?? 0
-        const pct = reductionPct(s.baseline_incident_count, current)
-        return pct !== null && pct < 0
+        const delta = regressionDeltaPct(s.baseline_incident_count, current)
+        return delta !== null && delta >= 25
       })
     }
     if (activeFilter === 'escalated') {
@@ -106,22 +116,20 @@ export function StudentsPageClient({
   }
 
   return (
-    <>
-      <div className="px-5 md:px-0">
-        <StudentsHeader
-          totalCount={students.length}
-          filteredCount={filteredStudents.length}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          onSearchChange={setQuery}
-        />
-      </div>
+    <div className="px-5 py-5 md:px-6">
+      <StudentsHeader
+        totalCount={students.length}
+        filteredCount={filteredStudents.length}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        onSearchChange={setQuery}
+      />
 
-      <div className="os-card-tight mb-3 flex flex-wrap items-center justify-between gap-3 pr-14 md:pr-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="os-caption">
           Signed in as {profileName} ({profileRole})
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canCreateStudents && (
             <button
               type="button"
@@ -138,7 +146,7 @@ export function StudentsPageClient({
       </div>
 
       {!canCreateStudents && (
-        <p className="os-card-tight os-body">
+        <p className="mb-4 os-body text-[var(--text-secondary)]">
           Counselors can view assigned students but cannot create student records.
         </p>
       )}
@@ -229,6 +237,6 @@ export function StudentsPageClient({
           onCreated={onCreated}
         />
       )}
-    </>
+    </div>
   )
 }

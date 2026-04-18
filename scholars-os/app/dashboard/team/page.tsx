@@ -65,6 +65,8 @@ export default async function DashboardTeamPage() {
       </div>
       <div className="space-y-6">
         <TeamRoster
+          viewerId={profile.id}
+          viewerRole={profile.role === 'assistant' ? 'assistant' : 'owner'}
           initialProfiles={profiles.map(p => ({
             ...p,
             created_at: p.created_at.toISOString(),
