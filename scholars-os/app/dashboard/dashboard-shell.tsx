@@ -5,13 +5,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { SidebarAccountMenu } from '@/components/layout/sidebar-account-menu'
+import { BarChart3, LayoutList, PanelLeftClose, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import {
   StudentsHeader,
   type StudentFilterKey,
 } from '@/components/students/students-header'
+import { AnimatedMenuButton } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StudentAvatar } from '@/components/ui/student-avatar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useLocalStorageBoolean } from '@/hooks/use-local-storage'
+import { cn } from '@/lib/utils'
 const DashboardIncidentChart = dynamic(
   () => import('./dashboard-incident-chart'),
   {
@@ -99,20 +103,26 @@ const NAV_SECTIONS = ['Main', 'Reports', 'Settings'] as const
 type NavLinkItem = {
   href: string
   label: string
-  abbr: string
+  icon: LucideIcon
   section: (typeof NAV_SECTIONS)[number]
   /** If true, only shown when showOrgNav (owner / assistant). */
   orgOnly?: boolean
 }
 
 const NAV_LINKS: NavLinkItem[] = [
-  { href: '/dashboard', label: 'Your Students', abbr: 'D', section: 'Main' },
-  { href: '/dashboard/students', label: 'Student Caseload', abbr: 'S', section: 'Main' },
-  { href: '/dashboard/analytics', label: 'Impact Overview', abbr: 'A', section: 'Reports', orgOnly: true },
+  { href: '/dashboard', label: 'Your Students', icon: Users, section: 'Main' },
+  { href: '/dashboard/students', label: 'Student Caseload', icon: LayoutList, section: 'Main' },
   {
-    href: '/dashboard/team',
+    href: '/dashboard/analytics',
+    label: 'Impact Overview',
+    icon: BarChart3,
+    section: 'Reports',
+    orgOnly: true,
+  },
+  {
+    href: '/settings/team',
     label: 'Team',
-    abbr: 'T',
+    icon: UsersRound,
     section: 'Settings',
     orgOnly: true,
   },
@@ -155,17 +165,72 @@ function isNavActive(pathname: string | null, href: string): boolean {
 }
 
 function NavLinks({
-  collapsed,
+  open,
   onLinkClick,
   showOrgNav,
+  tooltipProvider = true,
 }: {
-  collapsed: boolean
+  open: boolean
   onLinkClick: () => void
-  /** Owner / assistant only — Analytics + Team redirect counselors away */
   showOrgNav: boolean
+  /** Desktop collapsed sidebar: show Radix tooltips on icons */
+  tooltipProvider?: boolean
 }) {
   const pathname = usePathname()
   const visibleLinks = NAV_LINKS.filter(l => !l.orgOnly || showOrgNav)
+  let staggerIndex = 0
+
+  const linkInner = (link: NavLinkItem, active: boolean, index: number) => {
+    const Icon = link.icon
+    return (
+      <>
+        <Icon
+          size={15}
+          aria-hidden
+          className={cn('shrink-0', active ? 'opacity-100' : 'opacity-60')}
+        />
+        <span
+          className={cn(
+            'font-sans text-[12px] font-medium leading-none whitespace-nowrap',
+            'transition-all duration-200 ease-out',
+            open ? 'translate-x-0 opacity-100' : 'pointer-events-none w-0 -translate-x-2 overflow-hidden opacity-0'
+          )}
+          style={{ transitionDelay: open ? `${index * 30}ms` : '0ms' }}
+        >
+          {link.label}
+        </span>
+      </>
+    )
+  }
+
+  const wrapLink = (link: NavLinkItem, active: boolean, index: number) => {
+    const body = (
+      <Link
+        href={link.href}
+        onClick={onLinkClick}
+        className={cn(
+          'mx-2 flex h-9 items-center gap-3 rounded-lg px-2.5 transition-all duration-150 ease-in-out',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A033] focus-visible:ring-offset-0 focus-visible:ring-offset-transparent',
+          active ? 'bg-white/10 text-white' : 'text-white/45 hover:bg-white/[0.06] hover:text-white/80',
+          !open && 'mx-auto w-10 justify-center px-0'
+        )}
+      >
+        {linkInner(link, active, index)}
+      </Link>
+    )
+
+    if (!open && tooltipProvider) {
+      return (
+        <Tooltip key={link.href} delayDuration={200}>
+          <TooltipTrigger asChild>{body}</TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8} className="border-white/10">
+            {link.label}
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+    return <div key={link.href} className="contents">{body}</div>
+  }
 
   return (
     <>
@@ -173,46 +238,22 @@ function NavLinks({
         const sectionLinks = visibleLinks.filter(l => l.section === section)
         if (sectionLinks.length === 0) return null
         return (
-        <div key={section} className="mb-1">
-          <p
-            className={`mb-1.5 mt-4 px-3 text-[8px] font-medium uppercase tracking-[0.08em] transition-opacity duration-75 ${
-              collapsed ? 'opacity-0' : 'opacity-100'
-            }`}
-            style={{ color: 'rgba(255,255,255,0.22)' }}
-          >
-            {section}
-          </p>
-          {sectionLinks.map(link => {
-            const active = isNavActive(pathname, link.href)
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={onLinkClick}
-                className={`relative mb-0.5 flex h-9 items-center gap-3 rounded-lg px-3 transition-all duration-[var(--duration-fast)] ${
-                  active
-                    ? 'bg-white/[0.12] text-white'
-                    : 'text-white/45 hover:bg-white/[0.06] hover:text-white/90'
-                }`}
-              >
-                {active && (
-                  <span
-                    className="nav-active-indicator absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-teal-400"
-                    aria-hidden
-                  />
-                )}
-                <span
-                  className={`text-[12px] font-[500] transition-opacity duration-75 ${
-                    active ? 'pl-0.5' : ''
-                  }`}
-                  style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}
-                >
-                  {collapsed ? link.abbr : link.label}
-                </span>
-              </Link>
-            )
-          })}
-        </div>
+          <div key={section} className="mb-1">
+            <p
+              className={cn(
+                'mb-1.5 mt-4 px-3 pb-1 pt-5 text-[8px] font-medium uppercase tracking-[0.08em] transition-opacity duration-200',
+                open ? 'opacity-100' : 'pointer-events-none h-0 overflow-hidden opacity-0'
+              )}
+              style={{ color: 'rgba(255,255,255,0.22)' }}
+            >
+              {section}
+            </p>
+            {sectionLinks.map(link => {
+              const active = isNavActive(pathname, link.href)
+              const idx = staggerIndex++
+              return wrapLink(link, active, idx)
+            })}
+          </div>
         )
       })}
     </>
@@ -235,13 +276,7 @@ export function DashboardShell({
   topOffset,
   caseloadExport,
 }: DashboardShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const saved = window.localStorage.getItem('os2.sidebar.open')
-    if (saved === '0') return false
-    if (saved === '1') return true
-    return true
-  })
+  const [sidebarOpen, setSidebarOpen] = useLocalStorageBoolean('scholars-sidebar', true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   // Always default true (SSR-safe). useEffect corrects to actual viewport post-hydration.
   const [isDesktop, setIsDesktop] = useState(true)
@@ -284,10 +319,6 @@ export function DashboardShell({
   useEffect(() => {
     fetchIncidentChart(chartPeriod)
   }, [chartPeriod, fetchIncidentChart])
-
-  useEffect(() => {
-    window.localStorage.setItem('os2.sidebar.open', sidebarOpen ? '1' : '0')
-  }, [sidebarOpen])
 
   // Close mobile menu on route change / resize to desktop
   useEffect(() => {
@@ -397,16 +428,11 @@ export function DashboardShell({
       {!isDesktop && (
         <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="os-btn-icon"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open navigation"
-          >
-            <svg viewBox="0 0 20 20" className="h-5 w-5" fill="currentColor">
-              <path fillRule="evenodd" d="M3 5h14a1 1 0 000-2H3a1 1 0 000 2zm0 6h14a1 1 0 000-2H3a1 1 0 000 2zm0 6h14a1 1 0 000-2H3a1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-          </button>
+          <AnimatedMenuButton
+            open={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(o => !o)}
+            aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+          />
           <div className="flex items-center gap-2">
             <div className="os-motif flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
               <img
@@ -475,124 +501,157 @@ export function DashboardShell({
                 </button>
               </div>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-2">
-              <NavLinks collapsed={false} onLinkClick={closeMobileMenu} showOrgNav={showOrgNav} />
+            <nav className="flex-1 overflow-y-auto overflow-x-visible px-3 py-2">
+              <NavLinks
+                open
+                onLinkClick={closeMobileMenu}
+                showOrgNav={showOrgNav}
+                tooltipProvider={false}
+              />
             </nav>
-            <div className="border-t border-white/10 px-4 py-4">
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const { first, last } = splitProfileName(profileName)
-                  return <StudentAvatar firstName={first} lastName={last} size="sm" />
-                })()}
+            <div className="border-t border-white/[0.06] px-2 py-3">
+              <div className="flex items-center gap-3 rounded-lg px-2.5 py-1">
+                <div
+                  className="flex shrink-0 items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white"
+                  style={{ width: 28, height: 28 }}
+                  aria-hidden
+                >
+                  {profileName.trim().charAt(0).toUpperCase() || '?'}
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-white">{profileName}</p>
-                  <p className="os-label truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  <p className="truncate text-[12px] font-medium leading-tight text-white">{profileName}</p>
+                  <p
+                    className="truncate text-[10px] font-medium uppercase leading-tight tracking-[0.08em]"
+                    style={{ color: 'rgba(255,255,255,0.4)' }}
+                  >
                     {profileRole}
                   </p>
                 </div>
-                <SidebarAccountMenu />
               </div>
             </div>
           </aside>
         </div>
       )}
 
-      {/* ── Desktop shell — viewport-height row so sidebar scroll is independent of main ── */}
+      {/* ── Desktop shell — fixed sidebar + main margin (spec: w-60 / w-14, ml-60 / ml-14) ── */}
       {isDesktop && (
-        <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden">
-        {/* Desktop sidebar */}
+        <div className="relative min-h-[100dvh] w-full">
         <aside
-          className={`flex h-full min-h-0 shrink-0 flex-col border-r border-white/[0.06] bg-[var(--olive-800)] transition-[width] duration-100 ease-out ${
-            sidebarOpen ? 'w-[260px]' : 'w-[76px]'
-          }`}
+          className={cn(
+            'fixed left-0 top-0 z-40 flex h-full flex-col border-r border-white/[0.06] bg-[#2D3820]',
+            'transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            sidebarOpen ? 'w-60' : 'w-14'
+          )}
         >
-          <div className="shrink-0 border-b border-white/[0.08] px-3 py-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="os-motif flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
-                  <img
-                    src="/logo-mark.png"
-                    alt="Operation Scholars"
-                    className="h-6 w-6 object-contain"
-                  />
-                </div>
-                <div
-                  className={`min-w-0 overflow-hidden transition-all duration-100 ${
-                    sidebarOpen ? 'max-w-[180px] opacity-100' : 'max-w-0 opacity-0'
-                  }`}
-                >
-                  <p
-                    className="text-[15px] font-normal leading-tight tracking-[-0.01em] text-white"
-                    style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
-                  >
-                    Operation Scholars
-                  </p>
-                  <p
-                    className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-                    style={{ color: 'rgba(255,255,255,0.35)' }}
-                  >
-                    Behavioral Intelligence
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(open => !open)}
-                className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-white/35 transition-colors hover:bg-white/[0.08] hover:text-white/70"
-                aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-                title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          <div
+            className={cn(
+              'flex h-16 shrink-0 items-center border-b border-white/[0.08] px-4',
+              sidebarOpen ? 'justify-start gap-3' : 'justify-center px-2'
+            )}
+          >
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#D6A033]"
+              style={{ minWidth: 36, minHeight: 36 }}
+            >
+              <img
+                src="/logo-mark.png"
+                alt=""
+                className="h-7 w-7 object-contain"
+              />
+            </div>
+            <div
+              className={cn(
+                'min-w-0 overflow-hidden transition-all duration-200 ease-out',
+                sidebarOpen ? 'max-w-[180px] translate-x-0 opacity-100' : 'max-w-0 -translate-x-2 opacity-0'
+              )}
+            >
+              <p
+                className="text-[14px] font-normal leading-tight text-white"
+                style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
               >
-                <svg
-                  viewBox="0 0 16 16"
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  aria-hidden
-                >
-                  {sidebarOpen ? (
-                    <path d="M10 12L6 8l4-4" strokeLinecap="round" strokeLinejoin="round" />
-                  ) : (
-                    <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-                  )}
-                </svg>
-              </button>
+                Operation Scholars
+              </p>
+              <p
+                className="mt-0.5 text-[8px] uppercase tracking-[0.1em]"
+                style={{ color: 'rgba(255,255,255,0.4)' }}
+              >
+                Behavioral Intelligence
+              </p>
             </div>
           </div>
 
-          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-2">
-            <NavLinks
-              collapsed={!sidebarOpen}
-              onLinkClick={closeMobileMenu}
-              showOrgNav={showOrgNav}
-            />
-          </nav>
+          <TooltipProvider delayDuration={200}>
+            <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-visible overscroll-y-contain px-0 py-2">
+              <NavLinks open={sidebarOpen} onLinkClick={closeMobileMenu} showOrgNav={showOrgNav} />
+            </nav>
+          </TooltipProvider>
 
-          <div className="shrink-0 border-t border-white/10 px-4 py-4">
-            <div className="flex items-center gap-2">
-              {(() => {
-                const { first, last } = splitProfileName(profileName)
-                return <StudentAvatar firstName={first} lastName={last} size="md" />
-              })()}
-              <div
-                className={`min-w-0 flex-1 overflow-hidden transition-all duration-100 ${
-                  sidebarOpen ? 'max-w-[120px] opacity-100' : 'max-w-0 opacity-0'
-                }`}
+          <div className="flex shrink-0 flex-col gap-1 border-t border-white/[0.06] px-2 py-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(o => !o)}
+              aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+              className={cn(
+                'flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-white/40 transition-all duration-150',
+                'hover:bg-white/[0.06] hover:text-white/70',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A033]',
+                !sidebarOpen && 'mx-auto w-10 justify-center px-0'
+              )}
+            >
+              <PanelLeftClose
+                size={15}
+                className={cn('shrink-0 transition-transform duration-300', !sidebarOpen && 'rotate-180')}
+                aria-hidden
+              />
+              <span
+                className={cn(
+                  'font-sans text-[12px] font-medium whitespace-nowrap transition-all duration-200',
+                  sidebarOpen ? 'opacity-100' : 'pointer-events-none w-0 overflow-hidden opacity-0'
+                )}
               >
-                <p className="truncate text-[13px] font-medium text-white">{profileName}</p>
-                <p className="os-label truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  {profileRole}
-                </p>
+                Collapse
+              </span>
+            </button>
+
+            <div
+              className={cn(
+                'flex h-10 cursor-default select-none items-center gap-3 rounded-lg px-2.5',
+                !sidebarOpen && 'mx-auto w-10 justify-center px-0'
+              )}
+            >
+              <div
+                className="flex shrink-0 items-center justify-center rounded-md bg-[#3D4A2A] font-sans text-[11px] font-semibold text-white"
+                style={{ width: 28, height: 28, borderRadius: 6 }}
+                aria-hidden
+              >
+                {profileName.trim().charAt(0).toUpperCase() || '?'}
               </div>
-              <div className="flex-shrink-0">
-                <SidebarAccountMenu />
+              <div
+                className={cn(
+                  'flex min-w-0 flex-col transition-all duration-200',
+                  sidebarOpen ? 'opacity-100' : 'pointer-events-none w-0 overflow-hidden opacity-0'
+                )}
+              >
+                <span className="truncate font-sans text-[12px] font-medium leading-tight text-white">
+                  {profileName}
+                </span>
+                <span
+                  className="truncate font-sans text-[10px] uppercase leading-tight tracking-[0.08em]"
+                  style={{ color: 'rgba(255,255,255,0.4)' }}
+                >
+                  {profileRole}
+                </span>
               </div>
             </div>
           </div>
         </aside>
 
-        {/* Desktop main content — only this column scrolls with long dashboard content */}
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain">
+        <main
+          className={cn(
+            'flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            sidebarOpen ? 'ml-60' : 'ml-14'
+          )}
+        >
           {/* Escalation banner §3.8 */}
           {escalatedStudentName && !escalationAcknowledged && (
             <div
@@ -621,22 +680,6 @@ export function DashboardShell({
           <div className="sticky top-0 z-10 border-b border-[var(--border-default)] bg-[var(--surface-card)] px-6 py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(open => !open)}
-                  className="os-btn-icon text-[var(--text-secondary)]"
-                  aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    className={`h-4 w-4 transition-transform duration-100 ${sidebarOpen ? '' : 'rotate-180'}`}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                  >
-                    <path d="M10.5 3.5L6 8l4.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
                 <div>
                   <h1 className="os-title">Your Students</h1>
                   {(profileRole === 'owner' || profileRole === 'assistant') &&
