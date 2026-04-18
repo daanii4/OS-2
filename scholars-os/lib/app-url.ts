@@ -8,7 +8,7 @@
  * 4. Local dev — http://127.0.0.1:$PORT
  */
 function defaultProductionAppUrl(): string {
-  return ['https://scholars', '.quasarnova', '.net'].join('')
+  return ['https://', 'operation', 'scholars', '.quasarnova', '.com'].join('')
 }
 
 export function getPublicAppUrl(): string {

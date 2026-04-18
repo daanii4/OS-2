@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 type ProfileRow = {
   id: string
@@ -30,6 +31,11 @@ type Props = {
   viewerId: string
 }
 
+type ConfirmState =
+  | null
+  | { kind: 'remove'; profileId: string; name: string }
+  | { kind: 'cancelInvite'; invitationId: string; name: string }
+
 export function TeamRoster({
   initialProfiles,
   initialInvitations,
@@ -43,6 +49,7 @@ export function TeamRoster({
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null)
   const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -73,14 +80,7 @@ export function TeamRoster({
     return true
   }
 
-  async function removeProfile(profileId: string) {
-    if (
-      !window.confirm(
-        'Remove this user from the team? They will lose access and their account will be deleted.'
-      )
-    ) {
-      return
-    }
+  async function executeRemoveProfile(profileId: string) {
     setDeletingProfileId(profileId)
     try {
       const res = await fetch(`/api/settings/team/${profileId}`, { method: 'DELETE' })
@@ -90,6 +90,7 @@ export function TeamRoster({
         return
       }
       toast.success('User removed')
+      setConfirm(null)
       await refresh()
       router.refresh()
     } finally {
@@ -97,10 +98,7 @@ export function TeamRoster({
     }
   }
 
-  async function cancelInvite(invitationId: string) {
-    if (!window.confirm('Cancel this invitation and remove the setup account?')) {
-      return
-    }
+  async function executeCancelInvite(invitationId: string) {
     setDeletingInviteId(invitationId)
     try {
       const res = await fetch(`/api/settings/team/invitations/${invitationId}`, {
@@ -112,6 +110,7 @@ export function TeamRoster({
         return
       }
       toast.success('Invitation canceled')
+      setConfirm(null)
       await refresh()
       router.refresh()
     } finally {
@@ -140,8 +139,48 @@ export function TeamRoster({
     }
   }
 
+  const confirmLoading =
+    confirm?.kind === 'remove'
+      ? deletingProfileId === confirm.profileId
+      : confirm?.kind === 'cancelInvite'
+        ? deletingInviteId === confirm.invitationId
+        : false
+
   return (
     <div className="space-y-6">
+      <ConfirmModal
+        open={confirm?.kind === 'remove'}
+        title="Remove team member?"
+        description={
+          confirm?.kind === 'remove'
+            ? `${confirm.name} will lose access and their account will be removed from this organization. This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Remove user"
+        variant="danger"
+        loading={confirmLoading}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (confirm?.kind === 'remove') void executeRemoveProfile(confirm.profileId)
+        }}
+      />
+      <ConfirmModal
+        open={confirm?.kind === 'cancelInvite'}
+        title="Cancel invitation?"
+        description={
+          confirm?.kind === 'cancelInvite'
+            ? `The invite for ${confirm.name} will be canceled and the setup account removed. You can send a new invite later.`
+            : ''
+        }
+        confirmLabel="Cancel invitation"
+        variant="danger"
+        loading={confirmLoading}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (confirm?.kind === 'cancelInvite') void executeCancelInvite(confirm.invitationId)
+        }}
+      />
+
       <div className="os-card space-y-3">
         <h2 className="os-heading">Current team</h2>
         {loading ? (
@@ -171,7 +210,7 @@ export function TeamRoster({
                       type="button"
                       className="text-sm text-[var(--color-error)] underline-offset-2 hover:underline"
                       disabled={deletingProfileId === p.id}
-                      onClick={() => void removeProfile(p.id)}
+                      onClick={() => setConfirm({ kind: 'remove', profileId: p.id, name: p.name })}
                     >
                       {deletingProfileId === p.id ? 'Removing…' : 'Remove'}
                     </button>
@@ -212,7 +251,9 @@ export function TeamRoster({
                       type="button"
                       className="text-sm text-[var(--color-error)] underline-offset-2 hover:underline"
                       disabled={deletingInviteId === inv.id}
-                      onClick={() => void cancelInvite(inv.id)}
+                      onClick={() =>
+                        setConfirm({ kind: 'cancelInvite', invitationId: inv.id, name: inv.name })
+                      }
                     >
                       {deletingInviteId === inv.id ? 'Canceling…' : 'Cancel invite'}
                     </button>
