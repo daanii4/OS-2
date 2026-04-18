@@ -103,6 +103,8 @@ export default async function StudentDetailPage({
             goals_attempted: true,
             goals_met: true,
             goal_completion_rate: true,
+            session_summary: true,
+            session_goals: true,
             created_at: true,
           },
         },

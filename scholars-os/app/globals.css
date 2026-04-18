@@ -541,6 +541,13 @@ body {
   overscroll-behavior: contain;
 }
 
+@media (max-width: 767px) {
+  .os-student-section-panel__body--scroll {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
 .os-student-section-panel .os-input,
 .os-student-section-panel .os-select,
 .os-student-section-panel .os-textarea {

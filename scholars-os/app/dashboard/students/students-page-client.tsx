@@ -117,6 +117,13 @@ export function StudentsPageClient({
 
   return (
     <div className="px-5 py-5 md:px-6">
+      <Link
+        href="/dashboard"
+        className="os-btn-secondary mb-4 inline-flex w-full justify-center sm:w-auto md:hidden"
+      >
+        Back to dashboard
+      </Link>
+
       <StudentsHeader
         totalCount={students.length}
         filteredCount={filteredStudents.length}
@@ -139,7 +146,7 @@ export function StudentsPageClient({
               Add Student to Caseload
             </button>
           )}
-          <Link href="/dashboard" className="os-btn-secondary">
+          <Link href="/dashboard" className="os-btn-secondary hidden md:inline-flex">
             Back to dashboard
           </Link>
         </div>

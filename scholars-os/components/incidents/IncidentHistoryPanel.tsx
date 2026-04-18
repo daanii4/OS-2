@@ -121,7 +121,7 @@ export function IncidentHistoryPanel({
         ))}
       </div>
 
-      <div className="max-h-[600px] flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto md:max-h-[600px]">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
             <div

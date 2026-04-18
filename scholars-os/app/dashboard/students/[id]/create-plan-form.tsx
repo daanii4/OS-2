@@ -13,9 +13,10 @@ const FREQUENCY_LABEL: Record<(typeof frequencyOptions)[number], string> = {
 
 type CreatePlanFormProps = {
   studentId: string
+  onSaved?: () => void
 }
 
-export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
+export function CreatePlanForm({ studentId, onSaved }: CreatePlanFormProps) {
   const [goalStatement, setGoalStatement] = useState('')
   const [targetReductionPct, setTargetReductionPct] = useState('50')
   const [planDurationWeeks, setPlanDurationWeeks] = useState('12')
@@ -55,7 +56,12 @@ export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
       return
     }
 
-    window.location.reload()
+    setLoading(false)
+    if (onSaved) {
+      onSaved()
+    } else {
+      window.location.reload()
+    }
   }
 
   return (
