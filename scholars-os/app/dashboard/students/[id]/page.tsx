@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { AddIncidentForm } from './add-incident-form'
+import { IncidentsTab } from '@/components/incidents/IncidentsTab'
 import { AddSessionForm } from './add-session-form'
 import { AIPanel } from './ai-panel'
 import { AssignCounselorForm } from './assign-counselor-form'
@@ -114,6 +114,7 @@ export default async function StudentDetailPage({
             suspension_days: true,
             reported_by: true,
             description: true,
+            logged_by: true,
             created_at: true,
           },
         },
@@ -305,65 +306,11 @@ export default async function StudentDetailPage({
           </div>
       )}
       {section === 'incidents' && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AddIncidentForm studentId={student.id} />
-            <div className="os-card">
-              <h3 className="os-heading mb-3">Incident history</h3>
-              {student.incidents.length === 0 ? (
-                <EmptyState
-                  icon={
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5 text-[var(--olive-400)]"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden
-                    >
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                      <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
-                  }
-                  title="No incidents on record"
-                  body="A clean record is worth celebrating."
-                />
-              ) : (
-                <ul className="space-y-2">
-                  {student.incidents.map(incident => (
-                    <li key={incident.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <p className="os-subhead capitalize">
-                        {incident.incident_type.replace(/_/g, ' ')} ·{' '}
-                        <span
-                          className={
-                            incident.severity === 'high'
-                              ? 'text-[var(--color-error)]'
-                              : incident.severity === 'medium'
-                                ? 'text-[var(--color-regression)]'
-                                : 'text-[var(--color-success)]'
-                          }
-                        >
-                          {incident.severity}
-                        </span>
-                      </p>
-                      <p className="os-caption">
-                        <span className="os-data-sm">
-                          {new Date(incident.incident_date).toLocaleDateString()}
-                        </span>{' '}
-                        · {incident.reported_by}
-                      </p>
-                      {incident.suspension_days !== null && (
-                        <p className="os-caption">
-                          Suspension:{' '}
-                          <span className="os-data-sm">{incident.suspension_days}d</span>
-                        </p>
-                      )}
-                      <p className="os-body mt-1">{incident.description}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        <IncidentsTab
+          studentId={student.id}
+          initialIncidents={student.incidents}
+          canDeleteIncidents={isOrgAdmin}
+        />
       )}
       {section === 'overview' && (
           <>

@@ -7,13 +7,20 @@ import { prisma } from '@/lib/prisma'
 import { triggerAIAnalysis } from '@/lib/ai/analyze'
 import { getTenantFromRequest } from '@/lib/tenant'
 
+function parseIncidentDateInput(s: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return new Date(`${s}T12:00:00`)
+  }
+  return new Date(s)
+}
+
 const IncidentCreateSchema = z
   .object({
-    incident_date: z.string().datetime(),
+    incident_date: z.string().min(1),
     incident_type: z.nativeEnum(IncidentType),
     suspension_days: z.number().nonnegative().optional().nullable(),
     severity: z.nativeEnum(Severity),
-    description: z.string().trim().min(1),
+    description: z.string().trim().max(50000).optional().nullable(),
     reported_by: z.string().trim().min(1),
     linked_session_id: z.string().uuid().optional().nullable(),
   })
@@ -130,11 +137,27 @@ export async function POST(req: Request, ctx: RouteContext) {
     )
   }
 
+  const isSuspension =
+    parsed.data.incident_type === IncidentType.suspension_iss ||
+    parsed.data.incident_type === IncidentType.suspension_oss
+
   if (
-    parsed.data.incident_type !== IncidentType.suspension_iss &&
-    parsed.data.incident_type !== IncidentType.suspension_oss &&
-    parsed.data.suspension_days
+    isSuspension &&
+    (parsed.data.suspension_days === null || parsed.data.suspension_days === undefined)
   ) {
+    return NextResponse.json(
+      {
+        error: 'Invalid input',
+        code: 'VALIDATION_ERROR',
+        detail: {
+          suspension_days: ['Required for suspension incident types'],
+        },
+      },
+      { status: 400 }
+    )
+  }
+
+  if (!isSuspension && parsed.data.suspension_days) {
     return NextResponse.json(
       {
         error: 'Invalid input',
@@ -147,16 +170,21 @@ export async function POST(req: Request, ctx: RouteContext) {
     )
   }
 
+  const descriptionText =
+    parsed.data.description?.trim() && parsed.data.description.trim().length > 0
+      ? parsed.data.description.trim()
+      : 'No description provided.'
+
   try {
     const incident = await prisma.behavioralIncident.create({
       data: {
         tenant_id: tenant.id,
         student_id: studentId,
-        incident_date: new Date(parsed.data.incident_date),
+        incident_date: parseIncidentDateInput(parsed.data.incident_date),
         incident_type: parsed.data.incident_type,
-        suspension_days: parsed.data.suspension_days ?? null,
+        suspension_days: isSuspension ? (parsed.data.suspension_days ?? null) : null,
         severity: parsed.data.severity,
-        description: parsed.data.description,
+        description: descriptionText,
         reported_by: parsed.data.reported_by,
         logged_by: profile.id,
         linked_session_id: parsed.data.linked_session_id ?? null,
