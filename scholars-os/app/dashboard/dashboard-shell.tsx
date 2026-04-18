@@ -17,7 +17,6 @@ import { StudentAvatar } from '@/components/ui/student-avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useLocalStorageBoolean } from '@/hooks/use-local-storage'
 import { cn } from '@/lib/utils'
-import { BentoCard } from '@/components/ui/bento-card'
 const DashboardIncidentChart = dynamic(
   () => import('./dashboard-incident-chart'),
   {
@@ -423,7 +422,7 @@ export function DashboardShell({
   )
 
   return (
-    <div className="dashboard-compact min-h-screen min-w-0 overflow-x-hidden bg-[var(--surface-page)]">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[var(--surface-page)]">
       {/* ── Mobile top bar (lg:hidden) ── */}
       {!isDesktop && (
         <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3">
@@ -666,13 +665,13 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="min-w-0 space-y-3 px-4 pb-5 sm:px-6" style={{ paddingTop: `${topOffset}px` }}>
+          <div className="min-w-0 space-y-4 px-4 pb-6 sm:px-6" style={{ paddingTop: `${topOffset}px` }}>
             {/* KPI row */}
             <section className="os-kpi-grid">
               {/* Active students — gold top border */}
               <div
-                className="os-card-tight os-card-interactive"
-                style={{ borderTop: '3px solid var(--gold-500)', paddingTop: 12 }}
+                className="os-card-tight"
+                style={{ borderTop: '3px solid var(--gold-500)', paddingTop: 17 }}
               >
                 <p className="os-label">Active students</p>
                 <p className="os-data-hero mt-2">{activeStudents}</p>
@@ -681,14 +680,14 @@ export function DashboardShell({
 
               {/* Incidents — semantic top border */}
               <div
-                className="os-card-tight os-card-interactive"
+                className="os-card-tight"
                 style={{
                   borderTop: `3px solid ${
                     incidentTrendPct !== null && incidentTrendPct > 0
                       ? 'var(--color-regression)'
                       : 'var(--color-success)'
                   }`,
-                  paddingTop: 12,
+                  paddingTop: 17,
                 }}
               >
                 <p className="os-label">Incidents (30d)</p>
@@ -710,8 +709,8 @@ export function DashboardShell({
 
               {/* Avg goal — success top border */}
               <div
-                className="os-card-tight os-card-interactive"
-                style={{ borderTop: '3px solid var(--color-success)', paddingTop: 12 }}
+                className="os-card-tight"
+                style={{ borderTop: '3px solid var(--color-success)', paddingTop: 17 }}
               >
                 <p className="os-label">Avg goal completion</p>
                 <p className="os-data-hero mt-2">
@@ -733,8 +732,8 @@ export function DashboardShell({
 
               {/* Sessions — neutral top border */}
               <div
-                className="os-card-tight os-card-interactive"
-                style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 12 }}
+                className="os-card-tight"
+                style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 17 }}
               >
                 <p className="os-label">Sessions this week</p>
                 <p className="os-data-hero mt-2">{sessionsCurrent}</p>
@@ -747,17 +746,9 @@ export function DashboardShell({
               </div>
             </section>
 
-            <div className="min-w-0 max-w-md">
-              <BentoCard
-                activeStudents={activeStudents}
-                incidents30d={incidentsCurrent}
-                sessionsThisPeriod={sessionsCurrent}
-              />
-            </div>
-
             {caseloadExport && (
-              <div className="os-card-interactive relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
+              <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h3 className="font-sans text-sm font-semibold text-slate-900">
                       Export Caseload Report
@@ -772,10 +763,10 @@ export function DashboardShell({
             )}
 
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
-            <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,240px)]">
+            <div className="grid min-w-0 gap-[14px] lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
               {/* Left — incident frequency chart */}
-              <section className="os-card os-card-interactive min-w-0">
-                <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <section className="os-card min-w-0">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="os-heading">Incident Frequency — All Students</h2>
                     <p className="os-body">Office referrals, suspensions, and behavioral incidents</p>
@@ -783,7 +774,7 @@ export function DashboardShell({
                   {chartPeriodToggle}
                 </div>
 
-                <div className="dashboard-chart-slot w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-2">
+                <div className="h-[240px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
                   {chartError ? (
                     <p className="os-body text-[var(--color-regression)]">{chartError}</p>
                   ) : chartLoading ? (
@@ -795,10 +786,10 @@ export function DashboardShell({
               </section>
 
               {/* Right — sidebar metrics panel */}
-              <div className="flex min-w-0 flex-col gap-3">
+              <div className="flex min-w-0 flex-col gap-[14px]">
                 {/* Status mix */}
-                <div className="os-card os-card-interactive min-w-0">
-                  <h3 className="os-subhead mb-2">Student status mix</h3>
+                <div className="os-card min-w-0">
+                  <h3 className="os-subhead mb-3">Student status mix</h3>
                   <div className="space-y-2">
                     {Object.entries(statusMix).map(([status, count]) => (
                       <div key={status} className="flex items-center justify-between">
@@ -826,11 +817,26 @@ export function DashboardShell({
                   </div>
                 </div>
 
+                {/* Sessions + no-shows */}
+                <div className="os-card">
+                  <h3 className="os-subhead mb-3">This week</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="os-caption">Sessions completed</span>
+                      <span className="os-data">{sessionsCurrent}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="os-caption text-[var(--color-regression)]">No-shows</span>
+                      <span className="os-data text-[var(--color-regression)]">{noShowsCurrent}</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Regression alert */}
                 {regressionCountFull > 0 && (
                   <div
-                    className="os-card os-card-interactive min-w-0"
-                    style={{ borderTop: '3px solid var(--color-regression)', paddingTop: 12 }}
+                    className="os-card min-w-0"
+                    style={{ borderTop: '3px solid var(--color-regression)', paddingTop: 17 }}
                   >
                     <h3 className="os-subhead mb-1 text-[var(--color-regression)]">
                       Regression alerts
@@ -848,8 +854,8 @@ export function DashboardShell({
             </div>
 
             {/* Students section */}
-            <section className="os-card os-card-interactive min-w-0 overflow-x-hidden">
-              <div className="px-3 pt-3 md:px-4">
+            <section className="os-card min-w-0 overflow-x-hidden">
+              <div className="px-4 pt-4 md:px-5">
                 <StudentsHeader
                   totalCount={caseloadTotalCount}
                   filteredCount={previewFilteredCount}
@@ -976,7 +982,7 @@ export function DashboardShell({
       )}
 
       {/* ── Mobile main content (below mobile topbar) ── */}
-      {!isDesktop && <div className="dashboard-compact min-w-0 overflow-x-hidden">
+      {!isDesktop && <div className="min-w-0 overflow-x-hidden">
         {/* Escalation banner on mobile too */}
         {escalatedStudentName && !escalationAcknowledged && (
           <div
@@ -1001,29 +1007,29 @@ export function DashboardShell({
           </div>
         )}
 
-        <div className="space-y-3 px-4 py-3">
+        <div className="space-y-3 px-4 py-4">
           {/* KPI grid */}
           <section className="os-kpi-grid">
             <div
-              className="os-card-tight os-card-interactive"
-              style={{ borderTop: '3px solid var(--gold-500)', paddingTop: 12 }}
+              className="os-card-tight"
+              style={{ borderTop: '3px solid var(--gold-500)', paddingTop: 13 }}
             >
               <p className="os-label">Active students</p>
               <p className="os-data-hero mt-1">{activeStudents}</p>
             </div>
             <div
-              className="os-card-tight os-card-interactive"
+              className="os-card-tight"
               style={{
                 borderTop: `3px solid ${incidentTrendPct !== null && incidentTrendPct > 0 ? 'var(--color-regression)' : 'var(--color-success)'}`,
-                paddingTop: 12,
+                paddingTop: 13,
               }}
             >
               <p className="os-label">Incidents (30d)</p>
               <p className="os-data-hero mt-1">{incidentsCurrent}</p>
             </div>
             <div
-              className="os-card-tight os-card-interactive"
-              style={{ borderTop: '3px solid var(--color-success)', paddingTop: 12 }}
+              className="os-card-tight"
+              style={{ borderTop: '3px solid var(--color-success)', paddingTop: 13 }}
             >
               <p className="os-label">Avg goal</p>
               <p className="os-data-hero mt-1">
@@ -1031,29 +1037,22 @@ export function DashboardShell({
               </p>
             </div>
             <div
-              className="os-card-tight os-card-interactive"
-              style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 12 }}
+              className="os-card-tight"
+              style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 13 }}
             >
               <p className="os-label">Sessions</p>
               <p className="os-data-hero mt-1">{sessionsCurrent}</p>
             </div>
           </section>
 
-          <div className="max-w-md">
-            <BentoCard
-              activeStudents={activeStudents}
-              incidents30d={incidentsCurrent}
-              sessionsThisPeriod={sessionsCurrent}
-            />
-          </div>
 
           {/* Chart */}
-          <section className="os-card os-card-interactive">
+          <section className="os-card">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
               <h2 className="os-subhead">Incident Frequency</h2>
               {chartPeriodToggle}
             </div>
-            <div className="dashboard-chart-slot w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-2">
+            <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-2">
               {chartError ? (
                 <p className="os-body text-[var(--color-regression)]">{chartError}</p>
               ) : chartLoading ? (
@@ -1065,7 +1064,7 @@ export function DashboardShell({
           </section>
 
           {/* Students list */}
-          <section className="os-card os-card-interactive min-w-0 overflow-x-hidden">
+          <section className="os-card min-w-0 overflow-x-hidden">
             <div className="px-1 pt-1">
               <StudentsHeader
                 totalCount={caseloadTotalCount}
