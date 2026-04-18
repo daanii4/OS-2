@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { sendWelcomeEmailToNewUser } from '@/lib/emails/welcome-user'
 
 const CreateUserSchema = z.object({
   name: z.string().min(2).max(100),
@@ -103,6 +104,12 @@ export async function POST(req: NextRequest) {
       where: { id: newUser.user.id },
       select: { id: true, name: true, email: true, role: true, active: true, created_at: true },
     })
+
+    if (created) {
+      sendWelcomeEmailToNewUser({ to: created.email, name: created.name }).catch(err => {
+        console.error('[org/users/POST] Welcome email failed:', err instanceof Error ? err.message : 'Unknown')
+      })
+    }
 
     return NextResponse.json({ data: created }, { status: 201 })
   } catch (err) {
