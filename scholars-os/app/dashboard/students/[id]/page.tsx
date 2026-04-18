@@ -201,15 +201,25 @@ export default async function StudentDetailPage({
             {student.first_name} {student.last_name}
           </span>
         </div>
-        <a
-          href={`/api/students/${student.id}/report`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="os-btn-secondary"
-          title="Every number here represents a real student."
-        >
-          Export District Report
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/api/students/${student.id}/export`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="os-btn-secondary"
+          >
+            Export Session History
+          </a>
+          <a
+            href={`/api/students/${student.id}/report`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="os-btn-secondary"
+            title="Every number here represents a real student."
+          >
+            District progress report
+          </a>
+        </div>
       </div>
 
       {student.status === 'graduated' && <GraduationBanner />}
