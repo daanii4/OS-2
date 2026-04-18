@@ -5,8 +5,9 @@ import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { prisma } from '@/lib/prisma'
-import { sendWelcomeEmail } from '@/lib/email/templates'
+import { sendInviteTempPasswordEmail } from '@/lib/email/templates'
 import { getPublicAppUrl } from '@/lib/app-url'
+import { generateInviteTempPassword } from '@/lib/invite-password'
 
 const ResendSchema = z.object({
   invitationId: z.string().uuid(),
@@ -63,12 +64,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
   }
 
-  const appUrl = getPublicAppUrl()
-  const redirectTo = `${appUrl}/reset-password`
+  const existingProfile = await prisma.profile.findFirst({
+    where: {
+      tenant_id: tenant.id,
+      email: { equals: invitation.email, mode: 'insensitive' },
+    },
+    select: { id: true },
+  })
 
-  const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(invitation.email, {
-    redirectTo,
-    data: {
+  if (!existingProfile) {
+    return NextResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
+  }
+
+  const appUrl = getPublicAppUrl()
+  const loginUrl = `${appUrl}/login?invite=1`
+  const tempPassword = generateInviteTempPassword()
+
+  const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(existingProfile.id, {
+    password: tempPassword,
+    user_metadata: {
       name: invitation.name,
       role: invitation.role,
       tenant_id: tenant.id,
@@ -76,20 +90,21 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  if (inviteError) {
-    console.error('[settings/team/invite/resend] Supabase invite failed:', inviteError.message)
+  if (updateAuthError) {
+    console.error('[settings/team/invite/resend] Supabase updateUser failed:', updateAuthError.message)
     return NextResponse.json({ error: 'Server error', code: 'SERVER_ERROR' }, { status: 500 })
   }
 
-  sendWelcomeEmail({
+  sendInviteTempPasswordEmail({
     to: invitation.email,
     name: invitation.name,
     role: invitation.role,
     invitedBy: profile.name,
     tenantName: tenant.name,
-    setupUrl: redirectTo,
+    loginUrl,
+    tempPassword,
   }).catch(err => {
-    console.error('[settings/team/invite/resend] Resend failed:', err instanceof Error ? err.message : 'Unknown')
+    console.error('[settings/team/invite/resend] Email failed:', err instanceof Error ? err.message : 'Unknown')
   })
 
   await prisma.invitation.update({

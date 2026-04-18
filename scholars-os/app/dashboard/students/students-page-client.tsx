@@ -4,6 +4,10 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import {
+  StudentsHeader,
+  type StudentFilterKey,
+} from '@/components/students/students-header'
 import { EmptyState } from '@/components/ui/empty-state'
 
 const CreateStudentIntakeModal = dynamic(
@@ -23,6 +27,8 @@ type StudentRow = {
   district: string
   status: string
   intake_date: Date | string
+  baseline_incident_count: number | null
+  escalation_active: boolean
 }
 
 type CounselorOption = { id: string; name: string; role: string }
@@ -44,14 +50,24 @@ function statusBadgeClass(status: string): string {
 
 type Props = {
   students: StudentRow[]
+  incidents30dByStudent: Record<string, number>
   canCreateStudents: boolean
   counselors: CounselorOption[]
   profileName: string
   profileRole: string
 }
 
+function reductionPct(
+  baseline: number | null,
+  currentIncidents: number
+): number | null {
+  if (baseline === null || baseline <= 0) return null
+  return Number((((baseline - currentIncidents) / baseline) * 100).toFixed(0))
+}
+
 export function StudentsPageClient({
   students,
+  incidents30dByStudent,
   canCreateStudents,
   counselors,
   profileName,
@@ -60,15 +76,30 @@ export function StudentsPageClient({
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState<StudentFilterKey>('all')
 
   const filteredStudents = useMemo(() => {
+    let list = students
     const q = query.trim().toLowerCase()
-    if (!q) return students
-    return students.filter(student =>
-      `${student.first_name} ${student.last_name}`.toLowerCase().includes(q) ||
-      student.school.toLowerCase().includes(q)
-    )
-  }, [query, students])
+    if (q) {
+      list = list.filter(
+        student =>
+          `${student.first_name} ${student.last_name}`.toLowerCase().includes(q) ||
+          student.school.toLowerCase().includes(q)
+      )
+    }
+    if (activeFilter === 'regression') {
+      list = list.filter(s => {
+        const current = incidents30dByStudent[s.id] ?? 0
+        const pct = reductionPct(s.baseline_incident_count, current)
+        return pct !== null && pct < 0
+      })
+    }
+    if (activeFilter === 'escalated') {
+      list = list.filter(s => s.escalation_active)
+    }
+    return list
+  }, [activeFilter, incidents30dByStudent, query, students])
 
   function onCreated() {
     router.refresh()
@@ -76,8 +107,20 @@ export function StudentsPageClient({
 
   return (
     <>
-      <div className="os-card-tight flex flex-wrap items-center justify-between gap-3 pr-14 md:pr-3">
-        <h1 className="os-title">Student Caseload</h1>
+      <div className="px-5 md:px-0">
+        <StudentsHeader
+          totalCount={students.length}
+          filteredCount={filteredStudents.length}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+          onSearchChange={setQuery}
+        />
+      </div>
+
+      <div className="os-card-tight mb-3 flex flex-wrap items-center justify-between gap-3 pr-14 md:pr-3">
+        <p className="os-caption">
+          Signed in as {profileName} ({profileRole})
+        </p>
         <div className="flex items-center gap-2">
           {canCreateStudents && (
             <button
@@ -94,10 +137,6 @@ export function StudentsPageClient({
         </div>
       </div>
 
-      <p className="os-caption">
-        Signed in as {profileName} ({profileRole})
-      </p>
-
       {!canCreateStudents && (
         <p className="os-card-tight os-body">
           Counselors can view assigned students but cannot create student records.
@@ -106,26 +145,6 @@ export function StudentsPageClient({
 
       <div className="os-card">
         <h2 className="os-heading mb-3">Student list</h2>
-
-        <div className="relative mb-4">
-          <input
-            type="search"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search students..."
-            className="os-input w-full pr-10"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)]"
-              aria-label="Clear search"
-            >
-              ×
-            </button>
-          )}
-        </div>
 
         {students.length === 0 ? (
           <EmptyState

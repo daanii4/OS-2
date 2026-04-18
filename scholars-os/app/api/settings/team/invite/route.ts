@@ -5,8 +5,9 @@ import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { prisma } from '@/lib/prisma'
-import { sendWelcomeEmail } from '@/lib/email/templates'
+import { sendInviteTempPasswordEmail } from '@/lib/email/templates'
 import { getPublicAppUrl } from '@/lib/app-url'
+import { generateInviteTempPassword } from '@/lib/invite-password'
 
 const InviteSchema = z.object({
   email: z.string().email(),
@@ -76,23 +77,33 @@ export async function POST(req: NextRequest) {
   }
 
   const appUrl = getPublicAppUrl()
-  const redirectTo = `${appUrl}/reset-password`
+  const loginUrl = `${appUrl}/login?invite=1`
+  const tempPassword = generateInviteTempPassword()
 
-  const { data: authData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+  const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
-    {
-      redirectTo,
-      data: {
-        name,
-        role,
-        tenant_id: tenant.id,
-        must_reset_password: true,
-      },
-    }
-  )
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: {
+      name,
+      role,
+      tenant_id: tenant.id,
+      must_reset_password: true,
+    },
+  })
 
-  if (inviteError || !authData.user) {
-    console.error('[settings/team/invite] Supabase invite failed:', inviteError?.message)
+  if (createError || !authData.user) {
+    const msg = createError?.message ?? ''
+    if (/already|registered|exists/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error: 'An account with this email already exists. Remove them from another org or use a different email.',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+    console.error('[settings/team/invite] Supabase createUser failed:', createError?.message)
     return NextResponse.json({ error: 'Server error', code: 'SERVER_ERROR' }, { status: 500 })
   }
 
@@ -131,15 +142,16 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  sendWelcomeEmail({
+  sendInviteTempPasswordEmail({
     to: email,
     name,
     role,
     invitedBy: profile.name,
     tenantName: tenant.name,
-    setupUrl: redirectTo,
+    loginUrl,
+    tempPassword,
   }).catch(err => {
-    console.error('[settings/team/invite] Resend welcome email failed:', err instanceof Error ? err.message : 'Unknown')
+    console.error('[settings/team/invite] Invite email failed:', err instanceof Error ? err.message : 'Unknown')
   })
 
   return NextResponse.json({ data: { success: true } }, { status: 201 })

@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getTenantFromHostname } from '@/lib/tenant'
 
-const BYPASS_MUST_RESET = ['/login', '/reset-password', '/api/auth']
+/** Routes reachable while user must still set password (invite flow → onboarding). */
+const BYPASS_MUST_RESET = ['/login', '/reset-password', '/onboarding', '/api/auth']
 
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get('host') ?? request.nextUrl.hostname

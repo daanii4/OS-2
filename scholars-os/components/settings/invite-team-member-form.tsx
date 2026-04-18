@@ -1,9 +1,11 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 export function InviteTeamMemberForm() {
+  const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'counselor' | 'assistant'>('counselor')
@@ -27,10 +29,11 @@ export function InviteTeamMemberForm() {
       return
     }
 
-    toast.success('Invitation sent')
+    toast.success('Invitation sent — temporary password emailed')
     setName('')
     setEmail('')
     setRole('counselor')
+    router.refresh()
   }
 
   return (

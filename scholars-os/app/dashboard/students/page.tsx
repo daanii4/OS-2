@@ -36,8 +36,32 @@ export default async function StudentsPage() {
       district: true,
       status: true,
       intake_date: true,
+      baseline_incident_count: true,
+      escalation_active: true,
     },
   })
+
+  const studentIds = students.map(s => s.id)
+  const since30d = new Date()
+  since30d.setDate(since30d.getDate() - 30)
+
+  const incidentCounts =
+    studentIds.length === 0
+      ? []
+      : await prisma.behavioralIncident.groupBy({
+          by: ['student_id'],
+          where: {
+            tenant_id: tenant.id,
+            student_id: { in: studentIds },
+            incident_date: { gte: since30d },
+          },
+          _count: { _all: true },
+        })
+
+  const incidents30dByStudent: Record<string, number> = {}
+  for (const row of incidentCounts) {
+    incidents30dByStudent[row.student_id] = row._count._all
+  }
 
   const canCreateStudents = profile.role === 'owner' || profile.role === 'assistant'
 
@@ -57,6 +81,7 @@ export default async function StudentsPage() {
     <div className="os-page">
       <StudentsPageClient
         students={students}
+        incidents30dByStudent={incidents30dByStudent}
         canCreateStudents={canCreateStudents}
         counselors={counselors}
         profileName={profile.name}
