@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] p-8 shadow-sm">
         <div className="mb-6 flex justify-center">
           {reducedMotion ? (
-            <img src="/static/logo.png" width={100} height={100} alt="Operation Scholars" />
+            <img src="/static/logo.svg" width={100} height={100} alt="Operation Scholars" />
           ) : (
             <LogoAnimation size={100} loop={false} />
           )}
