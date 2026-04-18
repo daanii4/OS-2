@@ -481,45 +481,70 @@ export function DashboardShell({
         </div>
       )}
 
-      {/* ── Desktop shell ── */}
-      {isDesktop && <div className="lg:flex lg:min-h-screen">
+      {/* ── Desktop shell — viewport-height row so sidebar scroll is independent of main ── */}
+      {isDesktop && (
+        <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden">
         {/* Desktop sidebar */}
         <aside
-          className={`flex flex-col bg-[var(--olive-800)] transition-[width] duration-100 ease-out ${
+          className={`flex h-full min-h-0 shrink-0 flex-col border-r border-white/[0.06] bg-[var(--olive-800)] transition-[width] duration-100 ease-out ${
             sidebarOpen ? 'w-[260px]' : 'w-[76px]'
           }`}
         >
-          <div className="border-b border-white/[0.08] px-4 py-5">
-            <div className="flex items-center gap-3">
-              <div className="os-motif flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
-                <img
-                  src="/logo-mark.png"
-                  alt="Operation Scholars"
-                  className="h-6 w-6 object-contain"
-                />
+          <div className="shrink-0 border-b border-white/[0.08] px-3 py-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="os-motif flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
+                  <img
+                    src="/logo-mark.png"
+                    alt="Operation Scholars"
+                    className="h-6 w-6 object-contain"
+                  />
+                </div>
+                <div
+                  className={`min-w-0 overflow-hidden transition-all duration-100 ${
+                    sidebarOpen ? 'max-w-[180px] opacity-100' : 'max-w-0 opacity-0'
+                  }`}
+                >
+                  <p
+                    className="text-[15px] font-normal leading-tight tracking-[-0.01em] text-white"
+                    style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+                  >
+                    Operation Scholars
+                  </p>
+                  <p
+                    className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: 'rgba(255,255,255,0.35)' }}
+                  >
+                    Behavioral Intelligence
+                  </p>
+                </div>
               </div>
-              <div
-                className={`overflow-hidden transition-all duration-100 ${
-                  sidebarOpen ? 'max-w-[180px] opacity-100' : 'max-w-0 opacity-0'
-                }`}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(open => !open)}
+                className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-white/35 transition-colors hover:bg-white/[0.08] hover:text-white/70"
+                aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
               >
-                <p
-                  className="text-[15px] font-normal leading-tight tracking-[-0.01em] text-white"
-                  style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+                <svg
+                  viewBox="0 0 16 16"
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden
                 >
-                  Operation Scholars
-                </p>
-                <p
-                  className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-                  style={{ color: 'rgba(255,255,255,0.35)' }}
-                >
-                  Behavioral Intelligence
-                </p>
-              </div>
+                  {sidebarOpen ? (
+                    <path d="M10 12L6 8l4-4" strokeLinecap="round" strokeLinejoin="round" />
+                  ) : (
+                    <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 py-2">
+          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-2">
             <NavLinks
               collapsed={!sidebarOpen}
               onLinkClick={closeMobileMenu}
@@ -527,7 +552,7 @@ export function DashboardShell({
             />
           </nav>
 
-          <div className="border-t border-white/10 px-4 py-4">
+          <div className="shrink-0 border-t border-white/10 px-4 py-4">
             <div className="flex items-center gap-2">
               {(() => {
                 const { first, last } = splitProfileName(profileName)
@@ -543,19 +568,15 @@ export function DashboardShell({
                   {profileRole}
                 </p>
               </div>
-              <div
-                className={`flex-shrink-0 transition-opacity duration-100 ${
-                  sidebarOpen ? 'opacity-100' : 'opacity-100'
-                }`}
-              >
+              <div className="flex-shrink-0">
                 <SidebarAccountMenu />
               </div>
             </div>
           </div>
         </aside>
 
-        {/* Desktop main content */}
-        <main className="flex-1 overflow-x-hidden">
+        {/* Desktop main content — only this column scrolls with long dashboard content */}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain">
           {/* Escalation banner §3.8 */}
           {escalatedStudentName && !escalationAcknowledged && (
             <div
@@ -945,7 +966,8 @@ export function DashboardShell({
             </section>
           </div>
         </main>
-      </div>}
+      </div>
+      )}
 
       {/* ── Mobile main content (below mobile topbar) ── */}
       {!isDesktop && <div>
