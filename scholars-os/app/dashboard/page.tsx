@@ -4,7 +4,7 @@ import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { CaseloadExport } from './caseload-export'
+import { CaseloadExport } from '@/components/CaseloadExport'
 import { DashboardShell } from './dashboard-shell'
 
 export default async function DashboardPage() {

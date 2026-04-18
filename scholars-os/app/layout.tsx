@@ -54,7 +54,12 @@ export default function RootLayout({
               background: 'white',
               border: '1px solid #e2e8f0',
               color: '#0f172a',
-              fontFamily: 'inherit',
+              fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
+              fontSize: '13px',
+            },
+            classNames: {
+              success: 'border-l-4 border-l-olive-600',
+              error: 'border-l-4 border-l-red-500',
             },
           }}
         />

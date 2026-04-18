@@ -402,6 +402,12 @@
 @theme inline {
   --color-background: var(--surface-page);
   --color-foreground: var(--text-primary);
+  --color-olive-50: var(--olive-50);
+  --color-olive-200: var(--olive-200);
+  --color-olive-400: var(--olive-400);
+  --color-olive-600: var(--olive-600);
+  --color-olive-700: var(--olive-700);
+  --color-olive-800: var(--olive-800);
 }
 
 * {

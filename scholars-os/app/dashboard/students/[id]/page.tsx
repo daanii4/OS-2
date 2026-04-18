@@ -10,6 +10,7 @@ import { BaselineForm } from './baseline-form'
 import { CreatePlanForm } from './create-plan-form'
 import { parseIntakeFiles } from '@/lib/types/intake-file'
 import { GraduationBanner } from '@/components/ui/graduation-banner'
+import { StudentExportButton } from '@/components/student-export-button'
 import { ProfileHeader } from './profile-header'
 import { StudentStatusControl } from './student-status-control'
 import { StudentCharts } from './student-charts'
@@ -202,14 +203,10 @@ export default async function StudentDetailPage({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={`/api/students/${student.id}/export`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="os-btn-secondary"
-          >
-            Export Session History
-          </a>
+          <StudentExportButton
+            studentId={student.id}
+            studentName={`${student.first_name} ${student.last_name}`}
+          />
           <a
             href={`/api/students/${student.id}/report`}
             target="_blank"
