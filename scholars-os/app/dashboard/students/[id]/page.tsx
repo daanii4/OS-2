@@ -2,13 +2,14 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { IncidentsTab } from '@/components/incidents/IncidentsTab'
 import { AddSessionForm } from './add-session-form'
+import { SessionHistoryPanel } from './session-history-panel'
+import { PlansListPanel } from './plans-list-panel'
 import { AIPanel } from './ai-panel'
 import { AssignCounselorForm } from './assign-counselor-form'
 import { BaselineForm } from './baseline-form'
 import { CreatePlanForm } from './create-plan-form'
 import { parseIntakeFiles } from '@/lib/types/intake-file'
 import { GraduationBanner } from '@/components/ui/graduation-banner'
-import { EmptyState } from '@/components/ui/empty-state'
 import { ProfileHeader } from './profile-header'
 import { StudentStatusControl } from './student-status-control'
 import { StudentCharts } from './student-charts'
@@ -236,74 +237,10 @@ export default async function StudentDetailPage({
 
       <StudentSectionTabs studentId={student.id} active={section} />
       {section === 'sessions' && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AddSessionForm studentId={student.id} />
-            <div className="os-card">
-              <h3 className="os-heading mb-3">Session history</h3>
-              {student.sessions.length === 0 ? (
-                <EmptyState
-                  icon={
-                    <img
-                      src="/logo-mark.png"
-                      alt=""
-                      className="h-10 w-10 object-contain opacity-40"
-                    />
-                  }
-                  title="No sessions logged yet"
-                  body="Write what happened. Character is built in the small moments."
-                />
-              ) : (
-                <ul className="space-y-2">
-                  {student.sessions.map(session => (
-                    <li key={session.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <p className="os-subhead capitalize">
-                        {session.session_type.replace(/_/g, ' ')} ·{' '}
-                        <span
-                          className={
-                            session.attendance_status === 'attended'
-                              ? 'text-[var(--color-success)]'
-                              : session.attendance_status === 'no_show'
-                                ? 'text-[var(--color-regression)]'
-                                : 'text-[var(--text-secondary)]'
-                          }
-                        >
-                          {session.attendance_status.replace(/_/g, ' ')}
-                        </span>
-                      </p>
-                      <p className="os-caption">
-                        <span className="os-data-sm">
-                          {new Date(session.session_date).toLocaleDateString()}
-                        </span>{' '}
-                        · <span className="os-data-sm">{session.duration_minutes}</span>m ·{' '}
-                        {session.session_format}
-                      </p>
-                      {session.goals_attempted !== null &&
-                        session.goals_met !== null &&
-                        session.goal_completion_rate !== null && (
-                          <p className="os-caption">
-                            Goals:{' '}
-                            <span className="os-data-sm">
-                              {session.goals_met}/{session.goals_attempted}
-                            </span>{' '}
-                            (
-                            <span
-                              className={
-                                session.goal_completion_rate >= 70
-                                  ? 'os-data-sm text-[var(--color-success)]'
-                                  : 'os-data-sm'
-                              }
-                            >
-                              {session.goal_completion_rate.toFixed(0)}%
-                            </span>
-                            )
-                          </p>
-                        )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        <div className="flex w-full min-w-0 flex-col gap-4 md:grid md:grid-cols-[minmax(0,360px)_minmax(0,1fr)] md:items-start md:gap-4">
+          <AddSessionForm studentId={student.id} />
+          <SessionHistoryPanel sessions={student.sessions} />
+        </div>
       )}
       {section === 'incidents' && (
         <IncidentsTab
@@ -538,56 +475,10 @@ export default async function StudentDetailPage({
         </ScrollReveal>
       )}
       {section === 'plans' && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <CreatePlanForm studentId={student.id} />
-            <div className="os-card">
-              <h3 className="os-heading mb-3">Success plans</h3>
-              {student.success_plans.length === 0 ? (
-                <EmptyState
-                  icon={
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5 text-[var(--olive-400)]"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="6" />
-                      <circle cx="12" cy="12" r="2" />
-                    </svg>
-                  }
-                  title="No success plans yet"
-                  body="Goals tell the story behind the numbers."
-                />
-              ) : (
-                <ul className="space-y-2">
-                  {student.success_plans.map(plan => (
-                    <li key={plan.id} className="rounded-md bg-[var(--surface-inner)] p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="os-subhead">Target: {plan.target_reduction_pct}% reduction</p>
-                        <span
-                          className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${
-                            plan.status === 'active'
-                              ? 'bg-[var(--olive-100)] text-[var(--olive-800)] border border-[var(--olive-200)]'
-                              : 'bg-gray-50 text-gray-400 border border-gray-100'
-                          }`}
-                        >
-                          {plan.status}
-                        </span>
-                      </div>
-                      <p className="os-body mt-1">{plan.goal_statement}</p>
-                      <p className="os-caption mt-1">
-                        {plan.plan_duration_weeks}w · {plan.session_frequency.replace(/_/g, ' ')}
-                      </p>
-                      <p className="os-caption">Focus: {plan.focus_behaviors.join(', ')}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        <div className="flex w-full min-w-0 flex-col gap-4 md:grid md:grid-cols-[minmax(0,360px)_minmax(0,1fr)] md:items-start md:gap-4">
+          <CreatePlanForm studentId={student.id} />
+          <PlansListPanel plans={student.success_plans} />
+        </div>
       )}
     </div>
   )

@@ -59,8 +59,17 @@ export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="os-card grid gap-3">
-      <h3 className="os-heading">Create success plan</h3>
+    <form
+      onSubmit={handleSubmit}
+      className="os-student-section-panel flex w-full max-w-[360px] shrink-0 flex-col md:sticky md:top-5 md:self-start"
+    >
+      <div className="os-student-section-panel__header">
+        <h3 className="os-student-section-panel__title">Create success plan</h3>
+        <p className="os-student-section-panel__subtitle">
+          Define the outcome and cadence for this student.
+        </p>
+      </div>
+      <div className="os-student-section-panel__body grid flex-1 gap-3 pb-5">
 
       <div>
         <label className="os-label mb-1 block" htmlFor="goal-statement">
@@ -175,9 +184,10 @@ export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
       </div>
 
       {error && <p className="os-caption text-[var(--color-error)]">{error}</p>}
-      <button type="submit" disabled={loading} className="os-btn-primary">
+      <button type="submit" disabled={loading} className="os-btn-primary w-full sm:w-auto">
         {loading ? 'Saving...' : 'Create plan'}
       </button>
+      </div>
     </form>
   )
 }

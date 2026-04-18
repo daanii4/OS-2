@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { LogoAnimation } from '@/components/LogoAnimation'
+import { StarButton } from '@/components/ui/star-button'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 
 type Role = 'owner' | 'assistant' | 'counselor'
@@ -190,7 +192,12 @@ export function OnboardingFlow({ profile }: Props) {
       {step.showLogo && (
         <div className="mb-6">
           {reducedMotion ? (
-            <img src="/static/logo.svg" width={120} height={120} alt="Operation Scholars" />
+            <Image
+              src="/static/logo.svg"
+              width={120}
+              height={120}
+              alt="Operation Scholars"
+            />
           ) : (
             <LogoAnimation size={120} loop={false} />
           )}
@@ -205,14 +212,19 @@ export function OnboardingFlow({ profile }: Props) {
         <p className="os-body mt-4 text-[var(--text-primary)]">{step.body}</p>
       </div>
 
-      <button
-        type="button"
-        onClick={handleNext}
-        disabled={completing}
-        className="os-btn-primary mt-10 min-w-[200px]"
-      >
-        {completing ? 'Loading...' : step.cta}
-      </button>
+      <div className="mt-10 flex w-full max-w-sm justify-center px-2">
+        <StarButton
+          type="button"
+          onClick={handleNext}
+          disabled={completing}
+          duration={3.2}
+          lightColor="var(--gold-400)"
+          backgroundColor="var(--olive-600)"
+          className="w-full min-w-0 sm:min-w-[220px]"
+        >
+          {completing ? 'Loading...' : step.cta}
+        </StarButton>
+      </div>
     </div>
   )
 }
