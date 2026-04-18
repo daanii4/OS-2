@@ -54,6 +54,24 @@
   --radius-xl:      16px;
   --radius-full:    9999px;
 
+  /* Operation Scholars brand tokens */
+  --brand-glow: radial-gradient(
+    ellipse 80% 60% at 60% 40%,
+    rgba(214, 160, 51, 0.18) 0%,
+    transparent 70%
+  );
+  --brand-glow-gold: radial-gradient(
+    ellipse 70% 60% at 75% 40%,
+    rgba(214, 160, 51, 0.15) 0%,
+    transparent 70%
+  );
+  --radius-os-motif: 0 0 9999px 0;
+  --radius-os-motif-left: 0 0 0 9999px;
+  --font-brand-display-size: clamp(32px, 4vw, 52px);
+  --font-brand-display-leading: 1;
+  --font-brand-display-tracking: -0.028em;
+  --brand-gold-glow-text: #d6a033;
+  --surface-brand-warm: rgba(214, 160, 51, 0.08);
 
   /* Motion tokens */
   --duration-instant: 80ms;
@@ -112,6 +130,42 @@
   100% {
     background-position: 200% center;
   }
+}
+
+@keyframes brand-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes brand-load {
+  0% {
+    width: 0%;
+    margin-left: 0;
+  }
+  50% {
+    width: 60%;
+    margin-left: 20%;
+  }
+  100% {
+    width: 0%;
+    margin-left: 100%;
+  }
+}
+
+/* OS quarter-circle motif — avatars, badges, small accents */
+.os-motif {
+  border-radius: var(--radius-os-motif);
+}
+
+.os-motif-left {
+  border-radius: var(--radius-os-motif-left);
 }
 
 /* Regression trend only — never pulse improving/stable (uienhance §1.3) */

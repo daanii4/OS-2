@@ -254,7 +254,7 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
           onChange={e => setSessionSummary(e.target.value)}
           required={summaryRequired}
           disabled={loading}
-          placeholder="What was covered, student response, follow-ups"
+          placeholder="Write what happened. Character is built in the small moments."
           className="os-textarea"
           rows={4}
         />
@@ -272,7 +272,7 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
           value={districtNotes}
           onChange={e => setDistrictNotes(e.target.value)}
           disabled={loading}
-          placeholder="e.g. Rapport building, decision making, grades"
+          placeholder="e.g. Rapport building, family dynamics, goal setting"
           className="os-input w-full"
         />
       </div>
@@ -283,11 +283,16 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
           Add one or more goals for this session and mark if the student met each one. Used to compute
           goal completion rate.
         </p>
+        {goals.length === 0 && (
+          <p className="os-caption mb-2 text-[var(--text-tertiary)]">
+            Goals tell the story behind the numbers.
+          </p>
+        )}
         <div className="mb-2 grid gap-2">
           <input
             value={newGoal}
             onChange={e => setNewGoal(e.target.value)}
-            placeholder="Goal text"
+            placeholder="e.g. Student will identify one coping strategy before next session"
             disabled={loading}
             className="os-input"
           />

@@ -150,7 +150,7 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
               className="os-btn-primary"
               disabled={acknowledging}
             >
-              {acknowledging ? 'Saving...' : 'Acknowledge & clear escalation'}
+              {acknowledging ? 'Saving...' : 'Acknowledge & Take Action'}
             </button>
           </form>
         </div>
@@ -292,7 +292,7 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
           <textarea
             className="os-input w-full"
             rows={3}
-            placeholder="e.g. This student shuts down when I bring up home life -- how should I approach that?"
+            placeholder="Ask about this student — e.g. 'How do I approach the conversation about home?'"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             required

@@ -186,14 +186,30 @@ export default async function AnalyticsPage() {
   return (
     <div className="os-page">
       {/* Header */}
-      <div className="os-card-tight flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="os-title">Analytics</h1>
-          <p className="os-body mt-1">Organization-wide performance — owner and assistant view</p>
+      <div className="relative overflow-hidden rounded-xl bg-[var(--olive-800)] p-5">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 80% at 85% 50%, rgba(214, 160, 51, 0.15) 0%, transparent 65%)',
+          }}
+          aria-hidden
+        />
+        <div className="absolute left-0 top-0 h-full w-1 bg-[var(--gold-500)]" aria-hidden />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="os-title text-white">Impact Overview</h1>
+            <p className="os-body mt-1 text-white/60">
+              Organization-wide performance — Attendance, Discipline, Academics
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="os-btn-secondary border-white/20 bg-white/10 text-white hover:bg-white/15"
+          >
+            Back to dashboard
+          </Link>
         </div>
-        <Link href="/dashboard" className="os-btn-secondary">
-          Back to dashboard
-        </Link>
       </div>
 
       {/* Org KPIs */}

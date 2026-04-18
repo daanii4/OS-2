@@ -428,7 +428,7 @@ export function CreateStudentIntakeModal({
                   <p className="os-caption mb-1">Primary reason for services at intake.</p>
                   <textarea
                     className="os-textarea"
-                    placeholder="Presenting problem"
+                    placeholder="Describe the behavioral concerns that led to this referral"
                     value={presentingProblem}
                     onChange={e => setPresentingProblem(e.target.value)}
                     required

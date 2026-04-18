@@ -55,7 +55,7 @@ export function CaseloadExport({ schools }: CaseloadExportProps) {
         <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M8 2v8M5 9l3 3 3-3M3 12h10" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        Export caseload
+        Export District Report
       </a>
     </div>
   )

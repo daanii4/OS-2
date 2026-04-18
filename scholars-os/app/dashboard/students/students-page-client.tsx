@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const CreateStudentIntakeModal = dynamic(
   () =>
@@ -76,7 +77,7 @@ export function StudentsPageClient({
   return (
     <>
       <div className="os-card-tight flex flex-wrap items-center justify-between gap-3 pr-14 md:pr-3">
-        <h1 className="os-title">Students</h1>
+        <h1 className="os-title">Student Caseload</h1>
         <div className="flex items-center gap-2">
           {canCreateStudents && (
             <button
@@ -84,7 +85,7 @@ export function StudentsPageClient({
               className="os-btn-primary hidden md:inline-flex"
               onClick={() => setModalOpen(true)}
             >
-              Add student
+              Add Student to Caseload
             </button>
           )}
           <Link href="/dashboard" className="os-btn-secondary">
@@ -127,7 +128,18 @@ export function StudentsPageClient({
         </div>
 
         {students.length === 0 ? (
-          <p className="os-body">No students found yet.</p>
+          <EmptyState
+            icon={
+              <img src="/logo-mark.png" alt="" className="h-10 w-10 object-contain opacity-40" />
+            }
+            title="No students assigned yet"
+            body="Every student here is someone worth showing up for."
+            action={
+              canCreateStudents
+                ? { label: 'Add Student to Caseload', onClick: () => setModalOpen(true) }
+                : undefined
+            }
+          />
         ) : filteredStudents.length === 0 ? (
           <p className="os-body">No students match that search.</p>
         ) : (
@@ -184,7 +196,7 @@ export function StudentsPageClient({
           type="button"
           className="os-btn-primary fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full p-0 text-2xl shadow-lg md:hidden"
           onClick={() => setModalOpen(true)}
-          aria-label="Add student"
+          aria-label="Add Student to Caseload"
         >
           +
         </button>

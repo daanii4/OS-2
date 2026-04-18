@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { EmptyState } from '@/components/ui/empty-state'
+import { StudentAvatar } from '@/components/ui/student-avatar'
 const DashboardIncidentChart = dynamic(
   () => import('./dashboard-incident-chart'),
   {
@@ -43,15 +45,14 @@ type DashboardShellProps = {
 
 type StudentFilter = 'all' | 'regression' | 'escalated'
 
-function getInitials(name: string): string {
+function splitProfileName(name: string): { first: string; last: string } {
   const parts = name
     .split(' ')
     .map(part => part.trim())
     .filter(Boolean)
-  return parts
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase() ?? '')
-    .join('')
+  if (parts.length === 0) return { first: '', last: '' }
+  if (parts.length === 1) return { first: parts[0]!, last: '' }
+  return { first: parts[0]!, last: parts[parts.length - 1]! }
 }
 
 function getStatusBadgeClass(status: string): string {
@@ -70,9 +71,9 @@ function getStatusBadgeClass(status: string): string {
 }
 
 const NAV_LINKS = [
-  { href: '/dashboard', label: 'Dashboard', abbr: 'D', section: 'Main' },
-  { href: '/dashboard/students', label: 'Students', abbr: 'S', section: 'Main' },
-  { href: '/dashboard/analytics', label: 'Analytics', abbr: 'A', section: 'Reports' },
+  { href: '/dashboard', label: 'Your Students', abbr: 'D', section: 'Main' },
+  { href: '/dashboard/students', label: 'Student Caseload', abbr: 'S', section: 'Main' },
+  { href: '/dashboard/analytics', label: 'Impact Overview', abbr: 'A', section: 'Reports' },
   { href: '/dashboard/settings/users', label: 'Team', abbr: 'T', section: 'Settings' },
 ]
 
@@ -295,6 +296,29 @@ export function DashboardShell({
     [recentStudents, incidentCountByStudent]
   )
 
+  const ownerWelcomeGreeting = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }, [])
+
+  const [showOwnerDayGreeting, setShowOwnerDayGreeting] = useState(false)
+  useEffect(() => {
+    if (profileRole !== 'owner' && profileRole !== 'assistant') {
+      setShowOwnerDayGreeting(false)
+      return
+    }
+    const key = `os2.dashboard.greeting.${new Date().toDateString()}`
+    if (typeof window === 'undefined') return
+    if (sessionStorage.getItem(key)) {
+      setShowOwnerDayGreeting(false)
+      return
+    }
+    sessionStorage.setItem(key, '1')
+    setShowOwnerDayGreeting(true)
+  }, [profileRole])
+
   const closeMobileMenu = () => setMobileMenuOpen(false)
 
   const chartPeriodToggle = (
@@ -341,14 +365,14 @@ export function DashboardShell({
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <div className="relative h-7 w-7 overflow-hidden rounded bg-white">
+            <div className="os-motif flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
               <img
-                src="/logo.png"
-                alt="Operation Scholars logo"
-                className="h-full w-full object-contain p-0.5"
+                src="/logo-mark.png"
+                alt="Operation Scholars"
+                className="h-[22px] w-[22px] object-contain"
               />
             </div>
-            <span className="os-subhead text-[var(--text-primary)]">Scholars OS</span>
+            <span className="os-subhead text-[var(--text-primary)]">Operation Scholars</span>
           </div>
         </div>
         <Link href="/dashboard/students" className="os-btn-primary text-sm">
@@ -370,20 +394,28 @@ export function DashboardShell({
             className="absolute left-0 top-0 flex h-full w-[260px] flex-col bg-[var(--olive-800)] transition-transform duration-100"
             style={{ transform: 'translateX(0)' }}
           >
-            <div className="border-b border-white/10 px-4 py-5">
+            <div className="border-b border-white/[0.08] px-4 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="relative h-9 w-9 overflow-hidden rounded-md bg-white">
+                  <div className="os-motif flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
                     <img
-                      src="/logo.png"
-                      alt="Operation Scholars logo"
-                      className="h-full w-full object-contain p-0.5"
+                      src="/logo-mark.png"
+                      alt="Operation Scholars"
+                      className="h-6 w-6 object-contain"
                     />
                   </div>
                   <div>
-                    <p className="os-subhead text-white">Operation Scholars</p>
-                    <p className="os-label" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      Behavioral intelligence
+                    <p
+                      className="text-[15px] font-normal leading-tight tracking-[-0.01em] text-white"
+                      style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+                    >
+                      Operation Scholars
+                    </p>
+                    <p
+                      className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
+                      style={{ color: 'rgba(255,255,255,0.35)' }}
+                    >
+                      Behavioral Intelligence
                     </p>
                   </div>
                 </div>
@@ -405,9 +437,10 @@ export function DashboardShell({
             </nav>
             <div className="border-t border-white/10 px-4 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--olive-600)] text-xs font-semibold text-white">
-                  {getInitials(profileName)}
-                </div>
+                {(() => {
+                  const { first, last } = splitProfileName(profileName)
+                  return <StudentAvatar firstName={first} lastName={last} size="sm" />
+                })()}
                 <div>
                   <p className="text-[13px] font-medium text-white">{profileName}</p>
                   <p className="os-label" style={{ color: 'rgba(255,255,255,0.45)' }}>{profileRole}</p>
@@ -426,13 +459,13 @@ export function DashboardShell({
             sidebarOpen ? 'w-[260px]' : 'w-[76px]'
           }`}
         >
-          <div className="border-b border-white/10 px-4 py-5">
+          <div className="border-b border-white/[0.08] px-4 py-5">
             <div className="flex items-center gap-3">
-              <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-white">
+              <div className="os-motif flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden bg-[var(--gold-500)]">
                 <img
-                  src="/logo.png"
-                  alt="Operation Scholars logo"
-                  className="h-full w-full object-contain p-0.5"
+                  src="/logo-mark.png"
+                  alt="Operation Scholars"
+                  className="h-6 w-6 object-contain"
                 />
               </div>
               <div
@@ -440,9 +473,17 @@ export function DashboardShell({
                   sidebarOpen ? 'max-w-[180px] opacity-100' : 'max-w-0 opacity-0'
                 }`}
               >
-                <p className="os-subhead text-white">Operation Scholars</p>
-                <p className="os-label" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  Behavioral intelligence
+                <p
+                  className="text-[15px] font-normal leading-tight tracking-[-0.01em] text-white"
+                  style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+                >
+                  Operation Scholars
+                </p>
+                <p
+                  className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}
+                >
+                  Behavioral Intelligence
                 </p>
               </div>
             </div>
@@ -454,9 +495,10 @@ export function DashboardShell({
 
           <div className="border-t border-white/10 px-4 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--olive-600)] text-xs font-semibold text-white">
-                {getInitials(profileName)}
-              </div>
+              {(() => {
+                const { first, last } = splitProfileName(profileName)
+                return <StudentAvatar firstName={first} lastName={last} size="md" />
+              })()}
               <div
                 className={`overflow-hidden transition-all duration-100 ${
                   sidebarOpen ? 'max-w-[140px] opacity-100' : 'max-w-0 opacity-0'
@@ -485,13 +527,13 @@ export function DashboardShell({
                   Escalation Required — {escalatedStudentName} · AI flagged a safety concern requiring licensed clinician referral
                 </p>
               </div>
-              <button
-                className="flex-shrink-0 rounded px-4 py-2 text-[13px] font-semibold transition-colors"
-                style={{ background: '#FFFFFF', color: '#DC2626', minHeight: 36 }}
-                onClick={() => setEscalationAcknowledged(true)}
-              >
-                Acknowledge
-              </button>
+                <button
+                  className="flex-shrink-0 rounded px-4 py-2 text-[13px] font-semibold transition-colors"
+                  style={{ background: '#FFFFFF', color: '#DC2626', minHeight: 36 }}
+                  onClick={() => setEscalationAcknowledged(true)}
+                >
+                  Acknowledge & Take Action
+                </button>
             </div>
           )}
 
@@ -515,10 +557,19 @@ export function DashboardShell({
                     <path d="M10.5 3.5L6 8l4.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
-                <h1 className="os-title">Dashboard</h1>
+                <div>
+                  <h1 className="os-title">Your Students</h1>
+                  {(profileRole === 'owner' || profileRole === 'assistant') &&
+                    showOwnerDayGreeting && (
+                      <p className="mt-0.5 text-[12px] text-[var(--text-tertiary)]">
+                        {ownerWelcomeGreeting}, {splitProfileName(profileName).first || profileName}.{' '}
+                        {activeStudents} students active today.
+                      </p>
+                    )}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button className="os-btn-secondary">Export Report</button>
+                <button className="os-btn-secondary">Export District Report</button>
                 <Link href="/dashboard/students" className="os-btn-primary">
                   + Log Session
                 </Link>
@@ -607,7 +658,23 @@ export function DashboardShell({
               </div>
             </section>
 
-            {caseloadExport}
+            {caseloadExport && (
+              <div className="relative overflow-hidden rounded-xl bg-[var(--olive-800)] p-5">
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      'radial-gradient(ellipse 70% 80% at 85% 50%, rgba(214, 160, 51, 0.15) 0%, transparent 65%)',
+                  }}
+                  aria-hidden
+                />
+                <div
+                  className="absolute left-0 top-0 h-full w-1 bg-[var(--gold-500)]"
+                  aria-hidden
+                />
+                <div className="relative z-10">{caseloadExport}</div>
+              </div>
+            )}
 
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
             <div className="grid gap-[14px] lg:grid-cols-[1fr_320px]">
@@ -649,7 +716,17 @@ export function DashboardShell({
                       </div>
                     ))}
                     {Object.keys(statusCounts).length === 0 && (
-                      <p className="os-caption">No students yet</p>
+                      <EmptyState
+                        icon={
+                          <img
+                            src="/logo-mark.png"
+                            alt=""
+                            className="h-10 w-10 object-contain opacity-40"
+                          />
+                        }
+                        title="No students assigned yet"
+                        body="Every student here is someone worth showing up for."
+                      />
                     )}
                   </div>
                 </div>
@@ -681,6 +758,9 @@ export function DashboardShell({
                     <p className="os-data-hero text-[var(--color-regression)]">{regressionCount}</p>
                     <p className="os-caption mt-1">
                       {regressionCount === 1 ? 'student' : 'students'} above baseline
+                    </p>
+                    <p className="os-caption mt-2 max-w-[14rem] text-[var(--text-tertiary)]">
+                      A setback isn&apos;t the story — it&apos;s a chapter.
                     </p>
                   </div>
                 )}
@@ -728,11 +808,21 @@ export function DashboardShell({
               )}
 
               {filteredStudents.length === 0 ? (
-                <p className="os-body">
-                  {recentStudents.length === 0
-                    ? 'No students yet.'
-                    : 'No students match this filter/search.'}
-                </p>
+                recentStudents.length === 0 ? (
+                  <EmptyState
+                    icon={
+                      <img
+                        src="/logo-mark.png"
+                        alt=""
+                        className="h-10 w-10 object-contain opacity-40"
+                      />
+                    }
+                    title="No students assigned yet"
+                    body="Every student here is someone worth showing up for."
+                  />
+                ) : (
+                  <p className="os-body">No students match this filter/search.</p>
+                )
               ) : (
                 <ul className="space-y-2">
                   {filteredStudents.map((student, i) => {
@@ -766,13 +856,20 @@ export function DashboardShell({
                             />
                           </svg>
                           <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
+                            <div className="flex min-w-0 items-start gap-3">
+                              <StudentAvatar
+                                firstName={student.first_name}
+                                lastName={student.last_name}
+                                size="md"
+                              />
+                              <div className="min-w-0">
                               <p className="os-heading">
                                 {student.first_name} {student.last_name}
                               </p>
                               <p className="os-caption">
                                 Grade {student.grade} · {student.school}
                               </p>
+                              </div>
                             </div>
                             <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-3 text-right">
                               <span
@@ -828,7 +925,7 @@ export function DashboardShell({
               style={{ background: '#FFFFFF', color: '#DC2626', minHeight: 32 }}
               onClick={() => setEscalationAcknowledged(true)}
             >
-              Acknowledge
+              Acknowledge & Take Action
             </button>
           </div>
         )}
@@ -901,9 +998,21 @@ export function DashboardShell({
               />
             </div>
             {filteredStudents.length === 0 ? (
-              <p className="os-body">
-                {recentStudents.length === 0 ? 'No students yet.' : 'No students match this search.'}
-              </p>
+              recentStudents.length === 0 ? (
+                <EmptyState
+                  icon={
+                    <img
+                      src="/logo-mark.png"
+                      alt=""
+                      className="h-10 w-10 object-contain opacity-40"
+                    />
+                  }
+                  title="No students assigned yet"
+                  body="Every student here is someone worth showing up for."
+                />
+              ) : (
+                <p className="os-body">No students match this search.</p>
+              )
             ) : (
               <ul className="space-y-2">
                 {filteredStudents.map((student, i) => {
@@ -935,12 +1044,21 @@ export function DashboardShell({
                             strokeLinejoin="round"
                           />
                         </svg>
+                        <div className="flex items-start gap-3">
+                          <StudentAvatar
+                            firstName={student.first_name}
+                            lastName={student.last_name}
+                            size="sm"
+                          />
+                          <div>
                         <p className="os-heading">
                           {student.first_name} {student.last_name}
                         </p>
                         <p className="os-caption">
                           Gr {student.grade} · {student.school}
                         </p>
+                          </div>
+                        </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <span
                             className={`rounded-[var(--radius-sm)] px-2 py-0.5 os-caption font-medium uppercase tracking-[0.07em] ${getStatusBadgeClass(student.status)}`}

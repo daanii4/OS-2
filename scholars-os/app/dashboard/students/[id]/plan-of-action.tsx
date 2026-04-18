@@ -1,6 +1,7 @@
 'use client'
 
 import { toast } from 'sonner'
+import { NumberBadge } from '@/components/ui/number-badge'
 import type { PlanOfActionData } from '@/lib/ai/validation'
 import { queueSessionGoal } from '@/lib/session-goals-queue'
 
@@ -22,8 +23,9 @@ export function PlanOfActionPanel({ studentId, plan }: PlanOfActionPanelProps) {
         <h3 className="text-xs font-semibold uppercase tracking-widest text-[#D6A033]">
           Plan of Action — Next Session
         </h3>
-        <span className="rounded-full border border-[rgba(214,160,51,0.2)] bg-[rgba(214,160,51,0.15)] px-2 py-0.5 text-xs text-[#e0b44e]">
-          Week {plan.milestone_week}
+        <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(214,160,51,0.2)] bg-[rgba(214,160,51,0.15)] py-0.5 pl-0.5 pr-2 text-xs text-[#e0b44e]">
+          <NumberBadge number={plan.milestone_week} variant="ahead" />
+          <span>Plan week</span>
         </span>
       </div>
 

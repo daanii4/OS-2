@@ -21,7 +21,6 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      // Generic message — do not surface Supabase error details to UI
       setError('Invalid email or password.')
       setLoading(false)
       return
@@ -34,53 +33,70 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[var(--surface-page)]">
       <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 lg:grid-cols-[420px_1fr]">
-        <aside className="hidden bg-[var(--olive-800)] text-white lg:flex lg:flex-col">
-          <div className="border-b border-white/10 px-5 py-5">
-            <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white flex-shrink-0">
-                <img
-                  src="/logo.png"
-                  alt="Operation Scholars logo"
-                  className="h-full w-full object-contain p-0.5"
-                />
-              </div>
+        <aside
+          className="relative hidden flex-col justify-between overflow-hidden bg-[var(--olive-800)] text-white lg:flex"
+        >
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: 'var(--brand-glow)' }}
+            aria-hidden
+          />
+          <div className="absolute left-0 top-0 h-full w-1 bg-[var(--gold-500)]" aria-hidden />
+
+          <div className="relative z-10 p-10">
+            <div className="mb-16 flex items-center gap-3">
+              <img src="/logo-mark.png" alt="" className="h-10 w-10 object-contain" />
               <div>
-                <p className="os-heading text-white">Scholars OS</p>
-                <p className="os-caption text-white/60">Behavioral intelligence platform</p>
+                <p
+                  className="text-[18px] text-white"
+                  style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+                >
+                  Operation Scholars
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.08em] text-white/40">
+                  Behavioral Intelligence Platform
+                </p>
               </div>
             </div>
-          </div>
-          <div className="flex-1 px-5 py-6">
-            <p className="os-label text-[var(--gold-500)]">209 area · central valley, ca</p>
-            <h2 className="mt-5 text-5xl leading-[1.05] tracking-[-0.02em] font-[var(--font-serif)] text-white">
+
+            <h1
+              className="mb-5 text-[clamp(32px,3.5vw,48px)] font-normal leading-[1.05] tracking-[-0.025em] text-white"
+              style={{ fontFamily: 'var(--font-dm-serif), Georgia, serif' }}
+            >
               Every student&apos;s
               <br />
-              story, <span className="italic text-[var(--gold-500)]">clearly told.</span>
-            </h2>
-            <p className="os-body mt-6 text-white/70">
-              Evidence-based behavioral tracking for counseling contractors serving
-              middle and high school students across the Central Valley.
-            </p>
+              story,{' '}
+              <em className="italic text-[var(--gold-500)]">clearly told.</em>
+            </h1>
 
-            <div className="mt-8 grid grid-cols-3 gap-3 border-t border-white/10 pt-4">
-              <div>
-                <p className="os-data-lg text-white">54%</p>
-                <p className="os-caption text-white/60">Avg incident reduction</p>
-              </div>
-              <div>
-                <p className="os-data-lg text-white">88%</p>
-                <p className="os-caption text-white/60">Session attendance rate</p>
-              </div>
-              <div>
-                <p className="os-data-lg text-white">47</p>
-                <p className="os-caption text-white/60">Active students</p>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-white/10 px-5 py-4">
-            <p className="os-caption text-white/50">
-              Secured by FERPA-compliant infrastructure · QuasarNova LLC · 2026
+            <p className="max-w-[300px] text-[13px] leading-relaxed text-white/50">
+              A safe environment to discover identity and character — and become lifelong learners.
             </p>
+          </div>
+
+          <div className="relative z-10 flex gap-0 p-10 pt-0">
+            {[
+              { n: '54%', label: 'Avg incident reduction' },
+              { n: '88%', label: 'Session attendance' },
+              { n: '47', label: 'Active students' },
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                className={`flex-1 ${i > 0 ? 'ml-5 border-l border-white/10 pl-5' : ''}`}
+              >
+                <p
+                  className="text-[28px] font-medium leading-none text-white"
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+                >
+                  {stat.n}
+                </p>
+                <p className="mt-1 text-[10px] leading-tight text-white/35">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative z-10 px-10 pb-8">
+            <p className="text-[10px] text-white/20">FERPA-compliant · QuasarNova LLC · 2026</p>
           </div>
         </aside>
 
@@ -89,8 +105,8 @@ export default function LoginPage() {
             <div className="os-card">
               <p className="os-label">Counselor access</p>
               <h1 className="os-title mt-2">Sign in to Scholars OS</h1>
-              <p className="os-body mt-2">
-                Access is restricted to authorized Operation Scholars staff.
+              <p className="os-body mt-2 text-[var(--text-tertiary)]">
+                Show up real. The students need you.
               </p>
 
               <form onSubmit={handleLogin} className="mt-5 grid gap-3">
@@ -163,9 +179,8 @@ export default function LoginPage() {
 
               <div className="rounded-lg border border-[var(--olive-200)] bg-[var(--olive-50)] p-3">
                 <p className="os-body">
-                  <strong>FERPA notice:</strong> This system contains protected
-                  student education records. Unauthorized access is prohibited. All
-                  sessions are logged.
+                  <strong>FERPA notice:</strong> This system contains protected student education
+                  records. Unauthorized access is prohibited. All sessions are logged.
                 </p>
               </div>
 

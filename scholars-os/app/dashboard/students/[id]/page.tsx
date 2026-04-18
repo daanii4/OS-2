@@ -7,6 +7,8 @@ import { AssignCounselorForm } from './assign-counselor-form'
 import { BaselineForm } from './baseline-form'
 import { CreatePlanForm } from './create-plan-form'
 import { parseIntakeFiles } from '@/lib/types/intake-file'
+import { GraduationBanner } from '@/components/ui/graduation-banner'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ProfileHeader } from './profile-header'
 import { StudentStatusControl } from './student-status-control'
 import { StudentCharts } from './student-charts'
@@ -202,10 +204,13 @@ export default async function StudentDetailPage({
           target="_blank"
           rel="noopener noreferrer"
           className="os-btn-secondary"
+          title="Every number here represents a real student."
         >
-          Export Report
+          Export District Report
         </a>
       </div>
+
+      {student.status === 'graduated' && <GraduationBanner />}
 
       {/* Dark profile header — §3.7 */}
       <ProfileHeader
@@ -235,7 +240,17 @@ export default async function StudentDetailPage({
             <div className="os-card">
               <h3 className="os-heading mb-3">Session history</h3>
               {student.sessions.length === 0 ? (
-                <p className="os-body">No sessions logged yet.</p>
+                <EmptyState
+                  icon={
+                    <img
+                      src="/logo-mark.png"
+                      alt=""
+                      className="h-10 w-10 object-contain opacity-40"
+                    />
+                  }
+                  title="No sessions logged yet"
+                  body="Write what happened. Character is built in the small moments."
+                />
               ) : (
                 <ul className="space-y-2">
                   {student.sessions.map(session => (
@@ -295,7 +310,23 @@ export default async function StudentDetailPage({
             <div className="os-card">
               <h3 className="os-heading mb-3">Incident history</h3>
               {student.incidents.length === 0 ? (
-                <p className="os-body">No incidents logged yet.</p>
+                <EmptyState
+                  icon={
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 text-[var(--olive-400)]"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden
+                    >
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                  }
+                  title="No incidents on record"
+                  body="A clean record is worth celebrating."
+                />
               ) : (
                 <ul className="space-y-2">
                   {student.incidents.map(incident => (
@@ -565,7 +596,24 @@ export default async function StudentDetailPage({
             <div className="os-card">
               <h3 className="os-heading mb-3">Success plans</h3>
               {student.success_plans.length === 0 ? (
-                <p className="os-body">No plans created yet.</p>
+                <EmptyState
+                  icon={
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 text-[var(--olive-400)]"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="12" r="6" />
+                      <circle cx="12" cy="12" r="2" />
+                    </svg>
+                  }
+                  title="No success plans yet"
+                  body="Goals tell the story behind the numbers."
+                />
               ) : (
                 <ul className="space-y-2">
                   {student.success_plans.map(plan => (
