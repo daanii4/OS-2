@@ -190,7 +190,7 @@ export function OnboardingFlow({ profile }: Props) {
       {step.showLogo && (
         <div className="mb-6">
           {reducedMotion ? (
-            <img src="/logo.png" width={120} height={120} alt="Operation Scholars" />
+            <img src="/static/logo.png" width={120} height={120} alt="Operation Scholars" />
           ) : (
             <LogoAnimation size={120} loop={false} />
           )}

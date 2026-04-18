@@ -39,7 +39,7 @@ export default function LoginPage() {
             <div className="flex items-center gap-3">
               <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white flex-shrink-0">
                 <img
-                  src="/logo.png"
+                  src="/static/logo.png"
                   alt="Operation Scholars logo"
                   className="h-full w-full object-contain p-0.5"
                 />

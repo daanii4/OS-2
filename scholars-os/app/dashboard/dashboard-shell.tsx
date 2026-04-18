@@ -369,7 +369,7 @@ export function DashboardShell({
           <div className="flex items-center gap-2">
             <div className="relative h-7 w-7 overflow-hidden rounded bg-white">
               <img
-                src="/logo.png"
+                src="/static/logo.png"
                 alt="Operation Scholars logo"
                 className="h-full w-full object-contain p-0.5"
               />
@@ -401,7 +401,7 @@ export function DashboardShell({
                 <div className="flex items-center gap-3">
                   <div className="relative h-9 w-9 overflow-hidden rounded-md bg-white">
                     <img
-                      src="/logo.png"
+                      src="/static/logo.png"
                       alt="Operation Scholars logo"
                       className="h-full w-full object-contain p-0.5"
                     />
@@ -456,7 +456,7 @@ export function DashboardShell({
             <div className="flex items-center gap-3">
               <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-md bg-white">
                 <img
-                  src="/logo.png"
+                  src="/static/logo.png"
                   alt="Operation Scholars logo"
                   className="h-full w-full object-contain p-0.5"
                 />
