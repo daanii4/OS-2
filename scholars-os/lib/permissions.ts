@@ -1,5 +1,38 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import type { UserRole } from '@prisma/client'
+import type { Grade, SessionFormat, UserRole } from '@prisma/client'
+
+type ProfileFields = {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  active: boolean
+  tenant_id: string | null
+  must_reset_password: boolean
+  onboarding_complete: boolean
+  onboarding_step: number
+  default_session_duration: number | null
+  default_session_format: SessionFormat | null
+  default_grade_filter_min: Grade | null
+  default_grade_filter_max: Grade | null
+}
+
+const LEGACY_PROFILE_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  active: true,
+  tenant_id: true,
+} as const
+
+function isMissingColumnError(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false
+  if (err.code === 'P2022') return true
+  const msg = err.message.toLowerCase()
+  return msg.includes('does not exist') || msg.includes('column')
+}
 
 function getDatabaseHost(): string {
   const url = process.env.DATABASE_URL
@@ -52,9 +85,9 @@ export async function canAccessStudent(
  * Called at the top of every route handler after verifying the Supabase session.
  * Returns null if profile does not exist or is inactive.
  */
-export async function getProfile(userId: string) {
+export async function getProfile(userId: string): Promise<ProfileFields | null> {
   try {
-    return await prisma.profile.findUnique({
+    const row = await prisma.profile.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -72,14 +105,36 @@ export async function getProfile(userId: string) {
         default_grade_filter_max: true,
       },
     })
+    return row
   } catch (error) {
-    const prismaCode =
-      typeof error === 'object' && error !== null && 'code' in error
-        ? String((error as { code?: unknown }).code ?? 'unknown')
-        : 'unknown'
+    if (!isMissingColumnError(error)) {
+      const prismaCode =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code?: unknown }).code ?? 'unknown')
+          : 'unknown'
+      console.error(`GPF:${prismaCode}:HOST:${getDatabaseHost()}`)
+      throw error
+    }
 
-    console.error(`GPF:${prismaCode}:HOST:${getDatabaseHost()}`)
+    console.error(
+      '[getProfile] Schema behind deploy — retrying without onboarding columns. Run prisma migrate deploy.'
+    )
 
-    throw error
+    const legacy = await prisma.profile.findUnique({
+      where: { id: userId },
+      select: LEGACY_PROFILE_SELECT,
+    })
+    if (!legacy) return null
+
+    return {
+      ...legacy,
+      must_reset_password: false,
+      onboarding_complete: true,
+      onboarding_step: 0,
+      default_session_duration: null,
+      default_session_format: null,
+      default_grade_filter_min: null,
+      default_grade_filter_max: null,
+    }
   }
 }
