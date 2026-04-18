@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { SidebarAccountMenu } from '@/components/layout/sidebar-account-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StudentAvatar } from '@/components/ui/student-avatar'
 const DashboardIncidentChart = dynamic(
@@ -88,7 +89,7 @@ const NAV_LINKS: NavLinkItem[] = [
   { href: '/dashboard/students', label: 'Student Caseload', abbr: 'S', section: 'Main' },
   { href: '/dashboard/analytics', label: 'Impact Overview', abbr: 'A', section: 'Reports', orgOnly: true },
   {
-    href: '/settings/team',
+    href: '/dashboard/team',
     label: 'Team',
     abbr: 'T',
     section: 'Settings',
@@ -129,9 +130,7 @@ function isNavActive(pathname: string | null, href: string): boolean {
   const p = normalizePath(pathname)
   if (!p) return false
   if (href === '/dashboard') return p === '/dashboard'
-  if (p === href || p.startsWith(`${href}/`)) return true
-  if (href === '/settings/team' && p.startsWith('/settings')) return true
-  return false
+  return p === href || p.startsWith(`${href}/`)
 }
 
 function NavLinks({
@@ -464,15 +463,18 @@ export function DashboardShell({
               <NavLinks collapsed={false} onLinkClick={closeMobileMenu} showOrgNav={showOrgNav} />
             </nav>
             <div className="border-t border-white/10 px-4 py-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {(() => {
                   const { first, last } = splitProfileName(profileName)
                   return <StudentAvatar firstName={first} lastName={last} size="sm" />
                 })()}
-                <div>
-                  <p className="text-[13px] font-medium text-white">{profileName}</p>
-                  <p className="os-label" style={{ color: 'rgba(255,255,255,0.45)' }}>{profileRole}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-white">{profileName}</p>
+                  <p className="os-label truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    {profileRole}
+                  </p>
                 </div>
+                <SidebarAccountMenu />
               </div>
             </div>
           </aside>
@@ -526,18 +528,27 @@ export function DashboardShell({
           </nav>
 
           <div className="border-t border-white/10 px-4 py-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {(() => {
                 const { first, last } = splitProfileName(profileName)
                 return <StudentAvatar firstName={first} lastName={last} size="md" />
               })()}
               <div
-                className={`overflow-hidden transition-all duration-100 ${
-                  sidebarOpen ? 'max-w-[140px] opacity-100' : 'max-w-0 opacity-0'
+                className={`min-w-0 flex-1 overflow-hidden transition-all duration-100 ${
+                  sidebarOpen ? 'max-w-[120px] opacity-100' : 'max-w-0 opacity-0'
                 }`}
               >
-                <p className="text-[13px] font-medium text-white">{profileName}</p>
-                <p className="os-label" style={{ color: 'rgba(255,255,255,0.45)' }}>{profileRole}</p>
+                <p className="truncate text-[13px] font-medium text-white">{profileName}</p>
+                <p className="os-label truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  {profileRole}
+                </p>
+              </div>
+              <div
+                className={`flex-shrink-0 transition-opacity duration-100 ${
+                  sidebarOpen ? 'opacity-100' : 'opacity-100'
+                }`}
+              >
+                <SidebarAccountMenu />
               </div>
             </div>
           </div>

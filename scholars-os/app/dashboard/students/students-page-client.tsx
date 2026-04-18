@@ -107,7 +107,7 @@ export function StudentsPageClient({
       <div className="os-card">
         <h2 className="os-heading mb-3">Student list</h2>
 
-        <div className="relative mb-4 md:hidden">
+        <div className="relative mb-4">
           <input
             type="search"
             value={query}

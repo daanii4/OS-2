@@ -1,12 +1,23 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+
+const LogoLottie = dynamic(() => import('./loading-screen-lottie'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[96px] w-[96px] animate-pulse rounded-md bg-white/5" aria-hidden />
+  ),
+})
 
 type LoadingScreenProps = {
   message?: string
 }
 
 export function LoadingScreen({ message = 'Loading your students' }: LoadingScreenProps) {
+  const reducedMotion = usePrefersReducedMotion()
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6"
@@ -24,18 +35,22 @@ export function LoadingScreen({ message = 'Loading your students' }: LoadingScre
         aria-hidden
       />
 
-      <div className="relative z-10">
-        <Image
-          src="/logo-3d.webp"
-          alt="Operation Scholars"
-          width={96}
-          height={96}
-          priority
-          className="logo-3d-float object-contain"
-          style={{
-            filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
-          }}
-        />
+      <div className="relative z-10 flex h-[96px] w-[96px] items-center justify-center">
+        {reducedMotion ? (
+          <Image
+            src="/logo-3d.webp"
+            alt="Operation Scholars"
+            width={96}
+            height={96}
+            priority
+            className="object-contain"
+            style={{
+              filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
+            }}
+          />
+        ) : (
+          <LogoLottie />
+        )}
       </div>
 
       <div className="relative z-10 text-center">

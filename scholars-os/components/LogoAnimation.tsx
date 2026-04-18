@@ -9,7 +9,7 @@ type Props = {
   autoplay?: boolean
 }
 
-export function LogoAnimation({ size = 120, loop = false, autoplay = true }: Props) {
+export function LogoAnimation({ size = 120, loop = true, autoplay = true }: Props) {
   return (
     <Lottie
       animationData={logoAnimation}
