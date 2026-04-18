@@ -1,6 +1,7 @@
 /**
- * Public site URL for links in emails and invite redirects.
- * Prefer NEXT_PUBLIC_APP_URL (brief), then APP_URL, then Vercel preview URL.
+ * Public base URL for Supabase invite redirectTo and hrefs in transactional email.
+ * Omit in Vercel: VERCEL_URL is used (works for *.vercel.app; set NEXT_PUBLIC_APP_URL for custom domain).
+ * Not used for page routing — a wrong value does not make the app unreachable.
  */
 export function getPublicAppUrl(): string {
   const explicit =
