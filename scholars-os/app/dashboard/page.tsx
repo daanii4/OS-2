@@ -187,7 +187,6 @@ export default async function DashboardPage() {
     {}
   )
 
-  const topOffset = isOrgView ? 120 : 64
   const caseloadSchools = caseloadSchoolRows.map(row => row.school)
   const statusMix = statusMixRows.reduce<Record<string, number>>((acc, row) => {
     acc[row.status] = row._count._all
@@ -215,7 +214,6 @@ export default async function DashboardPage() {
       recentStudents={recentStudents}
       incidentCountByStudent={incidentCountByStudent}
       escalatedStudentName={escalatedStudentName}
-      topOffset={topOffset}
       caseloadTotalCount={caseloadTotalCount}
       regressionCountFull={regressionCountFull}
       statusMix={statusMix}

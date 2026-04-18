@@ -105,9 +105,9 @@ export function CaseloadExport({ schools, className }: CaseloadExportProps) {
     preview.status === 'error'
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-        <div className="flex flex-1 flex-col gap-1.5">
+    <div className={cn('flex min-w-0 max-w-full flex-col gap-4', className)}>
+      <div className="flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <label
             htmlFor="export-month"
             className="font-sans text-xs font-medium uppercase tracking-wide text-slate-600"
@@ -128,7 +128,7 @@ export function CaseloadExport({ schools, className }: CaseloadExportProps) {
           />
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <label
             htmlFor="export-school"
             className="font-sans text-xs font-medium uppercase tracking-wide text-slate-600"
@@ -190,7 +190,7 @@ export function CaseloadExport({ schools, className }: CaseloadExportProps) {
                 : undefined
           }
           className={cn(
-            'inline-flex h-9 items-center gap-2 rounded-md px-4',
+            'inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-4',
             'font-sans text-sm font-medium',
             'transition-all duration-150',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2',

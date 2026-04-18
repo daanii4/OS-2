@@ -56,7 +56,6 @@ type DashboardShellProps = {
   recentStudents: RecentStudent[]
   incidentCountByStudent: Record<string, number>
   escalatedStudentName: string | null
-  topOffset: number
   /** Total students in scope (matches caseload) for accurate header counts. */
   caseloadTotalCount: number
   /** Regression count across full caseload (30d vs baseline, ≥25%). */
@@ -267,7 +266,6 @@ export function DashboardShell({
   recentStudents,
   incidentCountByStudent,
   escalatedStudentName,
-  topOffset,
   caseloadTotalCount,
   regressionCountFull,
   statusMix,
@@ -613,15 +611,16 @@ export function DashboardShell({
 
         <main
           className={cn(
-            'flex h-[100dvh] min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain',
-            'transition-[margin] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
-            sidebarOpen ? 'ml-60' : 'ml-14'
+            // w-full + ml-* was wider than the viewport (100% width + margin). Pin width to remaining space.
+            'flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain',
+            'transition-[margin,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            sidebarOpen ? 'ml-60 w-[calc(100%-15rem)]' : 'ml-14 w-[calc(100%-3.5rem)]'
           )}
         >
           {/* Escalation banner §3.8 */}
           {escalatedStudentName && !escalationAcknowledged && (
             <div
-              className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6"
+              className="flex w-full min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6"
               style={{ background: '#DC2626', borderRadius: 0 }}
             >
               <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
@@ -642,11 +641,11 @@ export function DashboardShell({
             </div>
           )}
 
-          {/* Topbar */}
-          <div className="sticky top-0 z-10 min-w-0 overflow-hidden border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3 sm:px-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div>
+          {/* Topbar — shrink-0 so sticky header is not clipped; avoid overflow-hidden (clips title) */}
+          <div className="sticky top-0 z-10 min-w-0 shrink-0 border-b border-[var(--border-default)] bg-[var(--surface-card)] px-4 py-3 sm:px-6">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="min-w-0">
                   <h1 className="os-title">Your Students</h1>
                   {(profileRole === 'owner' || profileRole === 'assistant') &&
                     showOwnerDayGreeting && (
@@ -657,7 +656,7 @@ export function DashboardShell({
                     )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-shrink-0 flex-wrap items-center justify-end gap-2">
                 <button className="os-btn-secondary">Export District Report</button>
                 <Link href="/dashboard/students" className="os-btn-primary">
                   + Log Session
@@ -666,7 +665,7 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="min-w-0 space-y-4 px-6 pb-6" style={{ paddingTop: `${topOffset}px` }}>
+          <div className="min-w-0 flex-1 space-y-4 px-4 pb-6 pt-6 sm:px-6">
             {/* KPI row */}
             <section className="os-kpi-grid">
               {/* Active students — gold top border */}
@@ -764,9 +763,9 @@ export function DashboardShell({
             )}
 
             {/* Primary 2-col grid: charts left, sidebar metrics right */}
-            <div className="grid min-w-0 gap-[14px] lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
+            <div className="grid min-w-0 max-w-full grid-cols-1 gap-[14px] lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
               {/* Left — incident frequency chart */}
-              <section className="os-card os-card-interactive min-w-0">
+              <section className="os-card os-card-interactive min-w-0 overflow-hidden">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="os-heading">Incident Frequency — All Students</h2>
@@ -787,7 +786,7 @@ export function DashboardShell({
               </section>
 
               {/* Right — sidebar metrics panel */}
-              <div className="flex min-w-0 flex-col gap-[14px]">
+              <div className="flex min-w-0 max-w-full flex-col gap-[14px]">
                 {/* Status mix */}
                 <div className="os-card os-card-interactive min-w-0">
                   <h3 className="os-subhead mb-3">Student status mix</h3>
