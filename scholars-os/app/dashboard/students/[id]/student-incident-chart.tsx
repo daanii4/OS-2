@@ -53,7 +53,7 @@ export default function StudentIncidentChart({ data }: Props) {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
-        margin={{ top: 8, right: 8, left: 0, bottom: dense ? 8 : 0 }}
+        margin={{ top: 8, right: 24, left: -16, bottom: 0 }}
         maxBarSize={isMobile ? 12 : 24}
         barCategoryGap={isMobile ? '20%' : '15%'}
       >
