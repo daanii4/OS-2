@@ -6,18 +6,24 @@ import './globals.css'
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
+  display: 'swap',
+  preload: true,
 })
 
 const dmSerif = DM_Serif_Display({
   variable: '--font-dm-serif',
   weight: ['400'],
   subsets: ['latin'],
+  display: 'swap',
+  preload: true,
 })
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: '--font-ibm-plex-mono',
   weight: ['400', '500'],
   subsets: ['latin'],
+  display: 'swap',
+  preload: false,
 })
 
 export const metadata: Metadata = {

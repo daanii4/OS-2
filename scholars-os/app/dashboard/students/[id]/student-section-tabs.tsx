@@ -35,7 +35,7 @@ export function StudentSectionTabs({ studentId, active }: Props) {
           key={id}
           href={id === 'sessions' ? base : `${base}?section=${id}`}
           scroll={false}
-          prefetch={id === 'sessions'}
+          prefetch
           className="flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors duration-75"
           style={
             active === id
