@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { sendInviteTempPasswordEmail } from '@/lib/email/templates'
 import { getPublicAppUrl } from '@/lib/app-url'
 import { generateInviteTempPassword } from '@/lib/invite-password'
+import { isAutoOwnerEmail } from '@/lib/role-overrides'
 
 const InviteSchema = z.object({
   email: z.string().email(),
@@ -58,7 +59,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
   }
 
-  const { email, name, role } = parsed.data
+  const { email, name } = parsed.data
+  // Auto-owner allow-list: a small set of emails (lib/role-overrides.ts) are
+  // always promoted to `owner` regardless of what role the inviter selected
+  // in the form. The standard invite flow (temp password email -> reset ->
+  // onboarding) still runs as normal.
+  const role: 'owner' | 'assistant' | 'counselor' = isAutoOwnerEmail(email)
+    ? 'owner'
+    : parsed.data.role
 
   const existing = await prisma.profile.findFirst({
     where: {
