@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -27,14 +28,35 @@ function formatTickLabel(raw: string): string {
   return raw
 }
 
+function xAxisInterval(isMobile: boolean, dataLength: number, dense: boolean): number | 'preserveStartEnd' {
+  if (!isMobile) {
+    return dense ? 0 : 'preserveStartEnd'
+  }
+  if (dataLength <= 7) return 0
+  if (dataLength > 14) return Math.floor(dataLength / 6)
+  return Math.max(1, Math.floor(dataLength / 6))
+}
+
 export default function DashboardIncidentChart({ data, chartMax }: Props) {
   const dense = data.length > 14
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const xInterval = xAxisInterval(isMobile, data.length, dense)
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
         margin={{ top: 8, right: 8, left: 0, bottom: dense ? 8 : 0 }}
+        maxBarSize={isMobile ? 12 : 24}
+        barCategoryGap={isMobile ? '20%' : '15%'}
       >
         <CartesianGrid vertical={false} stroke="rgba(92,107,70,0.08)" />
         <XAxis
@@ -46,11 +68,11 @@ export default function DashboardIncidentChart({ data, chartMax }: Props) {
           }}
           axisLine={false}
           tickLine={false}
-          angle={dense ? -38 : 0}
-          textAnchor={dense ? 'end' : 'middle'}
-          height={dense ? 56 : 28}
-          interval={0}
-          minTickGap={dense ? 4 : 8}
+          angle={isMobile ? -45 : dense ? -38 : 0}
+          textAnchor={isMobile || dense ? 'end' : 'middle'}
+          height={isMobile ? 48 : dense ? 56 : 28}
+          interval={xInterval}
+          minTickGap={isMobile ? 0 : dense ? 4 : 8}
           tickFormatter={formatTickLabel}
         />
         <YAxis

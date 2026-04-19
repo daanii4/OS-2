@@ -779,7 +779,7 @@ export function DashboardShell({
                   {chartPeriodToggle}
                 </div>
 
-                <div className="h-[240px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+                <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3 sm:h-[240px]">
                   {chartError ? (
                     <p className="os-body text-[var(--color-regression)]">{chartError}</p>
                   ) : chartLoading ? (
