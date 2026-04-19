@@ -61,13 +61,21 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 18,
   },
-  kpiCard: {
+  /** Gold accent as a solid strip — avoid borderLeft (some PDF viewers draw it as a vertical streak across breaks). */
+  kpiCardOuter: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: GRAY_100,
     borderRadius: 6,
+    overflow: 'hidden',
+  },
+  kpiCardAccent: {
+    width: 4,
+    backgroundColor: GOLD_500,
+  },
+  kpiCardInner: {
+    flex: 1,
     padding: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: GOLD_500,
   },
   kpiCardPlain: {
     flex: 1,
@@ -121,7 +129,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  chartBar: { width: '70%', backgroundColor: OLIVE_300, borderRadius: 2 },
+  /** Fixed width + min height — percentage widths collapse to hairlines at small counts in react-pdf. */
+  chartBar: {
+    width: 14,
+    minHeight: 14,
+    backgroundColor: OLIVE_300,
+    borderRadius: 2,
+    alignSelf: 'center',
+  },
   chartBarLabel: {
     fontSize: 7.5,
     color: OLIVE_800,
@@ -264,12 +279,12 @@ function fmtType(s: string) {
 // ─── Inline bar chart (SVG-free, pure View/height) ───────────────────────────
 function InlineBarChart({ data }: { data: { label: string; count: number }[] }) {
   const max = Math.max(...data.map(d => d.count), 1)
-  /** Bar area max height — keep total column under chartBarWrap minHeight */
   const barMaxH = 48
   return (
-    <View style={styles.chartRow}>
+    <View style={styles.chartRow} wrap={false}>
       {data.map((d, i) => {
-        const barH = Math.max(8, Math.round((d.count / max) * barMaxH))
+        const rawH = Math.round((d.count / max) * barMaxH)
+        const barH = Math.max(14, rawH)
         return (
           <View key={i} style={styles.chartBarWrap}>
             <View style={styles.chartBarValueSlot}>
@@ -323,15 +338,18 @@ export function StudentReportDocument({ data }: { data: StudentReportData }) {
         </View>
 
         {/* ── Headline KPIs ── */}
-        <View style={styles.kpiRow}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Baseline incidents</Text>
-            <Text style={styles.kpiValue}>{student.baseline_incident_count ?? '—'}</Text>
-            <Text style={styles.kpiSub}>
-              {student.baseline_window_start && student.baseline_window_end
-                ? `${fmtDate(student.baseline_window_start)} – ${fmtDate(student.baseline_window_end)}`
-                : 'Baseline window not set'}
-            </Text>
+        <View style={styles.kpiRow} wrap={false}>
+          <View style={styles.kpiCardOuter}>
+            <View style={styles.kpiCardAccent} />
+            <View style={styles.kpiCardInner}>
+              <Text style={styles.kpiLabel}>Baseline incidents</Text>
+              <Text style={styles.kpiValue}>{student.baseline_incident_count ?? '—'}</Text>
+              <Text style={styles.kpiSub}>
+                {student.baseline_window_start && student.baseline_window_end
+                  ? `${fmtDate(student.baseline_window_start)} – ${fmtDate(student.baseline_window_end)}`
+                  : 'Baseline window not set'}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.kpiCardPlain}>
