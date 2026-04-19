@@ -114,23 +114,22 @@ export default async function AnalyticsPage() {
 
     Promise.all(
       months.map(async m => {
-        const [incidents, studentIds] = await Promise.all([
+        const [incidents, distinctStudents] = await Promise.all([
           prisma.behavioralIncident.count({
             where: {
               tenant_id: tenant.id,
               incident_date: { gte: m.start, lte: m.end },
             },
           }),
-          prisma.behavioralIncident.findMany({
+          prisma.behavioralIncident.groupBy({
+            by: ['student_id'],
             where: {
               tenant_id: tenant.id,
               incident_date: { gte: m.start, lte: m.end },
             },
-            select: { student_id: true },
-            distinct: ['student_id'],
           }),
         ])
-        return { label: m.label, incidents, students: studentIds.length }
+        return { label: m.label, incidents, students: distinctStudents.length }
       })
     ),
   ])
