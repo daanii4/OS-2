@@ -76,10 +76,18 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   kpiLabel: { fontSize: 7, color: OLIVE_600, textTransform: 'uppercase', letterSpacing: 0.6 },
-  kpiValue: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: OLIVE_800, marginTop: 3 },
+  /** Explicit lineHeight + margin so large digits never collide with the trend line below (Yoga stacks Text tightly). */
+  kpiValue: {
+    fontSize: 22,
+    fontFamily: 'Helvetica-Bold',
+    color: OLIVE_800,
+    marginTop: 3,
+    lineHeight: 26,
+    marginBottom: 2,
+  },
   kpiSub:   { fontSize: 7.5, color: OLIVE_600, marginTop: 2 },
-  kpiGreen: { fontSize: 8, color: GREEN, fontFamily: 'Helvetica-Bold' },
-  kpiRed:   { fontSize: 8, color: RED,   fontFamily: 'Helvetica-Bold' },
+  kpiGreen: { fontSize: 8, color: GREEN, fontFamily: 'Helvetica-Bold', marginTop: 4 },
+  kpiRed:   { fontSize: 8, color: RED, fontFamily: 'Helvetica-Bold', marginTop: 4 },
   // ── section ──
   section: { marginBottom: 20 },
   sectionTitle: {
@@ -90,16 +98,41 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: GRAY_300,
+    lineHeight: 1.35,
   },
   // ── inline bar chart ──
-  chartRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 60, marginBottom: 4 },
-  chartBarWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
+  /** minHeight must exceed value row + max bar + axis labels or Yoga overlays children (was height: 60 with bars up to 56px). */
+  chartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+    minHeight: 92,
+    marginBottom: 6,
+  },
+  chartBarWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    minHeight: 88,
+  },
+  chartBarValueSlot: {
+    minHeight: 12,
+    marginBottom: 2,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
   chartBar: { width: '70%', backgroundColor: OLIVE_300, borderRadius: 2 },
-  chartBarLabel: { fontSize: 6.5, color: OLIVE_600, marginTop: 3, textAlign: 'center' },
-  chartBarValue: { fontSize: 6.5, color: OLIVE_800, marginBottom: 2, textAlign: 'center' },
+  chartBarLabel: {
+    fontSize: 7.5,
+    color: OLIVE_800,
+    marginTop: 4,
+    textAlign: 'center',
+    fontFamily: 'Helvetica-Bold',
+  },
+  chartBarValue: { fontSize: 7, color: OLIVE_800, textAlign: 'center', fontFamily: 'Helvetica-Bold' },
   // ── two-column grid ──
-  twoCol: { flexDirection: 'row', gap: 12 },
-  col:    { flex: 1 },
+  twoCol: { flexDirection: 'row', gap: 16 },
+  col:    { flex: 1, paddingHorizontal: 2 },
   // ── table ──
   table: { marginTop: 4 },
   tableHeader: {
@@ -231,14 +264,18 @@ function fmtType(s: string) {
 // ─── Inline bar chart (SVG-free, pure View/height) ───────────────────────────
 function InlineBarChart({ data }: { data: { label: string; count: number }[] }) {
   const max = Math.max(...data.map(d => d.count), 1)
+  /** Bar area max height — keep total column under chartBarWrap minHeight */
+  const barMaxH = 48
   return (
     <View style={styles.chartRow}>
       {data.map((d, i) => {
-        const heightPct = Math.max(6, Math.round((d.count / max) * 56))
+        const barH = Math.max(8, Math.round((d.count / max) * barMaxH))
         return (
           <View key={i} style={styles.chartBarWrap}>
-            <Text style={styles.chartBarValue}>{d.count}</Text>
-            <View style={[styles.chartBar, { height: heightPct }]} />
+            <View style={styles.chartBarValueSlot}>
+              <Text style={styles.chartBarValue}>{d.count}</Text>
+            </View>
+            <View style={[styles.chartBar, { height: barH }]} />
             <Text style={styles.chartBarLabel}>{d.label}</Text>
           </View>
         )
