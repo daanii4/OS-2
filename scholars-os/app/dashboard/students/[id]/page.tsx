@@ -1,8 +1,6 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { IncidentsTab } from '@/components/incidents/IncidentsTab'
-import { AddSessionForm } from './add-session-form'
-import { SessionHistoryPanel } from './session-history-panel'
 import { PlansListPanel } from './plans-list-panel'
 import { AIPanel } from './ai-panel'
 import { AssignCounselorForm } from './assign-counselor-form'
@@ -17,53 +15,20 @@ import { StudentCharts } from './student-charts'
 import { normalizeStudentSection, type StudentSectionId } from './student-section-ids'
 import { StudentSectionTabs } from './student-section-tabs'
 import { ScrollReveal } from './scroll-reveal'
+import { SessionsTab } from './SessionsTab'
+import { IncidentsTabWrapper } from './IncidentsTabWrapper'
+import { TabContentSkeleton } from './TabContentSkeleton'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessStudent, getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { getTenantFromRequest } from '@/lib/tenant'
-import type { IncidentType, Severity, StudentStatus } from '@prisma/client'
+import type { StudentStatus } from '@prisma/client'
 
 type StudentDetailPageProps = {
   params: Promise<{ id: string }>
   searchParams: Promise<{ section?: string }>
 }
 
-const sessionHistorySelect = {
-  id: true,
-  session_date: true,
-  session_type: true,
-  session_format: true,
-  duration_minutes: true,
-  attendance_status: true,
-  session_summary: true,
-  goals_attempted: true,
-  goals_met: true,
-  goal_completion_rate: true,
-  created_at: true,
-} as const
-
-const incidentListSelect = {
-  id: true,
-  incident_date: true,
-  incident_type: true,
-  severity: true,
-  suspension_days: true,
-  reported_by: true,
-  description: true,
-  logged_by: true,
-  created_at: true,
-} as const
-
-const planListSelect = {
-  id: true,
-  status: true,
-  goal_statement: true,
-  target_reduction_pct: true,
-  plan_duration_weeks: true,
-  focus_behaviors: true,
-  session_frequency: true,
-  created_at: true,
-} as const
 
 export default async function StudentDetailPage({
   params,
@@ -94,7 +59,7 @@ export default async function StudentDetailPage({
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const studentScope = { student_id: studentId, tenant_id: tenant.id }
+  const studentScopeWhere = { student_id: studentId, tenant_id: tenant.id }
 
   const [student, currentIncidentCount30d] = await Promise.all([
     prisma.student.findFirst({
@@ -139,41 +104,7 @@ export default async function StudentDetailPage({
       ? Number((((baseline - currentIncidentCount30d) / baseline) * 100).toFixed(0))
       : null
 
-  /** Load heavy lists only for the active tab — avoids huge RSC payloads and DB work on every tab switch. */
-  type SessionHistoryRow = {
-    id: string
-    session_date: Date
-    session_type: string
-    session_format: string
-    duration_minutes: number | null
-    attendance_status: string
-    session_summary: string | null
-    goals_attempted: number | null
-    goals_met: number | null
-    goal_completion_rate: number | null
-    created_at: Date
-  }
-  type IncidentRow = {
-    id: string
-    incident_date: Date
-    incident_type: IncidentType
-    severity: Severity
-    suspension_days: number | null
-    reported_by: string
-    description: string | null
-    logged_by: string
-    created_at: Date
-  }
-  type PlanRow = {
-    id: string
-    status: string
-    goal_statement: string
-    target_reduction_pct: number
-    plan_duration_weeks: number
-    focus_behaviors: string[]
-    session_frequency: string
-    created_at: Date
-  }
+  // For the ProfileHeader KPI bar we need session stats — fast count queries only
   type OverviewStatusLog = {
     id: string
     old_status: StudentStatus
@@ -183,133 +114,62 @@ export default async function StudentDetailPage({
     changed_by_profile: { name: string }
   }
 
-  let sessionsForTab: SessionHistoryRow[] = []
-  let incidentsForTab: IncidentRow[] = []
-  let plansForTab: PlanRow[] = []
-
-  let totalSessions = 0
-  let attendedSessions = 0
-  const recentGoalRates: { goal_completion_rate: number | null }[] = []
+  // Overview-specific data (counselors + status logs) — only for owner/assistant on overview tab
   let counselors: { id: string; name: string; role: string }[] = []
   let statusLogs: OverviewStatusLog[] = []
+  let plansForTab: {
+    id: string
+    status: string
+    goal_statement: string
+    target_reduction_pct: number
+    plan_duration_weeks: number
+    focus_behaviors: string[]
+    session_frequency: string
+    created_at: Date
+  }[] = []
 
-  if (section === 'sessions') {
-    sessionsForTab = await prisma.session.findMany({
-      where: studentScope,
-      orderBy: { session_date: 'desc' },
-      select: sessionHistorySelect,
-    })
-    totalSessions = sessionsForTab.length
-    attendedSessions = sessionsForTab.filter(s => s.attendance_status === 'attended').length
-    const withGoals = sessionsForTab
-      .filter(s => s.goal_completion_rate !== null)
-      .slice(0, 5)
-    recentGoalRates.push(...withGoals.map(s => ({ goal_completion_rate: s.goal_completion_rate })))
-  } else if (section === 'incidents') {
-    incidentsForTab = await prisma.behavioralIncident.findMany({
-      where: studentScope,
-      orderBy: { incident_date: 'desc' },
-      select: incidentListSelect,
-    })
-    const [tc, ac] = await Promise.all([
-      prisma.session.count({ where: studentScope }),
-      prisma.session.count({
-        where: { ...studentScope, attendance_status: 'attended' },
-      }),
-    ])
-    totalSessions = tc
-    attendedSessions = ac
-    const recentRows = await prisma.session.findMany({
-      where: { ...studentScope, goal_completion_rate: { not: null } },
+  // Header stats — needed for ProfileHeader on all tabs
+  const [totalSessions, attendedSessions, recentGoalRates] = await Promise.all([
+    prisma.session.count({ where: studentScopeWhere }),
+    prisma.session.count({ where: { ...studentScopeWhere, attendance_status: 'attended' } }),
+    prisma.session.findMany({
+      where: { ...studentScopeWhere, goal_completion_rate: { not: null } },
       orderBy: { session_date: 'desc' },
       take: 5,
       select: { goal_completion_rate: true },
-    })
-    recentGoalRates.push(...recentRows)
-  } else if (section === 'overview') {
-    const overviewPromises: Promise<unknown>[] = [
-      prisma.session.count({ where: studentScope }),
-      prisma.session.count({
-        where: { ...studentScope, attendance_status: 'attended' },
+    }),
+  ])
+
+  if (section === 'overview' && isOrgAdmin) {
+    const [c, s] = await Promise.all([
+      prisma.profile.findMany({
+        where: { active: true, role: { in: ['counselor', 'assistant', 'owner'] }, tenant_id: tenant.id },
+        select: { id: true, name: true, role: true },
+        orderBy: { name: 'asc' },
       }),
-      prisma.session.findMany({
-        where: { ...studentScope, goal_completion_rate: { not: null } },
-        orderBy: { session_date: 'desc' },
-        take: 5,
-        select: { goal_completion_rate: true },
+      prisma.studentStatusLog.findMany({
+        where: { tenant_id: tenant.id, student_id: studentId },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+        select: {
+          id: true, old_status: true, new_status: true, note: true, created_at: true,
+          changed_by_profile: { select: { name: true } },
+        },
       }),
-    ]
-    if (isOrgAdmin) {
-      overviewPromises.push(
-        prisma.profile.findMany({
-          where: {
-            active: true,
-            role: { in: ['counselor', 'assistant', 'owner'] },
-            tenant_id: tenant.id,
-          },
-          select: { id: true, name: true, role: true },
-          orderBy: { name: 'asc' },
-        }),
-        prisma.studentStatusLog.findMany({
-          where: { tenant_id: tenant.id, student_id: studentId },
-          orderBy: { created_at: 'desc' },
-          take: 50,
-          select: {
-            id: true,
-            old_status: true,
-            new_status: true,
-            note: true,
-            created_at: true,
-            changed_by_profile: { select: { name: true } },
-          },
-        })
-      )
-    }
-    const results = await Promise.all(overviewPromises)
-    totalSessions = results[0] as number
-    attendedSessions = results[1] as number
-    recentGoalRates.push(...(results[2] as { goal_completion_rate: number | null }[]))
-    if (isOrgAdmin) {
-      counselors = results[3] as typeof counselors
-      statusLogs = results[4] as typeof statusLogs
-    }
-  } else if (section === 'plans') {
+    ])
+    counselors = c
+    statusLogs = s as OverviewStatusLog[]
+  }
+
+  if (section === 'plans') {
     plansForTab = await prisma.successPlan.findMany({
-      where: studentScope,
+      where: studentScopeWhere,
       orderBy: { created_at: 'desc' },
-      select: planListSelect,
+      select: {
+        id: true, status: true, goal_statement: true, target_reduction_pct: true,
+        plan_duration_weeks: true, focus_behaviors: true, session_frequency: true, created_at: true,
+      },
     })
-    const [tc, ac] = await Promise.all([
-      prisma.session.count({ where: studentScope }),
-      prisma.session.count({
-        where: { ...studentScope, attendance_status: 'attended' },
-      }),
-    ])
-    totalSessions = tc
-    attendedSessions = ac
-    const recentRows = await prisma.session.findMany({
-      where: { ...studentScope, goal_completion_rate: { not: null } },
-      orderBy: { session_date: 'desc' },
-      take: 5,
-      select: { goal_completion_rate: true },
-    })
-    recentGoalRates.push(...recentRows)
-  } else {
-    const [tc, ac, recentRows] = await Promise.all([
-      prisma.session.count({ where: studentScope }),
-      prisma.session.count({
-        where: { ...studentScope, attendance_status: 'attended' },
-      }),
-      prisma.session.findMany({
-        where: { ...studentScope, goal_completion_rate: { not: null } },
-        orderBy: { session_date: 'desc' },
-        take: 5,
-        select: { goal_completion_rate: true },
-      }),
-    ])
-    totalSessions = tc
-    attendedSessions = ac
-    recentGoalRates.push(...recentRows)
   }
 
   const avgGoalRate =
@@ -383,17 +243,14 @@ export default async function StudentDetailPage({
 
       <StudentSectionTabs studentId={student.id} active={section} />
       {section === 'sessions' && (
-        <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-          <AddSessionForm studentId={student.id} />
-          <SessionHistoryPanel sessions={sessionsForTab} />
-        </div>
+        <Suspense fallback={<TabContentSkeleton />}>
+          <SessionsTab studentId={student.id} tenantId={tenant.id} />
+        </Suspense>
       )}
       {section === 'incidents' && (
-        <IncidentsTab
-          studentId={student.id}
-          initialIncidents={incidentsForTab}
-          canDeleteIncidents={isOrgAdmin}
-        />
+        <Suspense fallback={<TabContentSkeleton />}>
+          <IncidentsTabWrapper studentId={student.id} tenantId={tenant.id} canDeleteIncidents={isOrgAdmin} />
+        </Suspense>
       )}
       {section === 'overview' && (
         <>
@@ -608,14 +465,18 @@ export default async function StudentDetailPage({
         </>
       )}
       {section === 'charts' && (
-        <ScrollReveal>
-          <StudentCharts studentId={student.id} />
-        </ScrollReveal>
+        <Suspense fallback={<TabContentSkeleton />}>
+          <ScrollReveal>
+            <StudentCharts studentId={student.id} />
+          </ScrollReveal>
+        </Suspense>
       )}
       {section === 'ai' && (
-        <ScrollReveal>
-          <AIPanel studentId={student.id} escalationActive={student.escalation_active} />
-        </ScrollReveal>
+        <Suspense fallback={<div className="os-card animate-pulse h-48" />}>
+          <ScrollReveal>
+            <AIPanel studentId={student.id} escalationActive={student.escalation_active} />
+          </ScrollReveal>
+        </Suspense>
       )}
       {section === 'plans' && (
         <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
