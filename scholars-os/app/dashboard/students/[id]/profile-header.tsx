@@ -171,8 +171,7 @@ export function ProfileHeader({
           ].map(stat => (
             <div
               key={stat.label}
-              className="py-4 pr-4"
-              style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}
+              className="border-r border-white/[0.06] py-4 pl-5 pr-4 sm:pl-6 last:border-r-0"
             >
               <p
                 style={{
