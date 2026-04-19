@@ -233,6 +233,21 @@
   }
 }
 
+/*
+ * Loading-screen static logo placeholder.
+ *
+ * `LoadingScreen` (server component) emits an <img data-loading-static-logo>
+ * so the brand mark paints with the very first byte on the user's first visit
+ * — before Lottie has loaded. Once `LoadingScreenLogo` confirms Lottie is
+ * cached, it sets `data-lottie-cached="1"` on <html>. From that point on,
+ * every server-rendered loading screen in the same session hides the static
+ * image instantly via this CSS rule, so the user only ever sees the animated
+ * logo on subsequent navigations.
+ */
+html[data-lottie-cached='1'] [data-loading-static-logo] {
+  display: none !important;
+}
+
 /* OS quarter-circle motif — avatars, badges, small accents */
 .os-motif {
   border-radius: var(--radius-os-motif);

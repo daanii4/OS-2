@@ -15,6 +15,13 @@ const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
 let cachedAnimationData: unknown | null = null
 
+const LOTTIE_CACHED_ATTR = 'data-lottie-cached'
+
+function markLottieCached() {
+  if (typeof document === 'undefined') return
+  document.documentElement.setAttribute(LOTTIE_CACHED_ATTR, '1')
+}
+
 export function LoadingScreenLogo() {
   const reducedMotion = usePrefersReducedMotion()
   const lottieRef = useRef<LottieRefCurrentProps>(null)
@@ -23,19 +30,25 @@ export function LoadingScreenLogo() {
   )
   const [lottieReady, setLottieReady] = useState(false)
 
-  // Skip the static placeholder once the animation has loaded once in this
-  // session — by then Lottie's chunk is cached and renders fast.
+  // If Lottie was already cached this session, the <img> is hidden by CSS
+  // (see globals.css `html[data-lottie-cached] [data-loading-static-logo]`)
+  // and the animation renders directly. The flag also tells us not to
+  // bother fading the static image in the React tree.
   const skipStatic = cachedAnimationData !== null
 
   useEffect(() => {
     if (reducedMotion) return
-    if (cachedAnimationData !== null) return
+    if (cachedAnimationData !== null) {
+      markLottieCached()
+      return
+    }
     let cancelled = false
     import('@/public/animations/logo.json')
       .then(mod => {
         if (cancelled) return
         const data = (mod as { default?: unknown }).default ?? (mod as unknown)
         cachedAnimationData = data
+        markLottieCached()
         setAnimationData(data)
       })
       .catch(() => {
@@ -55,11 +68,6 @@ export function LoadingScreenLogo() {
 
   return (
     <div className="relative z-10 h-[96px] w-[96px]">
-      {/*
-        Static logo — emitted as SSR HTML so it paints with the first byte
-        on the user's very first visit. Hidden on subsequent loading
-        screens once the animation chunk is cached.
-      */}
       {!skipStatic ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -69,6 +77,7 @@ export function LoadingScreenLogo() {
           height={96}
           fetchPriority="high"
           decoding="async"
+          data-loading-static-logo=""
           className="absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-out"
           style={{
             opacity: showStatic ? 1 : 0,
