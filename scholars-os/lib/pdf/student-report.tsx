@@ -1,6 +1,8 @@
+import path from 'path'
 import {
   Document,
   Font,
+  Image,
   Page,
   StyleSheet,
   Text,
@@ -17,6 +19,17 @@ const GRAY_300  = '#ddddd5'
 const WHITE     = '#ffffff'
 const RED       = '#c94a4a'
 const GREEN     = '#3a7d44'
+const COVER_BG  = '#2D3820'
+const COVER_GOLD = '#D6A033'
+const AI_CARD_BG = '#f8faf5'
+
+/** Absolute path for react-pdf Image (Node renderToBuffer). */
+function resolvePublicAsset(relativePath: string): string {
+  return path.join(process.cwd(), 'public', relativePath.replace(/^\//, ''))
+}
+
+/** Rasterized from logo-static.svg for react-pdf (PNG); regenerate if mark changes. */
+const COVER_LOGO_PATH = resolvePublicAsset('static/logo-report.png')
 
 // Register a monospace family so numeric data renders consistently
 Font.registerHyphenationCallback(word => [word])
@@ -32,6 +45,74 @@ const styles = StyleSheet.create({
     color: OLIVE_800,
     lineHeight: 1.5,
   },
+  // ── cover (full bleed; Page uses wrap={false}) ──
+  coverPage: {
+    fontFamily: 'Helvetica',
+    backgroundColor: COVER_BG,
+    padding: 0,
+    fontSize: 9,
+    color: WHITE,
+  },
+  coverBackground: {
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: '100%',
+  },
+  coverAccentBar: {
+    width: 5,
+    backgroundColor: COVER_GOLD,
+  },
+  coverInner: {
+    flex: 1,
+    padding: 64,
+    justifyContent: 'space-between',
+  },
+  coverTop: {},
+  coverHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  coverLogo: { width: 72, height: 72, marginRight: 16 },
+  coverBrandBlock: { flex: 1 },
+  coverBrand: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: WHITE },
+  coverBrandSub: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.35)',
+    letterSpacing: 1.2,
+    marginTop: 4,
+  },
+  coverDivider: { width: 64, height: 2, backgroundColor: COVER_GOLD, marginBottom: 28 },
+  coverReportLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  coverStudentName: {
+    fontSize: 36,
+    fontFamily: 'Helvetica-Bold',
+    color: COVER_GOLD,
+    lineHeight: 1.15,
+  },
+  coverMeta: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: 14,
+    lineHeight: 1.5,
+  },
+  coverFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: 32,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  coverFooterLeft: { fontSize: 9, color: 'rgba(255,255,255,0.5)', maxWidth: '70%' },
+  coverFooterRight: { fontSize: 9, color: 'rgba(255,255,255,0.3)' },
   // ── header ──
   header: {
     flexDirection: 'row',
@@ -108,6 +189,38 @@ const styles = StyleSheet.create({
     borderBottomColor: GRAY_300,
     lineHeight: 1.35,
   },
+  // ── AI analysis (accent strip — avoid borderLeft streaks) ──
+  aiCardOuter: {
+    flexDirection: 'row',
+    backgroundColor: AI_CARD_BG,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  aiCardAccent: {
+    width: 3,
+    backgroundColor: GOLD_500,
+  },
+  aiCardInner: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  aiCardLabel: {
+    fontSize: 7.5,
+    letterSpacing: 0.8,
+    color: OLIVE_600,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  aiCardBody: { fontSize: 9, lineHeight: 1.55, color: OLIVE_800 },
+  aiInterventionTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: OLIVE_800,
+    marginBottom: 4,
+  },
+  aiSource: { fontSize: 7.5, color: OLIVE_600, marginTop: 6 },
   // ── inline bar chart ──
   /** minHeight must exceed value row + max bar + axis labels or Yoga overlays children (was height: 60 with bars up to 56px). */
   chartRow: {
@@ -264,7 +377,8 @@ export type StudentReportData = {
     created_at: Date
   } | null
   generatedAt: Date
-  generatedBy: string
+  /** Cover subtitle, e.g. monthly incident trend window */
+  reportPeriodLabel?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -302,38 +416,72 @@ function InlineBarChart({ data }: { data: { label: string; count: number }[] }) 
 // ─── Document ────────────────────────────────────────────────────────────────
 export function StudentReportDocument({ data }: { data: StudentReportData }) {
   const { student } = data
+  const preparedLine = `Prepared by Operation Scholars · ${fmtDate(data.generatedAt)}`
+  const coverMetaLines = [
+    `Grade ${student.grade} · ${student.school}`,
+    student.district,
+    `Generated ${fmtDate(data.generatedAt)}`,
+    preparedLine,
+  ]
 
   return (
     <Document
       title={`Progress Report — ${student.first_name} ${student.last_name}`}
-      author="Operation Scholars OS"
+      author="Operation Scholars"
     >
-      <Page size="LETTER" style={styles.page}>
+      <Page size="LETTER" style={styles.coverPage} wrap={false}>
+        <View style={styles.coverBackground}>
+          <View style={styles.coverAccentBar} />
+          <View style={styles.coverInner}>
+            <View style={styles.coverTop}>
+              <View style={styles.coverHeader}>
+                <Image style={styles.coverLogo} src={COVER_LOGO_PATH} />
+                <View style={styles.coverBrandBlock}>
+                  <Text style={styles.coverBrand}>Operation Scholars</Text>
+                  <Text style={styles.coverBrandSub}>BEHAVIORAL INTELLIGENCE PLATFORM</Text>
+                </View>
+              </View>
+              <View style={styles.coverDivider} />
+              <Text style={styles.coverReportLabel}>Student progress report</Text>
+              <Text style={styles.coverStudentName}>
+                {student.first_name} {student.last_name}
+              </Text>
+              <Text style={styles.coverMeta}>{coverMetaLines.join('\n')}</Text>
+              {data.reportPeriodLabel ? (
+                <Text style={[styles.coverMeta, { marginTop: 10, fontSize: 9 }]}>
+                  {data.reportPeriodLabel}
+                </Text>
+              ) : null}
+            </View>
+            <View style={styles.coverFooter}>
+              <Text style={styles.coverFooterLeft}>
+                Confidential student education record. Protected under FERPA. For authorized school
+                and counseling use only.
+              </Text>
+              <Text style={styles.coverFooterRight}>Operation Scholars</Text>
+            </View>
+          </View>
+        </View>
+      </Page>
 
+      <Page size="LETTER" style={styles.page}>
         {/* ── Header ── */}
         <View style={styles.header}>
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={styles.logoBox}>
-                <Text style={styles.logoText}>OS</Text>
-              </View>
-              <View>
-                <Text style={styles.orgName}>Operation Scholars</Text>
-                <Text style={styles.orgSub}>Behavioral Intelligence Platform</Text>
-              </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image style={{ width: 28, height: 28, marginRight: 8 }} src={COVER_LOGO_PATH} />
+            <View>
+              <Text style={styles.orgName}>Operation Scholars</Text>
+              <Text style={styles.orgSub}>Behavioral intelligence platform</Text>
             </View>
           </View>
           <View>
             <Text style={styles.reportTitle}>
               {student.first_name} {student.last_name}
             </Text>
+            <Text style={styles.reportMeta}>{preparedLine}</Text>
             <Text style={styles.reportMeta}>
-              Progress Report  ·  {fmtDate(data.generatedAt)}
+              Grade {student.grade} · {student.school} · {student.district}
             </Text>
-            <Text style={styles.reportMeta}>
-              Grade {student.grade}  ·  {student.school}  ·  {student.district}
-            </Text>
-            <Text style={styles.reportMeta}>Generated by {data.generatedBy}</Text>
           </View>
         </View>
 
@@ -469,25 +617,35 @@ export function StudentReportDocument({ data }: { data: StudentReportData }) {
               AI Analysis — {fmtDate(data.latestAnalysis.created_at)}
             </Text>
 
-            <Text style={[styles.label, { marginBottom: 4 }]}>Problem analysis</Text>
-            <Text style={styles.body}>{data.latestAnalysis.problem_analysis}</Text>
+            <View style={styles.aiCardOuter} wrap={false}>
+              <View style={styles.aiCardAccent} />
+              <View style={styles.aiCardInner}>
+                <Text style={styles.aiCardLabel}>Problem analysis</Text>
+                <Text style={styles.aiCardBody}>{data.latestAnalysis.problem_analysis}</Text>
+              </View>
+            </View>
 
-            <View style={styles.divider} />
-
-            <Text style={[styles.label, { marginBottom: 4 }]}>Next session guide</Text>
-            <Text style={styles.body}>{data.latestAnalysis.next_session_guide}</Text>
+            <View style={styles.aiCardOuter} wrap={false}>
+              <View style={styles.aiCardAccent} />
+              <View style={styles.aiCardInner}>
+                <Text style={styles.aiCardLabel}>Next session guide</Text>
+                <Text style={styles.aiCardBody}>{data.latestAnalysis.next_session_guide}</Text>
+              </View>
+            </View>
 
             {data.latestAnalysis.recommended_interventions?.length > 0 && (
               <>
-                <View style={styles.divider} />
-                <Text style={[styles.label, { marginBottom: 6 }]}>Recommended interventions</Text>
+                <Text style={[styles.label, { marginBottom: 8 }]}>Recommended interventions</Text>
                 {data.latestAnalysis.recommended_interventions.slice(0, 3).map((item, i) => (
-                  <View key={i} style={{ marginBottom: 8, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: GOLD_500 }}>
-                    <Text style={styles.bodyMed}>{item.intervention}</Text>
-                    <Text style={[styles.body, { marginTop: 2 }]}>{item.rationale}</Text>
-                    <Text style={[styles.caption, { marginTop: 2 }]}>
-                      Source: {item.source.name}  ·  {item.source.url}
-                    </Text>
+                  <View key={i} style={styles.aiCardOuter} wrap={false}>
+                    <View style={styles.aiCardAccent} />
+                    <View style={styles.aiCardInner}>
+                      <Text style={styles.aiInterventionTitle}>{item.intervention}</Text>
+                      <Text style={styles.aiCardBody}>{item.rationale}</Text>
+                      <Text style={styles.aiSource}>
+                        Source: {item.source.name} · {item.source.url}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </>

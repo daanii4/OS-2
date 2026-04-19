@@ -151,6 +151,11 @@ export async function GET(_req: Request, ctx: RouteContext) {
     count: monthlyCountsRaw[i],
   }))
 
+  const reportPeriodLabel = `Monthly incident chart: ${months[0].start.toLocaleString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  })} – ${months[5].end.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`
+
   const interventions = (latestAnalysis?.recommended_interventions ?? []) as Intervention[]
 
   try {
@@ -175,7 +180,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
               }
             : null,
           generatedAt: now,
-          generatedBy: profile.name,
+          reportPeriodLabel,
         }}
       />
     )
