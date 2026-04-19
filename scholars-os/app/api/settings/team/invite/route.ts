@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
   const loginUrl = `${appUrl}/login?invite=1`
   const tempPassword = generateInviteTempPassword()
 
+  // If invitees get a second email with only a password, disable that template in
+  // Supabase Dashboard → Authentication → Emails (our Resend email below is the full invite).
   const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password: tempPassword,

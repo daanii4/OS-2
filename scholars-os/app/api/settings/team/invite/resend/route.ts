@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
   const loginUrl = `${appUrl}/login?invite=1`
   const tempPassword = generateInviteTempPassword()
 
+  // If a duplicate password-only email appears, disable the matching Auth template in Supabase.
   const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(existingProfile.id, {
     password: tempPassword,
     user_metadata: {

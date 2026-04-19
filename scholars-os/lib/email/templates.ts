@@ -47,71 +47,61 @@ export async function sendInviteTempPasswordEmail(props: {
     )
     .join('')
 
+  /** Single compact email: welcome, bullets, password + CTA + link in one block (no duplicate-thread feel). */
   const html = `
 <!DOCTYPE html>
 <html>
-<body style="font-family:system-ui,sans-serif;background:#f8fafc;margin:0;padding:40px 20px;">
-  <div style="max-width:560px;margin:0 auto;background:white;border-radius:12px;
-              border:1px solid #e2e8f0;overflow:hidden;">
+<body style="font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;margin:0;padding:24px 16px;">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden;">
 
-    <div style="background:#5C6B46;padding:32px 40px;">
-      <p style="color:#D6A033;font-size:12px;font-weight:600;letter-spacing:0.08em;
-                margin:0 0 8px;text-transform:uppercase;">Operation Scholars</p>
-      <h1 style="color:white;font-size:22px;font-weight:700;margin:0;">
-        Welcome to Operation Scholars OS
+    <div style="background:#5C6B46;padding:20px 24px;">
+      <p style="color:#D6A033;font-size:11px;font-weight:600;letter-spacing:0.1em;margin:0 0 6px;text-transform:uppercase;">Operation Scholars</p>
+      <h1 style="color:#ffffff;font-size:20px;font-weight:700;line-height:1.25;margin:0;">
+        You&apos;re invited to Operation Scholars OS
       </h1>
     </div>
 
-    <div style="padding:32px 40px;">
-      <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px;">
+    <div style="padding:24px;">
+      <p style="color:#1e293b;font-size:15px;line-height:1.55;margin:0 0 14px;">
         Hi ${escapeHtml(name)},
       </p>
-      <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 24px;">
-        <strong>${escapeHtml(invitedBy)}</strong> has added you to <strong>${escapeHtml(tenantName)}</strong>
-        as a ${escapeHtml(ROLE_LABEL[role])}.
+      <p style="color:#334155;font-size:14px;line-height:1.55;margin:0 0 18px;">
+        <strong>${escapeHtml(invitedBy)}</strong> added you to <strong>${escapeHtml(tenantName)}</strong> as a ${escapeHtml(ROLE_LABEL[role])}.
       </p>
 
-      <p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 12px;">
-        Here's what's waiting for you:
-      </p>
-      <ul style="padding-left:20px;margin:0 0 28px;">${bullets}</ul>
+      <p style="color:#334155;font-size:13px;font-weight:600;margin:0 0 8px;">What you can do in the app</p>
+      <ul style="padding-left:18px;margin:0 0 20px;">${bullets}</ul>
 
-      <p style="color:#374151;font-size:14px;margin:0 0 12px;">
-        Sign in using your email and this <strong>temporary password</strong> (copy it exactly):
-      </p>
-      <div style="background:#f1f5f9;border-radius:8px;padding:16px 20px;margin:0 0 20px;
-                  font-family:ui-monospace,monospace;font-size:14px;word-break:break-all;
-                  color:#0f172a;border:1px solid #e2e8f0;">
-        ${escapeHtml(tempPassword)}
+      <div style="border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:16px;margin:0;">
+        <p style="color:#334155;font-size:13px;font-weight:600;margin:0 0 10px;">Sign in (everything you need)</p>
+        <p style="color:#64748b;font-size:12px;margin:0 0 8px;">Use your email address and this temporary password (copy exactly):</p>
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;margin:0 0 14px;
+                    font-family:ui-monospace,Consolas,monospace;font-size:14px;letter-spacing:0.02em;word-break:break-all;color:#0f172a;">
+          ${escapeHtml(tempPassword)}
+        </div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 12px;">
+          <tr>
+            <td style="border-radius:8px;background:#5C6B46;text-align:center;">
+              <a href="${escapeHtml(loginUrl)}"
+                 style="display:block;padding:12px 20px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+                Open sign in
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="color:#64748b;font-size:11px;margin:0 0 6px;">Or paste this link in your browser:</p>
+        <p style="margin:0;padding:10px 12px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;
+                  font-family:ui-monospace,Consolas,monospace;font-size:12px;word-break:break-all;color:#0f172a;line-height:1.45;">
+          ${escapeHtml(loginUrl)}
+        </p>
       </div>
 
-      <p style="color:#374151;font-size:14px;margin:0 0 10px;font-weight:600;">
-        Sign in to Operation Scholars OS
-      </p>
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
-        <tr>
-          <td style="border-radius:8px;background:#5C6B46;">
-            <a href="${escapeHtml(loginUrl)}"
-               style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;
-                      color:#ffffff;text-decoration:none;border-radius:8px;">
-              Open sign in
-            </a>
-          </td>
-        </tr>
-      </table>
-
-      <p style="color:#64748b;font-size:12px;margin:0 0 6px;">If the button does not work, copy and paste this link into your browser:</p>
-      <p style="margin:0 0 24px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
-                font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;color:#0f172a;line-height:1.5;">
-        ${escapeHtml(loginUrl)}
+      <p style="color:#64748b;font-size:13px;line-height:1.5;margin:18px 0 0;">
+        After you sign in, you&apos;ll set a new password and complete a short onboarding.
       </p>
 
-      <p style="color:#64748b;font-size:13px;margin:0;line-height:1.5;">
-        After you sign in, you will choose a new password, then complete a short onboarding.
-      </p>
-
-      <p style="color:#9ca3af;font-size:12px;margin:32px 0 0;">
-        If you weren't expecting this invite, you can safely ignore this email.
+      <p style="color:#94a3b8;font-size:11px;line-height:1.45;margin:22px 0 0;">
+        If you didn&apos;t expect this message, you can ignore it.
       </p>
     </div>
   </div>
@@ -123,12 +113,13 @@ export async function sendInviteTempPasswordEmail(props: {
     '',
     `${invitedBy} added you to ${tenantName} as a ${ROLE_LABEL[role]}.`,
     '',
-    'Sign in here (copy the full line into your browser if needed):',
-    loginUrl,
-    '',
+    '--- Sign in ---',
+    `Open: ${loginUrl}`,
     `Temporary password: ${tempPassword}`,
     '',
-    'After sign-in you will set a new password and complete onboarding.',
+    'After sign-in, set a new password and complete onboarding.',
+    '',
+    'If you did not expect this email, you can ignore it.',
   ].join('\n')
 
   const result = await sendTransactionalEmail({

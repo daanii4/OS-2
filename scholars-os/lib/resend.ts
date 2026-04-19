@@ -27,12 +27,15 @@ export async function sendTransactionalEmail(params: {
     return { ok: false, error: 'Email not configured' }
   }
 
+  const replyTo = process.env.RESEND_REPLY_TO?.trim()
+
   const result = await resend.emails.send({
     from,
     to: params.to,
     subject: params.subject,
     html: params.html,
     ...(params.text ? { text: params.text } : {}),
+    ...(replyTo ? { replyTo } : {}),
     ...(params.tags ? { tags: params.tags } : {}),
   })
 
