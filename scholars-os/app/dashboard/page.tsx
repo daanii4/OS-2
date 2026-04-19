@@ -53,8 +53,11 @@ export default async function DashboardPage() {
     AND: [{ escalation_active: true }, ...studentScopeClauses],
   }
 
-  // Fast queries for the shell: escalation banner, caseload total/schools,
-  // greeting count. Heavy aggregations stream in below behind Suspense.
+  // Fast queries for the shell: escalation banner (with reason), caseload
+  // total/schools, greeting count. Heavy aggregations stream in below behind
+  // Suspense. The escalated student + its latest escalation reason ship in a
+  // single round-trip via `include` so we don't pay a second sequential
+  // query for the banner copy.
   const [
     escalatedStudent,
     caseloadTotalCount,
@@ -63,7 +66,17 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.student.findFirst({
       where: escalationWhere,
-      select: { id: true, first_name: true, last_name: true },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        ai_analyses: {
+          where: { escalation_flag: true },
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          select: { escalation_reason: true },
+        },
+      },
       orderBy: { updated_at: 'desc' },
     }),
     prisma.student.count({ where: studentScope }),
@@ -80,22 +93,12 @@ export default async function DashboardPage() {
       : Promise.resolve([]),
   ])
 
-  const escalatedAnalysis = escalatedStudent
-    ? await prisma.aiAnalysis.findFirst({
-        where: {
-          student_id: escalatedStudent.id,
-          escalation_flag: true,
-          student: studentScope,
-        },
-        select: { escalation_reason: true },
-        orderBy: { created_at: 'desc' },
-      })
-    : null
-
   const escalatedStudentId = escalatedStudent?.id ?? null
   const escalatedStudentName = escalatedStudent
     ? `${escalatedStudent.first_name} ${escalatedStudent.last_name}`
     : null
+  const escalatedReason =
+    escalatedStudent?.ai_analyses[0]?.escalation_reason ?? null
   const caseloadSchools = caseloadSchoolRows.map(row => row.school)
 
   const desktopBody = (
@@ -190,7 +193,7 @@ export default async function DashboardPage() {
       showOrgNav={isOrgView}
       escalatedStudentId={escalatedStudentId}
       escalatedStudentName={escalatedStudentName}
-      escalationReason={escalatedAnalysis?.escalation_reason ?? null}
+      escalationReason={escalatedReason}
       desktopChildren={desktopBody}
       mobileChildren={mobileBody}
       greetingChildren={

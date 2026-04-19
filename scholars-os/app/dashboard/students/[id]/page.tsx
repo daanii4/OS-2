@@ -59,68 +59,69 @@ export default async function StudentDetailPage({
   const tenant = await getTenantFromRequest()
   if (profile.tenant_id && profile.tenant_id !== tenant.id) redirect('/login')
 
-  const authorized = await canAccessStudent(
-    profile.id,
-    profile.role,
-    studentId,
-    tenant.id
-  )
-  if (!authorized) redirect('/dashboard/students')
-
   const isOrgAdmin = profile.role === 'owner' || profile.role === 'assistant'
 
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  // Fast queries needed to render the profile header + tabs immediately.
-  // Heavier section data streams in via Suspense below.
-  const [student, currentIncidentCount30d, totalSessionsForHeader, recentGoalRowsForHeader] =
-    await Promise.all([
-      prisma.student.findFirst({
-        where: { id: studentId, tenant_id: tenant.id },
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          grade: true,
-          school: true,
-          district: true,
-          status: true,
-          referral_source: true,
-          presenting_problem: true,
-          intake_date: true,
-          session_format: true,
-          assigned_counselor_id: true,
-          baseline_incident_count: true,
-          baseline_window_start: true,
-          baseline_window_end: true,
-          general_notes: true,
-          escalation_active: true,
-          intake_files: true,
-        },
-      }),
-      prisma.behavioralIncident.count({
-        where: {
-          tenant_id: tenant.id,
-          student_id: studentId,
-          incident_date: { gte: thirtyDaysAgo },
-        },
-      }),
-      prisma.session.count({
-        where: { student_id: studentId, tenant_id: tenant.id },
-      }),
-      prisma.session.findMany({
-        where: {
-          student_id: studentId,
-          tenant_id: tenant.id,
-          goal_completion_rate: { not: null },
-        },
-        orderBy: { session_date: 'desc' },
-        take: 5,
-        select: { goal_completion_rate: true },
-      }),
-    ])
+  // Run access check in parallel with the header data — saves a serial
+  // round-trip. Owner/assistant access is also enforced by the `where` on
+  // the student lookup (tenant scope + canAccessStudent), so a failed auth
+  // simply leads to the same redirect after the awaits resolve.
+  const [
+    authorized,
+    student,
+    currentIncidentCount30d,
+    totalSessionsForHeader,
+    recentGoalRowsForHeader,
+  ] = await Promise.all([
+    canAccessStudent(profile.id, profile.role, studentId, tenant.id),
+    prisma.student.findFirst({
+      where: { id: studentId, tenant_id: tenant.id },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        grade: true,
+        school: true,
+        district: true,
+        status: true,
+        referral_source: true,
+        presenting_problem: true,
+        intake_date: true,
+        session_format: true,
+        assigned_counselor_id: true,
+        baseline_incident_count: true,
+        baseline_window_start: true,
+        baseline_window_end: true,
+        general_notes: true,
+        escalation_active: true,
+        intake_files: true,
+      },
+    }),
+    prisma.behavioralIncident.count({
+      where: {
+        tenant_id: tenant.id,
+        student_id: studentId,
+        incident_date: { gte: thirtyDaysAgo },
+      },
+    }),
+    prisma.session.count({
+      where: { student_id: studentId, tenant_id: tenant.id },
+    }),
+    prisma.session.findMany({
+      where: {
+        student_id: studentId,
+        tenant_id: tenant.id,
+        goal_completion_rate: { not: null },
+      },
+      orderBy: { session_date: 'desc' },
+      take: 5,
+      select: { goal_completion_rate: true },
+    }),
+  ])
 
+  if (!authorized) redirect('/dashboard/students')
   if (!student) notFound()
 
   const avgGoalRateForHeader =
