@@ -117,6 +117,29 @@ export function StudentsPageClient({
 
   return (
     <div className="px-5 py-5 md:px-6">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <Link
+            href="/dashboard"
+            className="os-btn-secondary inline-flex w-full shrink-0 justify-center sm:w-auto"
+          >
+            Back to dashboard
+          </Link>
+          <p className="os-caption text-center sm:text-left">
+            Signed in as {profileName} ({profileRole})
+          </p>
+        </div>
+        {canCreateStudents ? (
+          <button
+            type="button"
+            className="os-btn-primary hidden shrink-0 md:inline-flex"
+            onClick={() => setModalOpen(true)}
+          >
+            Add Student to Caseload
+          </button>
+        ) : null}
+      </div>
+
       <StudentsHeader
         totalCount={students.length}
         filteredCount={filteredStudents.length}
@@ -124,26 +147,6 @@ export function StudentsPageClient({
         onFilterChange={setActiveFilter}
         onSearchChange={setQuery}
       />
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="os-caption">
-          Signed in as {profileName} ({profileRole})
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {canCreateStudents && (
-            <button
-              type="button"
-              className="os-btn-primary hidden md:inline-flex"
-              onClick={() => setModalOpen(true)}
-            >
-              Add Student to Caseload
-            </button>
-          )}
-          <Link href="/dashboard" className="os-btn-secondary">
-            Back to dashboard
-          </Link>
-        </div>
-      </div>
 
       {!canCreateStudents && (
         <p className="mb-4 os-body text-[var(--text-secondary)]">

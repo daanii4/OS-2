@@ -50,11 +50,11 @@ export function StudentsHeader({
   return (
     <div
       className="
-      mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3
-      border-b border-[rgba(92,107,70,0.12)] pb-5
+      mb-5 flex flex-col gap-4 border-b border-[rgba(92,107,70,0.12)] pb-5
+      md:flex-row md:flex-wrap md:items-start md:justify-between md:gap-x-4 md:gap-y-3
     "
     >
-      <div className="flex flex-col gap-0.5">
+      <div className="flex min-w-0 flex-col gap-0.5">
         <h1
           className="
           text-[22px] font-normal leading-tight tracking-[-0.01em] text-[#1e2517]
@@ -73,8 +73,12 @@ export function StudentsHeader({
         </p>
       </div>
 
-      <div className="flex w-full items-center gap-2 md:w-auto">
-        <div className="relative flex flex-1 items-center md:flex-none">
+      {/*
+        Mobile: search full width, then filters on their own row below.
+        md+: search + filters inline to the right of the title block.
+      */}
+      <div className="flex min-w-0 w-full flex-col gap-3 md:w-auto md:max-w-[min(100%,36rem)] md:flex-1 md:flex-row md:items-center md:justify-end md:gap-3">
+        <div className="relative min-w-0 w-full md:w-[min(100%,240px)] md:flex-none">
           <Search
             size={14}
             className="
@@ -90,16 +94,16 @@ export function StudentsHeader({
             placeholder="Search students…"
             aria-label="Search students by name or school"
             className="
-              h-[36px] w-full pl-8 pr-8
+              h-[36px] w-full min-w-0 pl-8 pr-8
               rounded-full border border-[rgba(92,107,70,0.18)] bg-[#eef0e8]
               font-sans text-[16px] text-[#1e2517] placeholder:text-[#8a9e69] outline-none
-              transition-[width,border-color,box-shadow,background-color]
+              transition-[border-color,box-shadow,background-color]
               duration-[var(--duration-normal,220ms)]
               ease-[cubic-bezier(0.4,0,0.2,1)]
               hover:border-[rgba(92,107,70,0.35)]
-              focus:w-full focus:border-[#5C6B46] focus:bg-white
+              focus:border-[#5C6B46] focus:bg-white
               focus:shadow-[0_0_0_3px_rgba(92,107,70,0.12)]
-              md:w-[200px] md:text-[13px] md:focus:w-[240px]
+              md:text-[13px]
             "
           />
           {searchValue ? (
@@ -128,12 +132,12 @@ export function StudentsHeader({
         </div>
 
         <div
-          className="hidden h-5 w-px flex-shrink-0 bg-[rgba(92,107,70,0.15)] md:block"
+          className="hidden h-5 w-px flex-shrink-0 self-stretch bg-[rgba(92,107,70,0.15)] md:block"
           aria-hidden="true"
         />
 
         <div
-          className="flex flex-shrink-0 flex-wrap items-center gap-1.5"
+          className="flex w-full min-w-0 flex-wrap items-center gap-1.5 md:w-auto md:flex-nowrap"
           role="group"
           aria-label="Filter students"
         >
