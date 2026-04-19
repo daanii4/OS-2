@@ -1,15 +1,14 @@
-import { LoadingScreenAnimation } from './loading-screen-animation'
+import { LoadingScreenLogo } from './loading-screen-animation'
 
 type LoadingScreenProps = {
   message?: string
 }
 
 /**
- * Server-rendered loading screen. The static logo image is emitted as inline
- * HTML so it paints **before any JavaScript runs**, eliminating the blank
- * square previously caused by waiting for Lottie to hydrate. Once JS loads,
- * `LoadingScreenAnimation` mounts a Lottie player and crossfades it over
- * the static image.
+ * Server-rendered loading screen. `LoadingScreenLogo` paints a static logo
+ * image with the SSR HTML so the brand is visible before any JS runs, then
+ * crossfades a Lottie animation over it once hydrated — no duplicate logo,
+ * no blank square.
  *
  * Background, gradient, title, and progress bar are all pure CSS — no
  * client work required for the user to see the brand.
@@ -34,27 +33,7 @@ export function LoadingScreen({
         aria-hidden
       />
 
-      <div className="relative z-10 h-[96px] w-[96px]">
-        {/*
-          Static logo — paints with the SSR HTML, no JS required. Becomes the
-          LCP element on the loading screen. The animated Lottie below fades
-          in on top once mounted.
-        */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo-3d.webp"
-          alt="Operation Scholars"
-          width={96}
-          height={96}
-          fetchPriority="high"
-          decoding="async"
-          className="absolute inset-0 h-full w-full object-contain"
-          style={{
-            filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
-          }}
-        />
-        <LoadingScreenAnimation />
-      </div>
+      <LoadingScreenLogo />
 
       <div className="relative z-10 text-center">
         <p

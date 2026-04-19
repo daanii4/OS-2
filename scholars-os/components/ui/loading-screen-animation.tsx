@@ -5,16 +5,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { LottieRefCurrentProps } from 'lottie-react'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 
-// Lottie + the 144KB JSON animation are deferred. Until they load, the static
-// logo image emitted by `LoadingScreen` is what the user sees — meaning the
-// brand mark paints with the very first HTML byte instead of waiting for JS.
+// Lottie + the 144KB JSON animation are deferred. The static logo image
+// rendered alongside is what the user sees on first paint; once Lottie is
+// ready it crossfades in and the static image fades out so they don't
+// overlap.
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
-export function LoadingScreenAnimation() {
+export function LoadingScreenLogo() {
   const reducedMotion = usePrefersReducedMotion()
   const lottieRef = useRef<LottieRefCurrentProps>(null)
   const [animationData, setAnimationData] = useState<unknown | null>(null)
-  const [visible, setVisible] = useState(false)
+  const [lottieReady, setLottieReady] = useState(false)
 
   useEffect(() => {
     if (reducedMotion) return
@@ -27,7 +28,7 @@ export function LoadingScreenAnimation() {
         )
       })
       .catch(() => {
-        // Static logo remains visible. Failure is silent by design.
+        // Static logo stays visible. Failure is silent by design.
       })
     return () => {
       cancelled = true
@@ -38,26 +39,50 @@ export function LoadingScreenAnimation() {
     lottieRef.current?.pause()
   }
 
-  if (reducedMotion || !animationData) return null
+  const showLottie = !reducedMotion && animationData !== null && lottieReady
 
   return (
-    <div
-      className="absolute inset-0 transition-opacity duration-300 ease-out"
-      style={{
-        opacity: visible ? 1 : 0,
-        filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
-      }}
-      aria-hidden
-    >
-      <Lottie
-        lottieRef={lottieRef}
-        animationData={animationData}
-        loop={false}
-        autoplay
-        onDOMLoaded={() => setVisible(true)}
-        onComplete={handleComplete}
-        style={{ width: 96, height: 96 }}
+    <div className="relative z-10 h-[96px] w-[96px]">
+      {/*
+        Static logo — emitted as SSR HTML so it paints with the first byte.
+        Fades out the moment the Lottie animation is in the DOM so the two
+        do not stack and create a "duplicate logo" look.
+      */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo-3d.webp"
+        alt="Operation Scholars"
+        width={96}
+        height={96}
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-out"
+        style={{
+          opacity: showLottie ? 0 : 1,
+          filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
+        }}
       />
+
+      {!reducedMotion && animationData ? (
+        <div
+          className="absolute inset-0 transition-opacity duration-300 ease-out"
+          style={{
+            opacity: showLottie ? 1 : 0,
+            filter: 'drop-shadow(0 8px 24px rgba(214, 160, 51, 0.35))',
+          }}
+          aria-hidden
+        >
+          <Lottie
+            lottieRef={lottieRef}
+            animationData={animationData}
+            loop={false}
+            autoplay
+            onDOMLoaded={() => setLottieReady(true)}
+            onComplete={handleComplete}
+            style={{ width: 96, height: 96 }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
