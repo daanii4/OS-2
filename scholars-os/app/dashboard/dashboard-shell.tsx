@@ -115,7 +115,7 @@ const NAV_LINKS: NavLinkItem[] = [
     orgOnly: true,
   },
   {
-    href: '/dashboard/team',
+    href: '/settings/team',
     label: 'Team',
     icon: UsersRound,
     section: 'Settings',
@@ -617,10 +617,9 @@ export function DashboardShell({
 
         <main
           className={cn(
-            // w-full + ml-* was wider than the viewport (100% width + margin). Pin width to remaining space.
             'flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain',
-            'transition-[margin,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
-            sidebarOpen ? 'ml-60 w-[calc(100%-15rem)]' : 'ml-14 w-[calc(100%-3.5rem)]'
+            'w-full transition-[padding-left] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+            sidebarOpen ? 'pl-60' : 'pl-14'
           )}
         >
           {/* Escalation banner §3.8 */}

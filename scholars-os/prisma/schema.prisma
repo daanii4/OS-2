@@ -275,7 +275,9 @@ model Student {
   mental_health_notes MentalHealthNote[]
 
   @@index([tenant_id])
+  @@index([tenant_id, status])
   @@index([tenant_id, assigned_counselor_id])
+  @@index([assigned_counselor_id])
   @@map("students")
 }
 
@@ -306,6 +308,8 @@ model BehavioralIncident {
 
   @@index([tenant_id])
   @@index([tenant_id, student_id])
+  @@index([student_id, incident_date])
+  @@index([tenant_id, incident_date])
   @@map("behavioral_incidents")
 }
 
@@ -342,6 +346,9 @@ model Session {
 
   @@index([tenant_id])
   @@index([tenant_id, student_id])
+  @@index([student_id, session_date])
+  @@index([tenant_id, session_date])
+  @@index([counselor_id, session_date])
   @@map("sessions")
 }
 
@@ -485,6 +492,7 @@ model MentalHealthNote {
   counselor Profile  @relation(fields: [counselor_id], references: [id], onDelete: Restrict)
 
   @@index([tenant_id, report_month])
+  @@index([tenant_id, report_month, school])
   @@index([student_id])
   @@map("mental_health_notes")
 }

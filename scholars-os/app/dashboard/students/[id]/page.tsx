@@ -56,7 +56,7 @@ export default async function StudentDetailPage({
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const [student, counselors, progressResponse, statusLogs] = await Promise.all([
+  const [student, counselors, currentIncidentCount30d, statusLogs] = await Promise.all([
     prisma.student.findFirst({
       where: { id: studentId, tenant_id: tenant.id },
       select: {
@@ -161,11 +161,10 @@ export default async function StudentDetailPage({
 
   const intakeFiles = parseIntakeFiles(student.intake_files)
 
-  const currentIncidentCount = progressResponse
   const baseline = student.baseline_incident_count
   const reductionPct =
     baseline && baseline > 0
-      ? Number((((baseline - currentIncidentCount) / baseline) * 100).toFixed(0))
+      ? Number((((baseline - currentIncidentCount30d) / baseline) * 100).toFixed(0))
       : null
 
   const totalSessions = student.sessions.length
@@ -237,7 +236,7 @@ export default async function StudentDetailPage({
         referralSource={student.referral_source}
         intakeDate={student.intake_date.toISOString()}
         baselineIncidents={student.baseline_incident_count}
-        currentIncidents={currentIncidentCount}
+        currentIncidents={currentIncidentCount30d}
         totalSessions={totalSessions}
         avgGoalRate={avgGoalRate}
       />
@@ -281,7 +280,7 @@ export default async function StudentDetailPage({
                 }}
               >
                 <p className="os-label">Incidents (30d)</p>
-                <p className="os-data-hero mt-2">{currentIncidentCount}</p>
+                <p className="os-data-hero mt-2">{currentIncidentCount30d}</p>
                 <p className="os-caption mt-1">
                   {reductionPct !== null ? (
                     <span

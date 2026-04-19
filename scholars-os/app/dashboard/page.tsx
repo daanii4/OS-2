@@ -121,7 +121,8 @@ export default async function DashboardPage() {
       select: { id: true, first_name: true, last_name: true },
       orderBy: { updated_at: 'desc' },
     }),
-    prisma.behavioralIncident.findMany({
+    prisma.behavioralIncident.groupBy({
+      by: ['student_id'],
       where: {
         ...(studentScopeClauses.length > 0 ? { student: studentScope } : {}),
         incident_date: {
@@ -129,7 +130,7 @@ export default async function DashboardPage() {
           lte: now,
         },
       },
-      select: { student_id: true },
+      _count: { _all: true },
     }),
     prisma.student.findMany({
       where: studentWhere,
@@ -193,7 +194,7 @@ export default async function DashboardPage() {
       : null
   const incidentCountByStudent = incidentsCurrentRows.reduce<Record<string, number>>(
     (acc, row) => {
-      acc[row.student_id] = (acc[row.student_id] ?? 0) + 1
+      acc[row.student_id] = row._count._all
       return acc
     },
     {}

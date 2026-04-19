@@ -67,7 +67,12 @@ async function findActiveTenantBySlug(slug: string) {
  * then DEFAULT_TENANT_SLUG. If the hostname label does not match any slug (custom domain),
  * falls back to the first active tenant when only one org exists — set DEFAULT_TENANT_SLUG otherwise.
  */
-export async function getTenantFromRequest(): Promise<{ id: string; slug: string; name: string; active: boolean }> {
+async function resolveTenantFromRequest(): Promise<{
+  id: string
+  slug: string
+  name: string
+  active: boolean
+}> {
   const headersList = await headers()
   const headerSlug = headersList.get('x-tenant-slug')
   const host = headersList.get('x-forwarded-host') ?? headersList.get('host') ?? ''
@@ -97,3 +102,6 @@ export async function getTenantFromRequest(): Promise<{ id: string; slug: string
 
   throw new Error(`Tenant not found for host: ${host || 'unknown'}`)
 }
+
+/** One resolution per React server request — avoids duplicate tenant DB work in the same render tree. */
+export const getTenantFromRequest = cache(resolveTenantFromRequest)

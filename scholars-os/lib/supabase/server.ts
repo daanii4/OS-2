@@ -1,8 +1,9 @@
 // Server client — use in Server Components, Route Handlers, Server Actions
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 
-export async function createClient() {
+async function createServerSupabaseClient() {
   const cookieStore = await cookies()
 
   return createServerClient(
@@ -26,3 +27,6 @@ export async function createClient() {
     }
   )
 }
+
+/** One Supabase server client per request — avoids duplicate instantiation in the same RSC tree. */
+export const createClient = cache(createServerSupabaseClient)

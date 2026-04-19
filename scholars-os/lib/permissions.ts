@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client'
+import { cache } from 'react'
 import { prisma } from '@/lib/prisma'
 import type { Grade, SessionFormat, UserRole } from '@prisma/client'
 
@@ -84,8 +85,12 @@ export async function canAccessStudent(
  * Returns the authenticated user's profile from the database.
  * Called at the top of every route handler after verifying the Supabase session.
  * Returns null if profile does not exist or is inactive.
+ *
+ * Wrapped with `cache()` so repeated calls with the same `userId` in one server request share one DB read.
  */
-export async function getProfile(userId: string): Promise<ProfileFields | null> {
+export const getProfile = cache(async function getProfile(
+  userId: string
+): Promise<ProfileFields | null> {
   try {
     const row = await prisma.profile.findUnique({
       where: { id: userId },
@@ -137,4 +142,4 @@ export async function getProfile(userId: string): Promise<ProfileFields | null> 
       default_grade_filter_max: null,
     }
   }
-}
+})

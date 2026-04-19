@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
+import { getTenantFromRequest } from '@/lib/tenant'
 import { CohortCharts } from './cohort-chart'
 
 export default async function AnalyticsPage() {
@@ -16,6 +17,11 @@ export default async function AnalyticsPage() {
   const profile = await getProfile(user.id)
   if (!profile || !profile.active) redirect('/login')
   if (profile.role !== 'owner' && profile.role !== 'assistant') redirect('/dashboard')
+
+  const tenant = await getTenantFromRequest()
+  if (profile.tenant_id && profile.tenant_id !== tenant.id) {
+    redirect('/dashboard')
+  }
 
   const now = new Date()
   const thirtyDaysAgo = new Date()
@@ -40,70 +46,86 @@ export default async function AnalyticsPage() {
     totalSessions30,
     noShows30,
     counselors,
-    allStudents,
+    activeStudentsForAnalytics,
+    incidentCountByStudent30d,
+    counselorSessionAgg,
     monthlyData,
   ] = await Promise.all([
-    prisma.student.count({ where: { status: 'active' } }),
+    prisma.student.count({ where: { tenant_id: tenant.id, status: 'active' } }),
 
     prisma.behavioralIncident.count({
-      where: { incident_date: { gte: thirtyDaysAgo } },
+      where: { tenant_id: tenant.id, incident_date: { gte: thirtyDaysAgo } },
     }),
     prisma.behavioralIncident.count({
-      where: { incident_date: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+      where: {
+        tenant_id: tenant.id,
+        incident_date: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+      },
     }),
 
-    prisma.session.count({ where: { session_date: { gte: thirtyDaysAgo } } }),
     prisma.session.count({
-      where: { session_date: { gte: thirtyDaysAgo }, attendance_status: 'no_show' },
+      where: { tenant_id: tenant.id, session_date: { gte: thirtyDaysAgo } },
+    }),
+    prisma.session.count({
+      where: {
+        tenant_id: tenant.id,
+        session_date: { gte: thirtyDaysAgo },
+        attendance_status: 'no_show',
+      },
     }),
 
-    // Per-counselor stats
     prisma.profile.findMany({
-      where: { active: true, role: 'counselor' },
+      where: { active: true, role: 'counselor', tenant_id: tenant.id },
       select: {
         id: true,
         name: true,
-        _count: { select: { assigned_students: true } },
-        assigned_students: {
-          where: { status: 'active' },
-          select: {
-            id: true,
-            baseline_incident_count: true,
-            incidents: {
-              where: { incident_date: { gte: thirtyDaysAgo } },
-              select: { id: true },
-            },
-            sessions: {
-              where: { session_date: { gte: thirtyDaysAgo } },
-              select: { id: true, goal_completion_rate: true },
-            },
-          },
-        },
       },
     }),
 
-    // All active students for school breakdown
     prisma.student.findMany({
-      where: { status: 'active' },
+      where: { tenant_id: tenant.id, status: 'active' },
       select: {
+        id: true,
         school: true,
         baseline_incident_count: true,
-        incidents: {
-          where: { incident_date: { gte: thirtyDaysAgo } },
-          select: { id: true },
-        },
+        assigned_counselor_id: true,
       },
     }),
 
-    // Monthly incident + active student counts
+    prisma.behavioralIncident.groupBy({
+      by: ['student_id'],
+      where: {
+        tenant_id: tenant.id,
+        incident_date: { gte: thirtyDaysAgo },
+        student: { status: 'active', tenant_id: tenant.id },
+      },
+      _count: { _all: true },
+    }),
+
+    prisma.session.groupBy({
+      by: ['counselor_id'],
+      where: {
+        tenant_id: tenant.id,
+        session_date: { gte: thirtyDaysAgo },
+      },
+      _count: { _all: true },
+      _avg: { goal_completion_rate: true },
+    }),
+
     Promise.all(
       months.map(async m => {
         const [incidents, studentIds] = await Promise.all([
           prisma.behavioralIncident.count({
-            where: { incident_date: { gte: m.start, lte: m.end } },
+            where: {
+              tenant_id: tenant.id,
+              incident_date: { gte: m.start, lte: m.end },
+            },
           }),
           prisma.behavioralIncident.findMany({
-            where: { incident_date: { gte: m.start, lte: m.end } },
+            where: {
+              tenant_id: tenant.id,
+              incident_date: { gte: m.start, lte: m.end },
+            },
             select: { student_id: true },
             distinct: ['student_id'],
           }),
@@ -113,22 +135,60 @@ export default async function AnalyticsPage() {
     ),
   ])
 
+  const incidentCountByStudentId = incidentCountByStudent30d.reduce<Record<string, number>>(
+    (acc, row) => {
+      acc[row.student_id] = row._count._all
+      return acc
+    },
+    {}
+  )
+
+  const sessionStatsByCounselorId = counselorSessionAgg.reduce<
+    Record<string, { sessions: number; avgGoal: number | null }>
+  >((acc, row) => {
+    acc[row.counselor_id] = {
+      sessions: row._count._all,
+      avgGoal:
+        row._avg.goal_completion_rate !== null && row._avg.goal_completion_rate !== undefined
+          ? row._avg.goal_completion_rate
+          : null,
+    }
+    return acc
+  }, {})
+
+  const studentsByCounselorId = new Map<
+    string,
+    Array<{
+      id: string
+      school: string
+      baseline_incident_count: number | null
+      assigned_counselor_id: string | null
+    }>
+  >()
+  for (const s of activeStudentsForAnalytics) {
+    if (!s.assigned_counselor_id) continue
+    const list = studentsByCounselorId.get(s.assigned_counselor_id)
+    if (list) list.push(s)
+    else studentsByCounselorId.set(s.assigned_counselor_id, [s])
+  }
+
   const incidentTrendPct =
     incidentsPrior30 > 0
       ? Number((((incidentsCurrent30 - incidentsPrior30) / incidentsPrior30) * 100).toFixed(0))
       : null
 
-  // School breakdown
+  // School breakdown (incident counts from groupBy, not per-row arrays)
   const schoolMap = new Map<string, { students: number; incidents: number; reductions: number[] }>()
-  for (const s of allStudents) {
+  for (const s of activeStudentsForAnalytics) {
     const key = s.school
     if (!schoolMap.has(key)) schoolMap.set(key, { students: 0, incidents: 0, reductions: [] })
     const entry = schoolMap.get(key)!
     entry.students++
-    entry.incidents += s.incidents.length
+    const inc = incidentCountByStudentId[s.id] ?? 0
+    entry.incidents += inc
     if (s.baseline_incident_count && s.baseline_incident_count > 0) {
       const pct = Number(
-        (((s.baseline_incident_count - s.incidents.length) / s.baseline_incident_count) * 100).toFixed(0)
+        (((s.baseline_incident_count - inc) / s.baseline_incident_count) * 100).toFixed(0)
       )
       entry.reductions.push(pct)
     }
@@ -145,9 +205,9 @@ export default async function AnalyticsPage() {
     }))
     .sort((a, b) => b.students - a.students)
 
-  // Counselor performance
+  // Counselor performance (aggregates at DB — no per-incident row fetch)
   const counselorRows = counselors.map(c => {
-    const students = c.assigned_students
+    const students = studentsByCounselorId.get(c.id) ?? []
     const totalStudents = students.length
 
     const studentsWithBaseline = students.filter(
@@ -157,20 +217,18 @@ export default async function AnalyticsPage() {
       studentsWithBaseline.length > 0
         ? Math.round(
             studentsWithBaseline.reduce((sum, s) => {
-              const current = s.incidents.length
+              const current = incidentCountByStudentId[s.id] ?? 0
               const baseline = s.baseline_incident_count!
               return sum + ((baseline - current) / baseline) * 100
             }, 0) / studentsWithBaseline.length
           )
         : null
 
-    const totalSessions30d = students.reduce((sum, s) => sum + s.sessions.length, 0)
-    const allRates = students.flatMap(s =>
-      s.sessions.map(sess => sess.goal_completion_rate).filter(r => r !== null)
-    ) as number[]
+    const sess = sessionStatsByCounselorId[c.id]
+    const totalSessions30d = sess?.sessions ?? 0
     const avgGoalRate =
-      allRates.length > 0
-        ? Math.round(allRates.reduce((a, b) => a + b, 0) / allRates.length)
+      sess?.avgGoal !== null && sess?.avgGoal !== undefined
+        ? Math.round(sess.avgGoal)
         : null
 
     return {
@@ -255,7 +313,7 @@ export default async function AnalyticsPage() {
 
         <div className="os-card-tight" style={{ borderTop: '3px solid var(--olive-200)', paddingTop: 17 }}>
           <p className="os-label">Counselors</p>
-          <p className="os-data-hero mt-2">{counselors.length}</p>
+          <p className="os-data-hero mt-2">{counselorRows.length}</p>
           <p className="os-caption mt-1">Active on caseload</p>
         </div>
       </section>

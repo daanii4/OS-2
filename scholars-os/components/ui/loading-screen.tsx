@@ -1,15 +1,10 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import Image from 'next/image'
+import Lottie, { type LottieRefCurrentProps } from 'lottie-react'
+import { useRef } from 'react'
+import logoAnimation from '@/public/animations/logo.json'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
-
-const LogoLottie = dynamic(() => import('./loading-screen-lottie'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[96px] w-[96px] animate-pulse rounded-md bg-white/5" aria-hidden />
-  ),
-})
 
 type LoadingScreenProps = {
   message?: string
@@ -17,6 +12,11 @@ type LoadingScreenProps = {
 
 export function LoadingScreen({ message = 'Loading your students' }: LoadingScreenProps) {
   const reducedMotion = usePrefersReducedMotion()
+  const lottieRef = useRef<LottieRefCurrentProps>(null)
+
+  function handleComplete() {
+    lottieRef.current?.pause()
+  }
 
   return (
     <div
@@ -49,7 +49,14 @@ export function LoadingScreen({ message = 'Loading your students' }: LoadingScre
             }}
           />
         ) : (
-          <LogoLottie />
+          <Lottie
+            lottieRef={lottieRef}
+            animationData={logoAnimation}
+            loop={false}
+            autoplay
+            onComplete={handleComplete}
+            style={{ width: 96, height: 96 }}
+          />
         )}
       </div>
 
