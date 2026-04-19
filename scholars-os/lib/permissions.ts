@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { cache } from 'react'
 import { prisma } from '@/lib/prisma'
+import { isAutoOwnerEmail } from '@/lib/role-overrides'
 import type { Grade, SessionFormat, UserRole } from '@prisma/client'
 
 type ProfileFields = {
@@ -110,6 +111,44 @@ export const getProfile = cache(async function getProfile(
         default_grade_filter_max: true,
       },
     })
+    if (!row) return null
+
+    // Self-heal: anyone on the auto-owner allow-list should always be `owner`
+    // and active. Repairs rows created before the trigger was updated, or
+    // accidentally demoted via direct DB edits.
+    if (isAutoOwnerEmail(row.email) && (row.role !== 'owner' || !row.active)) {
+      try {
+        const fixed = await prisma.profile.update({
+          where: { id: row.id },
+          data: { role: 'owner', active: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            active: true,
+            tenant_id: true,
+            must_reset_password: true,
+            onboarding_complete: true,
+            onboarding_step: true,
+            default_session_duration: true,
+            default_session_format: true,
+            default_grade_filter_min: true,
+            default_grade_filter_max: true,
+          },
+        })
+        return fixed
+      } catch (updateErr) {
+        // Don't block the request on a self-heal failure — just serve the
+        // existing row so the user can still authenticate.
+        console.error('[getProfile] auto-owner self-heal failed:', {
+          userId: row.id,
+          error:
+            updateErr instanceof Error ? updateErr.message : 'unknown',
+        })
+      }
+    }
+
     return row
   } catch (error) {
     if (!isMissingColumnError(error)) {

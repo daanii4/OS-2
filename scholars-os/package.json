@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "db:dedupe-students": "tsx prisma/dedupe-duplicate-students.ts",
     "db:promote-profile-role": "tsx prisma/promote-profile-role.ts",
+    "db:backfill-auto-owners": "tsx prisma/scripts/backfill-auto-owners.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:baseline-all-applied": "bash scripts/prisma-baseline-all-applied.sh"
   },
