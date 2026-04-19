@@ -589,6 +589,15 @@ body {
   color: var(--text-secondary);
 }
 
+/* Dark olive hero blocks — base .os-title / .os-body colors override Tailwind text-white; scope wins here */
+.os-hero-olive .os-title {
+  color: #ffffff;
+}
+
+.os-hero-olive .os-body {
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .os-caption {
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 11px;

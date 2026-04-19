@@ -243,7 +243,7 @@ export default async function AnalyticsPage() {
   return (
     <div className="os-page">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-xl bg-[var(--olive-800)] p-5">
+      <div className="os-hero-olive relative overflow-hidden rounded-xl bg-[var(--olive-800)] p-5">
         <div
           className="pointer-events-none absolute inset-0"
           style={{
@@ -255,8 +255,8 @@ export default async function AnalyticsPage() {
         <div className="absolute left-0 top-0 h-full w-1 bg-[var(--gold-500)]" aria-hidden />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="os-title text-white">Impact Overview</h1>
-            <p className="os-body mt-1 text-white/60">
+            <h1 className="os-title">Impact Overview</h1>
+            <p className="os-body mt-1">
               Organization-wide performance — Attendance, Discipline, Academics
             </p>
           </div>
