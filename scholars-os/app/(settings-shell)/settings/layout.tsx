@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import type { UserRole } from '@prisma/client'
 import { requireOnboardingComplete } from '@/lib/require-onboarding-complete'
-import { LogoutButton } from '@/components/LogoutButton'
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   await requireOnboardingComplete()
@@ -23,7 +22,6 @@ export default async function SettingsLayout({ children }: { children: React.Rea
       { href: '/settings/account', label: 'Account', roles: ['owner', 'assistant', 'counselor'] as UserRole[] },
       { href: '/settings/preferences', label: 'Preferences', roles: ['owner', 'assistant', 'counselor'] as UserRole[] },
       { href: '/settings/organization', label: 'Organization', roles: ['owner', 'assistant'] as UserRole[] },
-      { href: '/settings/team', label: 'Team', roles: ['owner', 'assistant'] as UserRole[] },
       { href: '/settings/danger', label: 'Danger zone', roles: ['owner'] as UserRole[] },
     ] as const
   )
@@ -50,9 +48,6 @@ export default async function SettingsLayout({ children }: { children: React.Rea
               {item.label}
             </Link>
           ))}
-          <div className="mt-4 border-t border-[var(--border-default)] pt-4">
-            <LogoutButton />
-          </div>
         </nav>
       </aside>
       <main className="min-w-0 flex-1">{children}</main>

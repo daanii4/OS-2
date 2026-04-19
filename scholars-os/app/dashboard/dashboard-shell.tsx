@@ -115,7 +115,7 @@ const NAV_LINKS: NavLinkItem[] = [
     orgOnly: true,
   },
   {
-    href: '/settings/team',
+    href: '/dashboard/team',
     label: 'Team',
     icon: UsersRound,
     section: 'Settings',

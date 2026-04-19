@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
+import { teamRosterEmailExclude, teamRosterInvitationEmailExclude } from '@/lib/team-roster-filter'
 
 export async function GET() {
   const supabase = await createClient()
@@ -28,9 +29,12 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
   }
 
+  const profileExtra = teamRosterEmailExclude()
+  const inviteExtra = teamRosterInvitationEmailExclude()
+
   const [profiles, invitations] = await Promise.all([
     prisma.profile.findMany({
-      where: { tenant_id: tenant.id },
+      where: { tenant_id: tenant.id, ...profileExtra },
       select: {
         id: true,
         name: true,
@@ -43,7 +47,7 @@ export async function GET() {
       orderBy: { created_at: 'asc' },
     }),
     prisma.invitation.findMany({
-      where: { tenant_id: tenant.id, status: 'pending' },
+      where: { tenant_id: tenant.id, status: 'pending', ...inviteExtra },
       select: {
         id: true,
         email: true,

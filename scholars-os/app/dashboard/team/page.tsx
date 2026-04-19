@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
+import { teamRosterEmailExclude, teamRosterInvitationEmailExclude } from '@/lib/team-roster-filter'
 import { InviteTeamMemberForm } from '@/components/settings/invite-team-member-form'
 import { TeamRoster } from '@/components/settings/team-roster'
 
@@ -25,9 +26,12 @@ export default async function DashboardTeamPage() {
     redirect('/dashboard')
   }
 
+  const profileExtra = teamRosterEmailExclude()
+  const inviteExtra = teamRosterInvitationEmailExclude()
+
   const [profiles, invitations] = await Promise.all([
     prisma.profile.findMany({
-      where: { tenant_id: tenant.id },
+      where: { tenant_id: tenant.id, ...profileExtra },
       select: {
         id: true,
         name: true,
@@ -40,7 +44,7 @@ export default async function DashboardTeamPage() {
       orderBy: { created_at: 'asc' },
     }),
     prisma.invitation.findMany({
-      where: { tenant_id: tenant.id, status: 'pending' },
+      where: { tenant_id: tenant.id, status: 'pending', ...inviteExtra },
       select: {
         id: true,
         email: true,
@@ -55,12 +59,9 @@ export default async function DashboardTeamPage() {
 
   return (
     <div className="os-page">
-      <div className="os-card-tight mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4">
         <Link href="/dashboard" className="os-btn-secondary">
           Back to dashboard
-        </Link>
-        <Link href="/settings/team" className="os-btn-secondary">
-          Open in OS Settings
         </Link>
       </div>
       <div className="space-y-6">
@@ -79,7 +80,7 @@ export default async function DashboardTeamPage() {
         <div className="os-card space-y-4">
           <h1 className="os-title">Invite teammate</h1>
           <p className="os-body text-[var(--text-secondary)]">
-            Full roster management stays here and in OS Settings. Invites include a temporary password by email.
+            Invites include a temporary password by email.
           </p>
           <InviteTeamMemberForm />
         </div>

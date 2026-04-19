@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Ban, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 
@@ -158,6 +159,7 @@ export function TeamRoster({
         }
         confirmLabel="Remove user"
         variant="danger"
+        bento
         loading={confirmLoading}
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
@@ -174,6 +176,7 @@ export function TeamRoster({
         }
         confirmLabel="Cancel invitation"
         variant="danger"
+        bento
         loading={confirmLoading}
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
@@ -208,10 +211,11 @@ export function TeamRoster({
                   {canRemoveProfile(p) ? (
                     <button
                       type="button"
-                      className="text-sm text-[var(--color-error)] underline-offset-2 hover:underline"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#b91c1c] shadow-sm transition-colors hover:bg-[#FEF2F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#dc2626] focus-visible:ring-offset-1 disabled:opacity-50"
                       disabled={deletingProfileId === p.id}
                       onClick={() => setConfirm({ kind: 'remove', profileId: p.id, name: p.name })}
                     >
+                      <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       {deletingProfileId === p.id ? 'Removing…' : 'Remove'}
                     </button>
                   ) : null}
@@ -249,12 +253,13 @@ export function TeamRoster({
                   {viewerRole === 'owner' || (viewerRole === 'assistant' && inv.role === 'counselor') ? (
                     <button
                       type="button"
-                      className="text-sm text-[var(--color-error)] underline-offset-2 hover:underline"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#b91c1c] shadow-sm transition-colors hover:bg-[#FEF2F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#dc2626] focus-visible:ring-offset-1 disabled:opacity-50"
                       disabled={deletingInviteId === inv.id}
                       onClick={() =>
                         setConfirm({ kind: 'cancelInvite', invitationId: inv.id, name: inv.name })
                       }
                     >
+                      <Ban className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       {deletingInviteId === inv.id ? 'Canceling…' : 'Cancel invite'}
                     </button>
                   ) : null}
