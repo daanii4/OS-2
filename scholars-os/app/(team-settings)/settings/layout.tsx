@@ -6,15 +6,19 @@ import { requireOnboardingComplete } from '@/lib/require-onboarding-complete'
 
 /** Team management at /settings/team — minimal chrome (no settings tabs, no sign out). */
 export default async function TeamSettingsLayout({ children }: { children: React.ReactNode }) {
-  await requireOnboardingComplete()
-
+  // Resolve the user once, then run onboarding check + profile load in parallel.
+  // Both reads are cached via React.cache(), so the page can reuse them
+  // without a duplicate database round-trip.
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const profile = await getProfile(user.id)
+  const [, profile] = await Promise.all([
+    requireOnboardingComplete(),
+    getProfile(user.id),
+  ])
   if (!profile || !profile.active) redirect('/login')
   if (profile.role !== 'owner' && profile.role !== 'assistant') {
     redirect('/settings/account')

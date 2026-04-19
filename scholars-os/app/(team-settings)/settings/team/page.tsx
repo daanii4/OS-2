@@ -1,75 +1,49 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/permissions'
 import { getTenantFromRequest } from '@/lib/tenant'
-import { prisma } from '@/lib/prisma'
-import { teamRosterEmailExclude, teamRosterInvitationEmailExclude } from '@/lib/team-roster-filter'
 import { InviteTeamMemberForm } from '@/components/settings/invite-team-member-form'
-import { TeamRoster } from '@/components/settings/team-roster'
+import {
+  TeamRosterData,
+  TeamRosterSkeleton,
+} from './team-roster-data'
 
 export default async function TeamSettingsPage() {
+  // Auth + tenant resolution. These are tiny and shared across the app via
+  // React `cache()`, but they still must finish before we know the page is
+  // safe to render. Heavier roster queries stream in below behind Suspense.
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const profile = await getProfile(user.id)
+  const [profile, tenant] = await Promise.all([
+    getProfile(user.id),
+    getTenantFromRequest(),
+  ])
   if (!profile || !profile.active) redirect('/login')
   if (profile.role !== 'owner' && profile.role !== 'assistant') {
     redirect('/settings/account')
   }
-
-  const tenant = await getTenantFromRequest()
   if (!profile.tenant_id || profile.tenant_id !== tenant.id) {
     redirect('/settings/account')
   }
 
-  const profileExtra = teamRosterEmailExclude()
-  const inviteExtra = teamRosterInvitationEmailExclude()
-
-  const [profiles, invitations] = await Promise.all([
-    prisma.profile.findMany({
-      where: { tenant_id: tenant.id, ...profileExtra },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        active: true,
-        created_at: true,
-        onboarding_complete: true,
-      },
-      orderBy: { created_at: 'asc' },
-    }),
-    prisma.invitation.findMany({
-      where: { tenant_id: tenant.id, status: 'pending', ...inviteExtra },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        created_at: true,
-        resend_count: true,
-      },
-      orderBy: { created_at: 'desc' },
-    }),
-  ])
+  const viewerRole: 'owner' | 'assistant' =
+    profile.role === 'assistant' ? 'assistant' : 'owner'
 
   return (
     <div className="space-y-6">
-      <TeamRoster
-        viewerId={profile.id}
-        viewerRole={profile.role === 'assistant' ? 'assistant' : 'owner'}
-        initialProfiles={profiles.map(p => ({
-          ...p,
-          created_at: p.created_at.toISOString(),
-        }))}
-        initialInvitations={invitations.map(i => ({
-          ...i,
-          created_at: i.created_at.toISOString(),
-        }))}
-      />
+      <Suspense fallback={<TeamRosterSkeleton />}>
+        <TeamRosterData
+          tenantId={tenant.id}
+          viewerId={profile.id}
+          viewerRole={viewerRole}
+        />
+      </Suspense>
+
       <div className="os-card space-y-4">
         <h1 className="os-title">Invite teammate</h1>
         <p className="os-body text-[var(--text-secondary)]">
