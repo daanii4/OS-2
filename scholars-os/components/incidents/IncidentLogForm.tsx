@@ -98,9 +98,9 @@ export function IncidentLogForm({ studentId, onSaved }: IncidentLogFormProps) {
   return (
     <div
       className="
-      sticky top-5 self-start overflow-hidden rounded-xl border border-[rgba(92,107,70,0.12)] bg-white
+      w-full max-w-[360px] self-start overflow-hidden rounded-xl border border-[rgba(92,107,70,0.12)] bg-white
+      md:sticky md:top-5
     "
-      style={{ width: '100%', maxWidth: '360px' }}
     >
       <div className="border-b border-[rgba(92,107,70,0.08)] px-5 py-4">
         <h2 className="font-[family-name:var(--font-dm-serif)] text-[18px] font-normal text-[#1e2517]">

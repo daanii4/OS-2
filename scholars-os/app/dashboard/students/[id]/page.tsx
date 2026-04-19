@@ -100,6 +100,7 @@ export default async function StudentDetailPage({
             session_format: true,
             duration_minutes: true,
             attendance_status: true,
+            session_summary: true,
             goals_attempted: true,
             goals_met: true,
             goal_completion_rate: true,
@@ -243,7 +244,7 @@ export default async function StudentDetailPage({
 
       <StudentSectionTabs studentId={student.id} active={section} />
       {section === 'sessions' && (
-        <div className="flex w-full min-w-0 flex-col gap-4 md:grid md:grid-cols-[minmax(0,360px)_minmax(0,1fr)] md:items-start md:gap-4">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <AddSessionForm studentId={student.id} />
           <SessionHistoryPanel sessions={student.sessions} />
         </div>
@@ -481,7 +482,7 @@ export default async function StudentDetailPage({
         </ScrollReveal>
       )}
       {section === 'plans' && (
-        <div className="flex w-full min-w-0 flex-col gap-4 md:grid md:grid-cols-[minmax(0,360px)_minmax(0,1fr)] md:items-start md:gap-4">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <CreatePlanForm studentId={student.id} />
           <PlansListPanel plans={student.success_plans} />
         </div>

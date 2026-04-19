@@ -58,18 +58,30 @@ export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
     window.location.reload()
   }
 
+  function handleClear() {
+    setGoalStatement('')
+    setTargetReductionPct('50')
+    setPlanDurationWeeks('12')
+    setFocusBehaviorsText('')
+    setSessionFrequency('weekly')
+    setPlanNotes('')
+    setError(null)
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="os-student-section-panel flex w-full max-w-[360px] shrink-0 flex-col md:sticky md:top-5 md:self-start"
+      className="os-student-section-panel flex w-full max-w-[360px] shrink-0 flex-col self-start md:sticky md:top-5"
     >
-      <div className="os-student-section-panel__header">
-        <h3 className="os-student-section-panel__title">Create success plan</h3>
-        <p className="os-student-section-panel__subtitle">
+      <div className="border-b border-[rgba(92,107,70,0.08)] px-5 py-4">
+        <h2 className="font-[family-name:var(--font-dm-serif)] text-[18px] font-normal text-[#1e2517]">
+          Create success plan
+        </h2>
+        <p className="mt-0.5 font-sans text-[11px] text-[#6e8050]">
           Define the outcome and cadence for this student.
         </p>
       </div>
-      <div className="os-student-section-panel__body grid flex-1 gap-3 pb-5">
+      <div className="flex flex-col gap-3.5 px-5 py-4">
 
       <div>
         <label className="os-label mb-1 block" htmlFor="goal-statement">
@@ -184,9 +196,39 @@ export function CreatePlanForm({ studentId }: CreatePlanFormProps) {
       </div>
 
       {error && <p className="os-caption text-[var(--color-error)]">{error}</p>}
-      <button type="submit" disabled={loading} className="os-btn-primary w-full sm:w-auto">
-        {loading ? 'Saving...' : 'Create plan'}
-      </button>
+      </div>
+
+      <div
+        className="
+        flex items-center gap-2 border-t border-[rgba(92,107,70,0.08)] px-5 py-3.5
+      "
+      >
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={loading}
+          className="
+            h-10 rounded-lg border border-[rgba(92,107,70,0.22)] bg-transparent px-4
+            font-sans text-[13px] font-medium text-[#5C6B46]
+            transition-all duration-[150ms] hover:bg-[#f3f7e8] active:scale-[0.99]
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5C6B46] focus-visible:ring-offset-1
+            disabled:cursor-not-allowed disabled:opacity-50
+          "
+        >
+          Clear
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="
+            flex h-10 flex-1 items-center justify-center rounded-lg bg-[#5C6B46] font-sans text-[13px] font-semibold
+            text-white transition-all duration-[150ms] hover:bg-[#3d4c2c] active:scale-[0.99] active:bg-[#2d3820]
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5C6B46] focus-visible:ring-offset-2
+            disabled:cursor-not-allowed disabled:opacity-60
+          "
+        >
+          {loading ? 'Saving…' : 'Create plan'}
+        </button>
       </div>
     </form>
   )
