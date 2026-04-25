@@ -110,6 +110,7 @@
   --ring: var(--gold-500);
   --background: var(--surface-page);
   --foreground: var(--text-primary);
+  --chart-1: var(--olive-600);
 
   /* Spacing — 4px base unit */
   --space-1:   4px;
@@ -463,6 +464,7 @@ html[data-lottie-cached='1'] [data-loading-static-logo] {
   --color-destructive: var(--color-error);
   --color-destructive-foreground: #ffffff;
   --color-ring: var(--gold-500);
+  --color-chart-1: var(--olive-600);
 }
 
 * {

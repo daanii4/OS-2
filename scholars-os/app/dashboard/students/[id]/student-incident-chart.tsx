@@ -1,20 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 import {
   ChartContainer,
+  ChartPlotDotBackground,
   ChartTooltip,
   ChartTooltipContent,
+  createOsHatchedBarShape,
   type ChartConfig,
-} from '@/components/ui/chart'
+} from '@/components/ui/bar-chart'
 
 type Props = {
   data: { label: string; total: number }[]
@@ -61,6 +57,9 @@ const tickCommon = {
 export default function StudentIncidentChart({ data }: Props) {
   const dense = data.length > 14
   const [isMobile, setIsMobile] = useState(false)
+  const hatchId = useId().replace(/:/g, '')
+  const dotPatternId = `os-dots-${hatchId}`
+  const HatchedBar = useMemo(() => createOsHatchedBarShape(hatchId), [hatchId])
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640)
@@ -71,14 +70,18 @@ export default function StudentIncidentChart({ data }: Props) {
 
   const xInterval = xAxisInterval(isMobile, data.length, dense)
 
+  const maxTotal = Math.max(0, ...data.map(d => d.total))
+  const yMax = Math.max(Math.ceil(maxTotal * 1.18), 1)
+
   return (
     <ChartContainer config={chartConfig} className="h-full w-full min-h-0 min-w-0">
       <BarChart
         data={data}
-        margin={{ top: 8, right: 24, left: -16, bottom: 0 }}
+        margin={{ top: 10, right: 24, left: -16, bottom: 4 }}
         maxBarSize={isMobile ? 12 : 24}
         barCategoryGap={isMobile ? '20%' : '15%'}
       >
+        <ChartPlotDotBackground patternId={dotPatternId} />
         <CartesianGrid vertical={false} stroke="var(--input)" strokeDasharray="4 12" />
         <XAxis
           dataKey="label"
@@ -94,6 +97,7 @@ export default function StudentIncidentChart({ data }: Props) {
         />
         <YAxis
           allowDecimals={false}
+          domain={[0, yMax]}
           tick={tickCommon}
           axisLine={false}
           tickLine={false}
@@ -102,7 +106,7 @@ export default function StudentIncidentChart({ data }: Props) {
           cursor={{ fill: 'rgba(44, 56, 32, 0.08)' }}
           content={<ChartTooltipContent indicator="line" />}
         />
-        <Bar dataKey="total" fill="var(--color-total)" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="total" fill="var(--color-total)" shape={HatchedBar} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ChartContainer>
   )

@@ -166,7 +166,7 @@ export function StudentCharts({ studentId }: StudentChartsProps) {
         ) : incidentData.length === 0 ? (
           <p className="os-body">No incident data for this period.</p>
         ) : (
-          <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+          <div className="flex h-[200px] w-full min-w-0 items-end justify-start rounded-md bg-[var(--surface-inner)] p-3">
             <StudentIncidentChart data={incidentData} />
           </div>
         )}
@@ -186,7 +186,7 @@ export function StudentCharts({ studentId }: StudentChartsProps) {
         ) : goalData.length === 0 ? (
           <p className="os-body">No session goal data for this period.</p>
         ) : (
-          <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+          <div className="flex h-[200px] w-full min-w-0 items-end justify-start rounded-md bg-[var(--surface-inner)] p-3">
             <StudentGoalChart data={goalData} />
           </div>
         )}
@@ -198,7 +198,7 @@ export function StudentCharts({ studentId }: StudentChartsProps) {
             <h3 className="os-heading">Suspension days</h3>
             <p className="os-body">Total suspension days per period</p>
           </div>
-          <div className="h-[180px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+          <div className="flex h-[180px] w-full min-w-0 items-end justify-start rounded-md bg-[var(--surface-inner)] p-3">
             <StudentSuspensionChart data={suspensionData} />
           </div>
         </div>
