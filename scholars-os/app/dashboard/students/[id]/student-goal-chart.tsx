@@ -5,47 +5,62 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 
 type Props = {
   data: { label: string; rate: number }[]
 }
 
+const chartConfig = {
+  rate: {
+    label: 'Goal completion',
+    color: 'var(--olive-600)',
+  },
+} satisfies ChartConfig
+
+const tickCommon = {
+  fontSize: 10,
+  fill: 'var(--text-tertiary)',
+  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+} as const
+
 export default function StudentGoalChart({ data }: Props) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ChartContainer config={chartConfig} className="h-full w-full min-h-0 min-w-0">
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke="rgba(92,107,70,0.08)" />
-        <XAxis
-          dataKey="label"
-          tick={{ fill: '#6E8050', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-          axisLine={false}
-          tickLine={false}
-        />
+        <CartesianGrid vertical={false} stroke="var(--input)" strokeDasharray="4 12" />
+        <XAxis dataKey="label" tick={tickCommon} axisLine={false} tickLine={false} />
         <YAxis
           domain={[0, 100]}
           unit="%"
-          tick={{ fill: '#6E8050', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
+          tick={tickCommon}
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip
-          cursor={{ fill: 'rgba(44,56,32,0.08)' }}
-          formatter={(v) => [`${Number(v).toFixed(0)}%`, 'Goal completion']}
-          contentStyle={{
-            background: '#2D3820',
-            border: 'none',
-            borderRadius: 6,
-            color: '#fff',
-            fontFamily: 'IBM Plex Mono, monospace',
-            fontSize: 12,
-          }}
-          labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}
-          itemStyle={{ color: '#fff' }}
+        <ChartTooltip
+          cursor={{ fill: 'rgba(44, 56, 32, 0.08)' }}
+          content={
+            <ChartTooltipContent
+              indicator="line"
+              formatter={value => (
+                <div className="flex w-full flex-wrap items-center justify-between gap-2 leading-none">
+                  <span className="text-muted-foreground">Completion</span>
+                  <span className="text-foreground font-mono font-medium tabular-nums">
+                    {`${Number(value).toFixed(0)}%`}
+                  </span>
+                </div>
+              )}
+            />
+          }
         />
         <Bar dataKey="rate" name="Completion %" radius={[3, 3, 0, 0]}>
           {data.map((entry, index) => (
@@ -62,6 +77,6 @@ export default function StudentGoalChart({ data }: Props) {
           ))}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   )
 }

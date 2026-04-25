@@ -4,54 +4,53 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 
 type Props = {
   data: { label: string; students: number }[]
 }
 
+const chartConfig = {
+  students: {
+    label: 'Students active',
+    color: 'var(--gold-500)',
+  },
+} satisfies ChartConfig
+
+const tickCommon = {
+  fontSize: 10,
+  fill: 'var(--text-tertiary)',
+  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+} as const
+
 export default function CohortStudentsChart({ data }: Props) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ChartContainer config={chartConfig} className="h-full w-full min-h-0 min-w-0">
       <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke="rgba(92,107,70,0.08)" />
-        <XAxis
-          dataKey="label"
-          tick={{ fill: '#6E8050', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          allowDecimals={false}
-          tick={{ fill: '#6E8050', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <Tooltip
-          contentStyle={{
-            background: '#2D3820',
-            border: 'none',
-            borderRadius: 6,
-            color: '#fff',
-            fontFamily: 'IBM Plex Mono, monospace',
-            fontSize: 12,
-          }}
-          labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}
-          itemStyle={{ color: '#fff' }}
+        <CartesianGrid vertical={false} stroke="var(--input)" strokeDasharray="4 12" />
+        <XAxis dataKey="label" tick={tickCommon} axisLine={false} tickLine={false} />
+        <YAxis allowDecimals={false} tick={tickCommon} axisLine={false} tickLine={false} />
+        <ChartTooltip
+          cursor={{ strokeDasharray: '3 3', stroke: 'var(--text-tertiary)', strokeOpacity: 0.5 }}
+          content={<ChartTooltipContent indicator="line" />}
         />
         <Line
           type="monotone"
           dataKey="students"
-          name="Students active"
-          stroke="var(--gold-500)"
+          stroke="var(--color-students)"
           strokeWidth={2}
-          dot={{ fill: 'var(--gold-500)', r: 3 }}
+          dot={{ fill: 'var(--color-students)', r: 3 }}
         />
       </LineChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   )
 }

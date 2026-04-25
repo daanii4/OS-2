@@ -90,6 +90,27 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -4px rgb(0 0 0 / 0.06);
   --shadow-primary: 0 4px 14px 0 rgb(92 107 70 / 0.18);
 
+  /* Chart / shadcn semantic aliases (components/ui/chart) */
+  --card: var(--surface-card);
+  --card-foreground: var(--text-primary);
+  --muted: var(--surface-inner);
+  --muted-foreground: var(--text-tertiary);
+  --border: var(--border-default);
+  --input: rgba(92, 107, 70, 0.14);
+  --popover: var(--surface-inverse);
+  --popover-foreground: #ffffff;
+  --primary: var(--olive-600);
+  --primary-foreground: #ffffff;
+  --secondary: var(--olive-100);
+  --secondary-foreground: var(--text-secondary);
+  --accent: var(--olive-50);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--color-error);
+  --destructive-foreground: #ffffff;
+  --ring: var(--gold-500);
+  --background: var(--surface-page);
+  --foreground: var(--text-primary);
+
   /* Spacing — 4px base unit */
   --space-1:   4px;
   --space-2:   8px;
@@ -423,6 +444,25 @@ html[data-lottie-cached='1'] [data-loading-static-logo] {
   --color-olive-600: var(--olive-600);
   --color-olive-700: var(--olive-700);
   --color-olive-800: var(--olive-800);
+
+  /* shadcn-style chart primitives — map to Operation Scholars surfaces */
+  --color-card: var(--surface-card);
+  --color-card-foreground: var(--text-primary);
+  --color-muted: var(--surface-inner);
+  --color-muted-foreground: var(--text-tertiary);
+  --color-border: var(--border-default);
+  --color-input: rgba(92, 107, 70, 0.14);
+  --color-popover: var(--surface-inverse);
+  --color-popover-foreground: #ffffff;
+  --color-primary: var(--olive-600);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--olive-100);
+  --color-secondary-foreground: var(--text-secondary);
+  --color-accent: var(--olive-50);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: #ffffff;
+  --color-ring: var(--gold-500);
 }
 
 * {
