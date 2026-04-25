@@ -77,7 +77,7 @@ export function AddSessionForm({ studentId }: AddSessionFormProps) {
       }
       return merged
     })
-    toast.info('Suggested goals from your AI plan were added below.')
+    toast.info('Suggested goals from your session intelligence plan were added below.')
   }, [studentId])
 
   const summaryRequired = attendanceStatus === 'attended'

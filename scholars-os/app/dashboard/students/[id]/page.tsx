@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { notFound, redirect } from 'next/navigation'
-import { AIPanel } from './ai-panel'
+import { IntelligencePanel } from './intelligence-panel'
 import { GraduationBanner } from '@/components/ui/graduation-banner'
 import { StudentExportButton } from '@/components/student-export-button'
 import { ProfileHeader } from './profile-header'
@@ -224,24 +224,43 @@ export default async function StudentDetailPage({
       )}
 
       {section === 'overview' && (
-        <Suspense fallback={<OverviewSectionSkeleton />}>
-          <OverviewSection
-            studentId={student.id}
-            tenantId={tenant.id}
-            isOrgAdmin={isOrgAdmin}
-            baselineIncidentCount={student.baseline_incident_count}
-            baselineWindowStart={student.baseline_window_start}
-            baselineWindowEnd={student.baseline_window_end}
-            currentIncidentCount30d={currentIncidentCount30d}
-            presentingProblem={student.presenting_problem}
-            generalNotes={student.general_notes}
-            referralSource={student.referral_source}
-            sessionFormat={student.session_format}
-            intakeDate={student.intake_date}
-            intakeFilesRaw={student.intake_files}
-            assignedCounselorId={student.assigned_counselor_id}
-          />
-        </Suspense>
+        <div className="space-y-6">
+          <Suspense fallback={<PlansSectionSkeleton />}>
+            <PlansSection studentId={student.id} tenantId={tenant.id} />
+          </Suspense>
+
+          <Suspense fallback={<OverviewSectionSkeleton />}>
+            <OverviewSection
+              studentId={student.id}
+              tenantId={tenant.id}
+              isOrgAdmin={isOrgAdmin}
+              baselineIncidentCount={student.baseline_incident_count}
+              baselineWindowStart={student.baseline_window_start}
+              baselineWindowEnd={student.baseline_window_end}
+              currentIncidentCount30d={currentIncidentCount30d}
+              presentingProblem={student.presenting_problem}
+              generalNotes={student.general_notes}
+              referralSource={student.referral_source}
+              sessionFormat={student.session_format}
+              intakeDate={student.intake_date}
+              intakeFilesRaw={student.intake_files}
+              assignedCounselorId={student.assigned_counselor_id}
+            />
+          </Suspense>
+
+          <Suspense
+            fallback={
+              <div className="os-card animate-pulse" style={{ minHeight: 200 }} aria-hidden />
+            }
+          >
+            <ScrollReveal>
+              <IntelligencePanel
+                studentId={student.id}
+                escalationActive={student.escalation_active}
+              />
+            </ScrollReveal>
+          </Suspense>
+        </div>
       )}
 
       {section === 'charts' && (
@@ -250,30 +269,6 @@ export default async function StudentDetailPage({
         </ScrollReveal>
       )}
 
-      {section === 'ai' && (
-        <Suspense
-          fallback={
-            <div
-              className="os-card animate-pulse"
-              style={{ minHeight: 200 }}
-              aria-hidden
-            />
-          }
-        >
-          <ScrollReveal>
-            <AIPanel
-              studentId={student.id}
-              escalationActive={student.escalation_active}
-            />
-          </ScrollReveal>
-        </Suspense>
-      )}
-
-      {section === 'plans' && (
-        <Suspense fallback={<PlansSectionSkeleton />}>
-          <PlansSection studentId={student.id} tenantId={tenant.id} />
-        </Suspense>
-      )}
     </div>
   )
 }

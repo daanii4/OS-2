@@ -9,11 +9,9 @@ import {
 
 const LABELS: Record<StudentSectionId, string> = {
   sessions: 'Sessions',
-  incidents: 'Incidents',
   overview: 'Overview',
+  incidents: 'Incidents',
   charts: 'Charts',
-  ai: 'AI',
-  plans: 'Plans',
 }
 
 type Props = {
