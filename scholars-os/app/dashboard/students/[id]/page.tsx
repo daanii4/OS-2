@@ -223,12 +223,14 @@ export default async function StudentDetailPage({
         </Suspense>
       )}
 
+      {section === 'plans' && (
+        <Suspense fallback={<PlansSectionSkeleton />}>
+          <PlansSection studentId={student.id} tenantId={tenant.id} />
+        </Suspense>
+      )}
+
       {section === 'overview' && (
         <div className="space-y-6">
-          <Suspense fallback={<PlansSectionSkeleton />}>
-            <PlansSection studentId={student.id} tenantId={tenant.id} />
-          </Suspense>
-
           <Suspense fallback={<OverviewSectionSkeleton />}>
             <OverviewSection
               studentId={student.id}

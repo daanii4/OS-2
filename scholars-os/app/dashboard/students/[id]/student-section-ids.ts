@@ -1,4 +1,5 @@
 export const STUDENT_SECTION_IDS = [
+  'plans',
   'sessions',
   'overview',
   'incidents',
@@ -10,7 +11,7 @@ export type StudentSectionId = (typeof STUDENT_SECTION_IDS)[number]
 export function normalizeStudentSection(
   raw: string | undefined | null
 ): StudentSectionId {
-  if (raw === 'ai' || raw === 'plans') {
+  if (raw === 'ai') {
     return 'overview'
   }
   if (raw && STUDENT_SECTION_IDS.includes(raw as StudentSectionId)) {

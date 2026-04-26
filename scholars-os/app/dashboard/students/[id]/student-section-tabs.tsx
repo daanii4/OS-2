@@ -8,6 +8,7 @@ import {
 } from './student-section-ids'
 
 const LABELS: Record<StudentSectionId, string> = {
+  plans: 'Plans',
   sessions: 'Sessions',
   overview: 'Overview',
   incidents: 'Incidents',
