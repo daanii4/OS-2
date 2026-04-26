@@ -38,7 +38,7 @@ export function CohortCharts({ cohortTrend, schoolBreakdown }: CohortChartProps)
           <h2 className="os-heading">Incident trend — all students</h2>
           <p className="os-body">Total behavioral incidents across caseload by month</p>
         </div>
-        <div className="h-[240px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+        <div className="h-[240px] w-full min-h-0 min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
           <CohortIncidentsChart data={cohortTrend} />
         </div>
       </div>
@@ -48,7 +48,7 @@ export function CohortCharts({ cohortTrend, schoolBreakdown }: CohortChartProps)
           <h2 className="os-heading">Active students per month</h2>
           <p className="os-body">Students with at least one incident or session logged</p>
         </div>
-        <div className="h-[180px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
+        <div className="h-[180px] w-full min-h-0 min-w-0 rounded-md bg-[var(--surface-inner)] p-3">
           <CohortStudentsChart data={cohortTrend} />
         </div>
       </div>

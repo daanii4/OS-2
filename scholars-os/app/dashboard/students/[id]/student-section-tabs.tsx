@@ -8,12 +8,11 @@ import {
 } from './student-section-ids'
 
 const LABELS: Record<StudentSectionId, string> = {
-  sessions: 'Sessions',
-  incidents: 'Incidents',
-  overview: 'Overview',
-  charts: 'Charts',
-  ai: 'AI',
   plans: 'Plans',
+  sessions: 'Sessions',
+  overview: 'Overview',
+  incidents: 'Incidents',
+  charts: 'Charts',
 }
 
 type Props = {

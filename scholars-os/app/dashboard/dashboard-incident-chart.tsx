@@ -1,20 +1,28 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+  ChartContainer,
+  ChartPlotDotBackground,
+  ChartTooltip,
+  ChartTooltipContent,
+  createOsHatchedBarShape,
+  type ChartConfig,
+} from '@/components/ui/bar-chart'
 
 type Props = {
   data: { label: string; incidents: number }[]
   chartMax: number
 }
+
+const chartConfig = {
+  incidents: {
+    label: 'Incidents',
+    color: 'var(--olive-600)',
+  },
+} satisfies ChartConfig
 
 function formatTickLabel(raw: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
@@ -28,7 +36,11 @@ function formatTickLabel(raw: string): string {
   return raw
 }
 
-function xAxisInterval(isMobile: boolean, dataLength: number, dense: boolean): number | 'preserveStartEnd' {
+function xAxisInterval(
+  isMobile: boolean,
+  dataLength: number,
+  dense: boolean
+): number | 'preserveStartEnd' {
   if (!isMobile) {
     return dense ? 0 : 'preserveStartEnd'
   }
@@ -37,9 +49,18 @@ function xAxisInterval(isMobile: boolean, dataLength: number, dense: boolean): n
   return Math.max(1, Math.floor(dataLength / 6))
 }
 
+const tickCommon = {
+  fontSize: 10,
+  fill: 'var(--text-tertiary)',
+  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+} as const
+
 export default function DashboardIncidentChart({ data, chartMax }: Props) {
   const dense = data.length > 14
   const [isMobile, setIsMobile] = useState(false)
+  const hatchId = useId().replace(/:/g, '')
+  const dotPatternId = `os-dots-${hatchId}`
+  const HatchedBar = useMemo(() => createOsHatchedBarShape(hatchId), [hatchId])
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640)
@@ -50,22 +71,22 @@ export default function DashboardIncidentChart({ data, chartMax }: Props) {
 
   const xInterval = xAxisInterval(isMobile, data.length, dense)
 
+  const maxIncidents = Math.max(0, ...data.map(d => d.incidents))
+  const yMax = Math.max(chartMax, Math.ceil(maxIncidents * 1.18), 1)
+
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ChartContainer config={chartConfig} className="h-full w-full min-h-0 min-w-0">
       <BarChart
         data={data}
-        margin={{ top: 8, right: 24, left: -16, bottom: 0 }}
+        margin={{ top: 10, right: 24, left: -16, bottom: 4 }}
         maxBarSize={isMobile ? 12 : 24}
         barCategoryGap={isMobile ? '20%' : '15%'}
       >
-        <CartesianGrid vertical={false} stroke="rgba(92,107,70,0.08)" />
+        <ChartPlotDotBackground patternId={dotPatternId} />
+        <CartesianGrid vertical={false} stroke="var(--input)" strokeDasharray="4 12" />
         <XAxis
           dataKey="label"
-          tick={{
-            fill: '#6E8050',
-            fontSize: 10,
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-          }}
+          tick={tickCommon}
           axisLine={false}
           tickLine={false}
           angle={isMobile ? -45 : dense ? -38 : 0}
@@ -77,30 +98,22 @@ export default function DashboardIncidentChart({ data, chartMax }: Props) {
         />
         <YAxis
           allowDecimals={false}
-          domain={[0, chartMax]}
-          tick={{
-            fill: '#6E8050',
-            fontSize: 10,
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-          }}
+          domain={[0, yMax]}
+          tick={tickCommon}
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip
-          cursor={{ fill: 'rgba(44,56,32,0.08)' }}
-          contentStyle={{
-            background: '#2D3820',
-            border: 'none',
-            borderRadius: 6,
-            color: '#fff',
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            fontSize: 12,
-          }}
-          labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}
-          itemStyle={{ color: '#fff' }}
+        <ChartTooltip
+          cursor={{ fill: 'rgba(44, 56, 32, 0.08)' }}
+          content={<ChartTooltipContent indicator="line" />}
         />
-        <Bar dataKey="incidents" fill="var(--olive-600)" radius={[3, 3, 0, 0]} />
+        <Bar
+          dataKey="incidents"
+          fill="var(--color-incidents)"
+          shape={HatchedBar}
+          radius={[4, 4, 0, 0]}
+        />
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   )
 }

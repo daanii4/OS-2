@@ -96,7 +96,7 @@ export function DashboardChartSection({ variant = 'desktop' }: Props) {
           <h2 className="os-subhead">Incident Frequency</h2>
           {periodToggle}
         </div>
-        <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-2">
+        <div className="h-[200px] w-full min-h-0 min-w-0 rounded-md bg-[var(--surface-inner)] p-2">
           {chartError ? (
             <p className="os-body text-[var(--color-regression)]">
               {chartError}
@@ -123,7 +123,7 @@ export function DashboardChartSection({ variant = 'desktop' }: Props) {
         {periodToggle}
       </div>
 
-      <div className="h-[200px] w-full min-w-0 rounded-md bg-[var(--surface-inner)] p-3 sm:h-[240px]">
+      <div className="h-[200px] w-full min-h-0 min-w-0 rounded-md bg-[var(--surface-inner)] p-3 sm:h-[240px]">
         {chartError ? (
           <p className="os-body text-[var(--color-regression)]">{chartError}</p>
         ) : chartLoading ? (

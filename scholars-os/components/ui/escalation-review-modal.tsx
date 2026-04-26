@@ -279,15 +279,15 @@ export function EscalationReviewModal({
               </h2>
               <p className="mt-2 text-[12px] leading-relaxed text-[#6e8050]">
                 The escalation flag has been cleared. Your action note is saved permanently in{' '}
-                {studentName}&apos;s AI analysis record.
+                {studentName}&apos;s intelligence record.
               </p>
               <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
                 <Link
-                  href={`/dashboard/students/${studentId}?section=ai`}
+                  href={`/dashboard/students/${studentId}?section=overview`}
                   className="os-btn-primary"
                   onClick={handleClose}
                 >
-                  View student&apos;s AI record →
+                  View in Overview →
                 </Link>
                 <button type="button" className="os-btn-secondary" onClick={handleClose}>
                   Close

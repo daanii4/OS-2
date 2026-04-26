@@ -24,7 +24,7 @@ type Analysis = {
   created_at: string
 }
 
-type AIPanelProps = {
+type IntelligencePanelProps = {
   studentId: string
   escalationActive: boolean
 }
@@ -38,17 +38,15 @@ const triggerLabels: Record<string, string> = {
   regression_alert: 'Regression alert',
 }
 
-export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
+export function IntelligencePanel({ studentId, escalationActive }: IntelligencePanelProps) {
   const [analyses, setAnalyses] = useState<Analysis[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  // Ask AI state
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
   const [askError, setAskError] = useState<string | null>(null)
 
-  // Escalation acknowledge state
   const [escalationNote, setEscalationNote] = useState('')
   const [acknowledging, setAcknowledging] = useState(false)
   const [ackError, setAckError] = useState<string | null>(null)
@@ -90,7 +88,7 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
     setAsking(false)
 
     if (!res.ok) {
-      setAskError(json.error ?? 'AI request failed')
+      setAskError(json.error ?? 'Could not reach intelligence service')
       return
     }
 
@@ -124,18 +122,15 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
 
   return (
     <div className="space-y-4">
-      {/* Escalation acknowledge block */}
       {isEscalated && (
         <div className="rounded-lg border border-[var(--color-escalation)]/30 bg-[var(--color-escalation)]/8 p-5">
           <p className="os-subhead text-[var(--color-escalation)]">Action Required: Escalation</p>
           <p className="os-body mt-1">
-            AI has flagged a safety or clinical concern for this student. You must acknowledge and
-            document your action before continuing.
+            Intelligence has flagged a safety or clinical concern for this student. You must acknowledge
+            and document your action before continuing.
           </p>
           <form onSubmit={handleAcknowledge} className="mt-4 space-y-3">
-            {ackError && (
-              <p className="os-body text-[var(--color-regression)]">{ackError}</p>
-            )}
+            {ackError && <p className="os-body text-[var(--color-regression)]">{ackError}</p>}
             <textarea
               className="os-input w-full"
               rows={3}
@@ -145,34 +140,29 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
               required
               minLength={10}
             />
-            <button
-              type="submit"
-              className="os-btn-primary"
-              disabled={acknowledging}
-            >
+            <button type="submit" className="os-btn-primary" disabled={acknowledging}>
               {acknowledging ? 'Saving...' : 'Acknowledge & Take Action'}
             </button>
           </form>
         </div>
       )}
 
-      {/* AI analyses */}
       <div className="os-card">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="os-heading">AI Briefing</h3>
+            <h3 className="os-heading">Intelligence briefing</h3>
             <p className="os-body">
-              Synthesized from full student history — updated after every session and incident
+              Synthesized from this student&apos;s record — updates after sessions and incidents
             </p>
           </div>
         </div>
 
         {loading ? (
-          <p className="os-body">Loading analysis...</p>
+          <p className="os-body">Loading briefing…</p>
         ) : analyses.length === 0 ? (
           <div className="rounded-md bg-[var(--surface-inner)] p-4">
             <p className="os-body">
-              No analysis yet. AI will run automatically after the first session or incident is
+              No briefing yet. Analysis runs in the background after the first session or incident is
               logged.
             </p>
           </div>
@@ -193,7 +183,7 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
                       {triggerLabels[analysis.triggered_by] ?? analysis.triggered_by}
                     </span>
                     {analysis.escalation_flag && (
-                      <span className="rounded px-2 py-0.5 os-caption bg-[var(--color-escalation)]/15 text-[var(--color-escalation)] font-medium">
+                      <span className="rounded px-2 py-0.5 os-caption bg-[var(--color-escalation)]/15 font-medium text-[var(--color-escalation)]">
                         Escalation
                       </span>
                     )}
@@ -219,7 +209,7 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
                 </button>
 
                 {expanded === analysis.id && (
-                  <div className="border-t border-[var(--border-default)] px-4 py-4 space-y-5">
+                  <div className="space-y-5 border-t border-[var(--border-default)] px-4 py-4">
                     {analysis.escalation_flag && analysis.escalation_reason && (
                       <div className="rounded-md bg-[var(--color-escalation)]/10 px-4 py-3">
                         <p className="os-subhead text-[var(--color-escalation)]">Escalation reason</p>
@@ -278,21 +268,19 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
 
       {latestPlan && <PlanOfActionPanel studentId={studentId} plan={latestPlan} />}
 
-      {/* Ask AI */}
       <div className="os-card">
-        <h3 className="os-heading mb-1">Ask AI</h3>
+        <h3 className="os-heading mb-1">Ask intelligence</h3>
         <p className="os-body mb-4">
-          Ask a specific question about this student. AI responds using their full history.
+          Ask a specific question about this student. Answers use the full case context and trusted
+          sources.
         </p>
 
         <form onSubmit={handleAsk} className="space-y-3">
-          {askError && (
-            <p className="os-body text-[var(--color-regression)]">{askError}</p>
-          )}
+          {askError && <p className="os-body text-[var(--color-regression)]">{askError}</p>}
           <textarea
             className="os-input w-full"
             rows={3}
-            placeholder="Ask about this student — e.g. 'How do I approach the conversation about home?'"
+            placeholder="e.g. How do I open the conversation about attendance without shutting the student down?"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             required
@@ -303,7 +291,7 @@ export function AIPanel({ studentId, escalationActive }: AIPanelProps) {
           <div className="flex items-center justify-between">
             <p className="os-caption">{question.length}/1000</p>
             <button type="submit" className="os-btn-primary" disabled={asking || question.length < 10}>
-              {asking ? 'Analyzing...' : 'Ask AI'}
+              {asking ? 'Analyzing…' : 'Submit question'}
             </button>
           </div>
         </form>
